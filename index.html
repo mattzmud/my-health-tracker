@@ -527,7 +527,7 @@ async function logFood() {
   const btn=document.getElementById('log-food-btn'); btn.disabled=true; btn.innerHTML='<div class="spinner"></div> Analyzing...';
   document.getElementById('food-feedback').innerHTML='';
   try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:'You are a nutrition coach for Matthew: 37yo type 2 diabetic, 240lb starting weight, goal 200lb. On Mounjaro 15mg weekly, Metformin, Glipizide. Goals: 120-140g protein, <80g net carbs, 80+oz water daily. Loves: Aldi protein shakes (30g protein), protein power balls, turkey/tuna wraps in zero-carb tortillas, chicken, ground beef/turkey, Aldi lunchmeat, strawberries, blueberries. Estimate macros and give 2-3 sentences warm feedback. End ONLY with this JSON: {"protein":30,"carbs":5,"calories":250}. Under 130 words total.',messages:[{role:'user',content:`I just ate (${mt}): ${text||'Nothing, just water.'}${woz>0?' Drank '+woz+' oz water.':''}`}]})});
+    const res=await fetch('https://health-tracker-api.matt-zmud.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:'You are a nutrition coach for Matthew: 37yo type 2 diabetic, 240lb starting weight, goal 200lb. On Mounjaro 15mg weekly, Metformin, Glipizide. Goals: 120-140g protein, <80g net carbs, 80+oz water daily. Loves: Aldi protein shakes (30g protein), protein power balls, turkey/tuna wraps in zero-carb tortillas, chicken, ground beef/turkey, Aldi lunchmeat, strawberries, blueberries. Estimate macros and give 2-3 sentences warm feedback. End ONLY with this JSON: {"protein":30,"carbs":5,"calories":250}. Under 130 words total.',messages:[{role:'user',content:`I just ate (${mt}): ${text||'Nothing, just water.'}${woz>0?' Drank '+woz+' oz water.':''}`}]})});
     const d=await res.json(), ai=d.content[0].text;
     let p=0,c=0,cal=0; const jm=ai.match(/\{"protein"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"carbs"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"calories"\s*:\s*(\d+(?:\.\d+)?)\}/);
     if(jm){p=parseFloat(jm[1]);c=parseFloat(jm[2]);cal=parseFloat(jm[3]);}
@@ -546,7 +546,7 @@ async function analyzeDayFood() {
   const btn=document.getElementById('analyze-day-btn'); btn.disabled=true; btn.textContent='Analyzing...';
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0), tc=entries.reduce((a,e)=>a+(e.carbs||0),0), tw=entries.reduce((a,e)=>a+(e.water||0),0);
   try {
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:'Nutrition coach for Matthew, 37yo type 2 diabetic on Mounjaro. Goal 200lb from 240. Goals: 120g protein, 80g carbs, 80oz water. Warm and specific. Under 120 words.',messages:[{role:'user',content:`Full day:\n${entries.map(e=>`${e.time}: ${e.text} (~${e.protein}g protein, ${e.carbs}g carbs)`).join('\n')}\n\nTotals: ${Math.round(tp)}g protein, ${Math.round(tc)}g carbs, ${Math.round(tw)}oz water. Overall feedback and one tip for tomorrow.`}]})});
+    const res=await fetch('https://health-tracker-api.matt-zmud.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:'Nutrition coach for Matthew, 37yo type 2 diabetic on Mounjaro. Goal 200lb from 240. Goals: 120g protein, 80g carbs, 80oz water. Warm and specific. Under 120 words.',messages:[{role:'user',content:`Full day:\n${entries.map(e=>`${e.time}: ${e.text} (~${e.protein}g protein, ${e.carbs}g carbs)`).join('\n')}\n\nTotals: ${Math.round(tp)}g protein, ${Math.round(tc)}g carbs, ${Math.round(tw)}oz water. Overall feedback and one tip for tomorrow.`}]})});
     const d=await res.json();
     document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">📋 <strong>Today\'s full analysis:</strong><br><br>'+escHtml(d.content[0].text)+'</div>';
   } catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error. Please try again.</div>';}
@@ -625,7 +625,7 @@ async function sendChat(){
   const tid='t'+Date.now(),ca=document.getElementById('chat-area');
   ca.innerHTML+=`<div class="msg ai" id="${tid}"><div class="msg-avatar">🌿</div><div class="msg-bubble"><div class="spinner"></div></div></div>`;ca.scrollTop=ca.scrollHeight;
   try{
-    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYS,messages:chatHistory.slice(-12)})});
+    const res=await fetch('https://health-tracker-api.matt-zmud.workers.dev',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,system:SYS,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;chatHistory.push({role:'assistant',content:reply});
     document.getElementById(tid)?.remove();addChatMsg('ai',reply);
   }catch(e){document.getElementById(tid)?.remove();addChatMsg('ai','Sorry, connection issue. Please try again!');}
