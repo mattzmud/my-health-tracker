@@ -534,7 +534,7 @@ async function logFood() {
     if(!cache.food[TODAY])cache.food[TODAY]=[];
     cache.food[TODAY].push({time:mt,text:text||'(water only)',protein:p,carbs:c,calories:cal,water:woz,ts:Date.now()});
     await fbSet('food',TODAY,{entries:cache.food[TODAY],date:TODAY});
-    document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">🌿 '+escHtml(ai.replace(/\{[^}]*\}/,'').trim())+'</div>';
+    document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">🌿 '+escHtml(ai.replace(/```json|```/g,'').replace(/\{[^}]*\}/,'').trim())+'</div>';
     document.getElementById('food-input').value=''; document.getElementById('water-log').value='';
     renderFoodEntries();
   } catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
