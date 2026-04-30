@@ -270,8 +270,20 @@ textarea { min-height:80px; }
       <div class="sec-header"><div class="sec-title">Medication Tracker</div><div class="sec-sub">Check off each medication as you take it.</div></div>
       <div class="today-banner"><strong id="meds-date-label">Today</strong> — tap each medication to mark it as taken.</div>
       <div class="grid2">
-        <div class="card"><div class="card-title">☀️ Morning medications</div><div id="meds-morning"></div></div>
-        <div class="card"><div class="card-title">🌙 Evening medications</div><div id="meds-evening"></div></div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin:0">☀️ Morning medications</div>
+            <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('am')" id="check-all-am">Check all</button>
+          </div>
+          <div id="meds-morning"></div>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+            <div class="card-title" style="margin:0">🌙 Evening medications</div>
+            <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('pm')" id="check-all-pm">Check all</button>
+          </div>
+          <div id="meds-evening"></div>
+        </div>
       </div>
       <div class="card">
         <div class="card-title">📋 Important reminders</div>
@@ -594,6 +606,14 @@ function renderMeds(){
 }
 async function toggleMed(k){if(!cache.meds[TODAY])cache.meds[TODAY]={};cache.meds[TODAY][k]=!cache.meds[TODAY][k];await fbSet('meds',TODAY,{taken:cache.meds[TODAY],mounjaro:cache.mounjaro,date:TODAY});renderMeds();refreshDashboard();}
 async function toggleMounjaro(){cache.mounjaro=!cache.mounjaro;await fbSet('meds',TODAY,{taken:cache.meds[TODAY]||{},mounjaro:cache.mounjaro,date:TODAY});updateMounjaroUI();}
+async function checkAllMeds(prefix){
+  if(!cache.meds[TODAY])cache.meds[TODAY]={};
+  const meds=prefix==='am'?MEDS_MORNING:MEDS_EVENING;
+  const allDone=meds.every(m=>cache.meds[TODAY][prefix+'-'+m.name]);
+  meds.forEach(m=>{cache.meds[TODAY][prefix+'-'+m.name]=!allDone;});
+  await fbSet('meds',TODAY,{taken:cache.meds[TODAY],mounjaro:cache.mounjaro,date:TODAY});
+  renderMeds();refreshDashboard();
+}
 function updateMounjaroUI(){const d=cache.mounjaro;document.getElementById('mounjaro-check').className='check-item'+(d?' done':'');document.getElementById('mounjaro-box').style.background=d?'var(--accent)':'';document.getElementById('mounjaro-box').style.borderColor=d?'var(--accent)':'';document.getElementById('mounjaro-icon').style.display=d?'block':'none';}
 
 const SYS='You are a friendly, knowledgeable personal health coach for Matthew, with these details:\n- Age 37, type 2 diabetic, starting weight 240 lbs, goal weight 200 lbs\n- Medications: Mounjaro 15mg weekly (strong appetite suppressor), Metformin 1000mg 2x/day, Glipizide 5mg 2x/day, Atorvastatin 20mg, Omeprazole 20mg, Losartan 100mg, Escitalopram 10mg, Bupropion HCl XL 150mg, HCTZ 12.5mg, plus Tadalafil, Finasteride, Minoxidil, Biotin, L-theanine, Psyllium fiber, Magnesium glycinate, Vitamin D, Multivitamin\n- Daily goals: 120-140g protein, under 80g net carbs, 80+ oz water, max 3 diet sodas\n- Loves: Aldi protein shakes (30g protein), protein power balls, chicken, ground beef/turkey, Aldi turkey/ham lunchmeat, tuna salad, strawberries, blueberries, zero net carb tortillas, turkey wraps\n- Late night sweet tooth: redirect to SmartSweets, Halo Top, Lily\'s chocolate\n- Fitness: walking (loves it), apartment gym cardio, home resistance bands and light dumbbells\n- Fitness goals: weight loss, more energy, strength, target inner thighs, reduce FUPA, grow glutes\n- Works from home, high anxiety managed with medications\n- Medication goal: eventually reduce Glipizide then Metformin through lifestyle\nBe warm, specific, reference his actual preferences. Under 200 words unless giving a recipe or detailed instructions.';
