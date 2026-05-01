@@ -51,7 +51,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .tag{padding:6px 14px;background:var(--surface);border:1px solid var(--border2);border-radius:20px;cursor:pointer;font-size:13px;color:var(--muted);transition:all 0.18s;}
 .tag:hover{border-color:var(--accent);color:var(--text);}
 .tag.selected{background:rgba(126,184,164,0.12);border-color:var(--accent);color:var(--accent);}
-#generating-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:24px;}
+#generating-screen{align-items:center;justify-content:center;min-height:100vh;padding:24px;}
 .gen-card{text-align:center;max-width:360px;}
 .gen-spinner{width:56px;height:56px;border:3px solid var(--surface2);border-top-color:var(--accent);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 24px;}
 .gen-title{font-family:var(--font-display);font-size:24px;color:var(--text);margin-bottom:8px;}
@@ -443,7 +443,7 @@ onAuthStateChanged(auth, async user => {
     window._uid = null; window._profile = null;
     document.getElementById('login-screen').style.display = 'flex';
     document.getElementById('onboarding-screen').classList.remove('active');
-    document.getElementById('generating-screen').classList.remove('active');
+    document.getElementById('generating-screen').style.display='none';
     document.getElementById('app-screen').style.display = 'none';
   }
 });
@@ -585,7 +585,7 @@ async function obNext(){
   obSaveCurrentFields();
   if(obStep<OB_STEPS.length-1){obStep++;renderObStep();return;}
   document.getElementById('onboarding-screen').classList.remove('active');
-  document.getElementById('generating-screen').classList.add('active');
+  document.getElementById('generating-screen').style.display='flex';
   await generatePlan();
 }
 
@@ -618,7 +618,7 @@ async function generatePlan(){
     // AI failed or timed out — default plan already saved, just continue
     console.log('AI plan generation skipped, using default plan');
   }
-  document.getElementById('generating-screen').classList.remove('active');
+  document.getElementById('generating-screen').style.display='none';
   showApp();window.appInit();
 }
 
