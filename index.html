@@ -247,6 +247,11 @@ textarea{min-height:80px;}
     <!-- DASHBOARD -->
     <section id="sec-dashboard" class="section active">
       <div class="sec-header"><div class="sec-title" id="dash-greeting">Hello</div><div class="sec-sub" id="dash-date"></div></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
+        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      </div>
       <div class="welcome-card">
         <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
           <div style="position:relative;flex-shrink:0">
@@ -374,10 +379,25 @@ textarea{min-height:80px;}
       </div>
       <div class="card" id="meds-afternoon-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
-          <div class="card-title" style="margin:0">&#9728; Afternoon</div>
+          <div class="card-title" style="margin:0">&#9729; Afternoon</div>
           <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('af')">Check all</button>
         </div>
         <div id="meds-afternoon"><div style="font-size:13px;color:var(--muted)">No afternoon medications added.</div></div>
+      </div>
+      <div class="card" id="meds-weekly-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin:0">&#128197; Weekly</div>
+          <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('wk')">Check all</button>
+        </div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Check off when taken this week</div>
+        <div id="meds-weekly"><div style="font-size:13px;color:var(--muted)">No weekly medications added.</div></div>
+      </div>
+      <div class="card" id="meds-asneeded-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin:0">&#128138; As needed</div>
+          <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('prn')">Check all</button>
+        </div>
+        <div id="meds-asneeded"><div style="font-size:13px;color:var(--muted)">No as-needed medications added.</div></div>
       </div>
       <div class="card">
         <div class="card-title">&#10133; Add medication</div>
@@ -543,6 +563,9 @@ async function changeDateAsync(delta){
   if(nd>TODAY)return;
   viewDate=nd;
   await ensureDateLoaded(viewDate);
+  // Also preload surrounding days for charts
+  const surrounding=get14Days();
+  await Promise.all(surrounding.map(day=>ensureDateLoaded(day)));
   updateDateNav();
   renderFoodEntries();renderFavorites();renderFitnessDay();renderMeds();refreshDashboard();
 }
@@ -659,7 +682,7 @@ async function generatePlan(){
   if(allMedsRaw){
     try{
       const medLines=allMedsRaw.split('\n').map(m=>m.trim()).filter(Boolean);
-      const medRes=await callAI('Parse these medication entries. Return JSON array ONLY, no other text:\n'+medLines.join('\n')+'\n\nFor EACH entry return an object: {"id":"unique-slug","name":"Drug name only","dose":"dose string or empty","qty":1,"times":["am","pm","af"]}. Times: am=morning, pm=evening, af=afternoon. If taken twice daily use both am and pm. Return ONLY a JSON array.');
+      const medRes=await callAI('Parse these medication entries. Return JSON array ONLY, no other text:\n'+medLines.join('\n')+'\n\nFor EACH entry return an object: {"id":"unique-slug","name":"Drug name only","dose":"dose or empty","qty":1,"times":[...]}. Time codes: am=morning, af=afternoon, pm=evening, wk=weekly, prn=as needed. If twice daily use ["am","pm"]. If once weekly use ["wk"]. If as needed use ["prn"]. Return ONLY a JSON array.');
       const parsedMeds=JSON.parse(medRes.replace(/```json|```/g,'').trim());
       const allMeds={};
       parsedMeds.forEach(med=>{if(med.id&&med.name)allMeds[med.id]=med;});
@@ -807,17 +830,24 @@ function renderWeightChart(){
   if(cache.weights.length<2){ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText('Log at least 2 weight entries to see your trend',300,80);return;}
   weightChart=new Chart(ctx,{type:'line',data:{labels:cache.weights.map(w=>w.date.slice(5)),datasets:[{label:'Weight',data:cache.weights.map(w=>w.val),borderColor:'#7eb8a4',backgroundColor:'rgba(126,184,164,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#7eb8a4',pointRadius:4},{label:'Goal',data:cache.weights.map(()=>gw),borderColor:'rgba(201,169,110,0.5)',borderDash:[6,4],fill:false,pointRadius:0}]},options:co()});
 }
+function get14Days(){
+  // Build 14-day window centered around viewDate if not today, else last 7
+  const days=[];
+  const anchor=new Date(viewDate+'T12:00:00');
+  for(let i=13;i>=0;i--){const d=new Date(anchor);d.setDate(d.getDate()-i);const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(ds<=TODAY)days.push(ds);}
+  return days.slice(-7);
+}
 function renderProteinChart(){
-  const days=getLast7Days(),goal=(window._profile||{}).proteinGoal||120;
+  const days=get14Days(),goal=(window._profile||{}).proteinGoal||120;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0)));
   const ctx=document.getElementById('protein-chart').getContext('2d');if(proteinChart)proteinChart.destroy();
-  proteinChart=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');return DAY_NAMES[dt.getDay()].slice(0,3);}),datasets:[{label:'Protein',data,backgroundColor:data.map(v=>v>=goal?'rgba(126,184,164,0.7)':'rgba(140,164,232,0.5)'),borderRadius:6},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
+  proteinChart=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');const label=DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;}),datasets:[{label:'Protein',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.9)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(140,164,232,0.5)'),borderRadius:6},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
 }
 function renderWaterChart(){
-  const days=getLast7Days(),goal=(window._profile||{}).waterGoal||80;
+  const days=get14Days(),goal=(window._profile||{}).waterGoal||80;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0)));
   const ctx=document.getElementById('water-chart').getContext('2d');if(waterChart)waterChart.destroy();
-  waterChart=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');return DAY_NAMES[dt.getDay()].slice(0,3);}),datasets:[{label:'Water',data,backgroundColor:data.map(v=>v>=goal?'rgba(126,184,164,0.7)':'rgba(126,184,164,0.3)'),borderRadius:6},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
+  waterChart=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');const label=DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;}),datasets:[{label:'Water',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.7)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(126,184,164,0.3)'),borderRadius:6},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
 }
 
 // ── AI HELPER ──────────────────────────────────────────────
@@ -1007,11 +1037,12 @@ function renderMeds(){
   buildList('am','meds-morning');
   buildList('pm','meds-evening');
   buildList('af','meds-afternoon');
+  buildList('wk','meds-weekly');
+  buildList('prn','meds-asneeded');
 
-  // Show/hide afternoon card
-  const afMeds=getMedsByTime('af');
-  const afCard=document.getElementById('meds-afternoon-card');
-  if(afCard)afCard.style.display=afMeds.length?'block':'none';
+  // Show/hide optional cards
+  const slots=[{id:'meds-afternoon-card',time:'af'},{id:'meds-weekly-card',time:'wk'},{id:'meds-asneeded-card',time:'prn'}];
+  slots.forEach(s=>{const card=document.getElementById(s.id);if(card)card.style.display=getMedsByTime(s.time).length?'block':'none';});
 }
 
 async function addMedicationAI(){
@@ -1021,7 +1052,7 @@ async function addMedicationAI(){
   btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Parsing...';
   try{
     const res=await callAI(
-      'Parse this medication entry and return JSON ONLY:\n"'+raw+'"\n\nReturn an array of medication objects. Each object must have:\n- id: unique slug (lowercase, hyphens)\n- name: medication name only (no dose, no timing)\n- dose: dosage string (e.g. "10mg", "1000mg", "2.5mg") or ""\n- qty: quantity per dose as integer (default 1)\n- times: array of time codes from ["am","af","pm"] meaning morning/afternoon/evening\n\nExamples:\n"Metformin 1000mg twice daily" -> [{"id":"metformin-1000mg","name":"Metformin","dose":"1000mg","qty":1,"times":["am","pm"]}]\n"Fiber supplement 5 capsules morning and evening" -> [{"id":"fiber-supplement","name":"Fiber Supplement","dose":"","qty":5,"times":["am","pm"]}]\n"Vitamin D once in morning" -> [{"id":"vitamin-d","name":"Vitamin D","dose":"","qty":1,"times":["am"]}]\n\nReturn ONLY a valid JSON array, no other text.'
+      'Parse this medication entry and return JSON ONLY:\n"'+raw+'"\n\nReturn an array of medication objects. Each object must have:\n- id: unique slug (lowercase, hyphens)\n- name: medication name only (no dose, no timing)\n- dose: dosage string (e.g. "10mg", "1000mg") or ""\n- qty: quantity per dose as integer (default 1)\n- times: array of time codes. Use ONLY these codes:\n  "am" = morning, "af" = afternoon, "pm" = evening\n  "wk" = weekly (once a week), "prn" = as needed\n\nExamples:\n"Metformin 1000mg twice daily" -> [{"id":"metformin-1000mg","name":"Metformin","dose":"1000mg","qty":1,"times":["am","pm"]}]\n"Fiber supplement 5 capsules morning and evening" -> [{"id":"fiber-supplement","name":"Fiber Supplement","dose":"","qty":5,"times":["am","pm"]}]\n"Mounjaro 15mg once weekly" -> [{"id":"mounjaro-15mg","name":"Mounjaro","dose":"15mg","qty":1,"times":["wk"]}]\n"Ibuprofen 400mg as needed" -> [{"id":"ibuprofen-400mg","name":"Ibuprofen","dose":"400mg","qty":1,"times":["prn"]}]\n"Vitamin D once in morning" -> [{"id":"vitamin-d","name":"Vitamin D","dose":"","qty":1,"times":["am"]}]\n\nReturn ONLY a valid JSON array, no other text.'
     );
     const parsed=JSON.parse(res.replace(/```json|```/g,'').trim());
     if(!cache.medsList)cache.medsList={};
