@@ -391,6 +391,22 @@ textarea{min-height:80px;}
           </div>
         </div>
       </div>
+      <!-- Home screen install prompt — dismissible, shown once -->
+      <div class="card" id="install-prompt-card" style="display:none;background:linear-gradient(135deg,rgba(85,107,47,0.08),rgba(85,107,47,0.04));border:1px solid rgba(85,107,47,0.2)">
+        <div style="display:flex;align-items:flex-start;gap:14px">
+          <div style="font-size:28px;flex-shrink:0">📱</div>
+          <div style="flex:1">
+            <div style="font-weight:600;color:var(--text);font-size:15px;margin-bottom:4px">Add MyWellpath to your home screen</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:12px">Get the full app experience — launch from your home screen just like a native app, with no browser bar.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap">
+              <button class="btn btn-primary btn-sm" onclick="showInstallInstructions()">Show me how</button>
+              <button class="btn btn-ghost btn-sm" onclick="dismissInstallPrompt()">Maybe later</button>
+              <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="dismissInstallPromptForever()">Don&#39;t show again</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-num" id="dash-weight" style="color:var(--green)">&#8212;</div><div class="stat-label">Current Weight</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-lbs-lost" style="color:var(--amber)">&#8212;</div><div class="stat-label">Lbs Lost</div></div>
@@ -604,6 +620,36 @@ textarea{min-height:80px;}
         <input type="password" id="new-password2" placeholder="Confirm new password" style="margin-bottom:12px" autocomplete="new-password"/>
         <button class="btn btn-primary btn-sm" onclick="changePassword()">Update password</button>
         <div class="msg-box" id="password-msg" style="margin-top:10px"></div>
+      </div>
+
+      <!-- Add to home screen -->
+      <div class="card">
+        <div class="card-title">&#128241; Add to home screen</div>
+        <div style="font-size:13px;color:var(--muted);line-height:1.7;margin-bottom:14px">Save MyWellpath to your phone&#39;s home screen for instant access — it launches just like a native app with no browser bar in the way.</div>
+        <div style="margin-bottom:14px">
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:20px">🍎</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">iPhone / iPad (Safari)</div>
+              <div style="font-size:12px;color:var(--muted)">Tap the <strong>Share</strong> button &#8594; scroll down and tap <strong>Add to Home Screen</strong> &#8594; tap <strong>Add</strong></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)">
+            <div style="font-size:20px">🤖</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">Android (Chrome)</div>
+              <div style="font-size:12px;color:var(--muted)">Tap the <strong>&#8942; menu</strong> in the top right &#8594; tap <strong>Add to Home screen</strong> &#8594; tap <strong>Add</strong></div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 0">
+            <div style="font-size:20px">💻</div>
+            <div>
+              <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">Desktop (Chrome / Edge)</div>
+              <div style="font-size:12px;color:var(--muted)">Look for the <strong>install icon</strong> in the address bar &#8594; click <strong>Install</strong></div>
+            </div>
+          </div>
+        </div>
+        <div style="font-size:12px;color:var(--muted);font-style:italic">Note: must be opened in Safari on iPhone or Chrome on Android — in-app browsers (from texts or emails) don&#39;t support home screen install.</div>
       </div>
 
       <!-- Sign out -->
@@ -1165,6 +1211,81 @@ function aiFeedbackHTML(icon, title, body, extraHTML=''){
     +'<div class="ai-feedback-body">'+body+(extraHTML?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(85,107,47,0.1)">'+extraHTML+'</div>':'')+'</div>'
     +'</div>';
 }
+// ── HOME SCREEN INSTALL PROMPT ────────────────────────────────
+function checkInstallPrompt(){
+  // Show the card if user hasn't dismissed it forever and has been in app before
+  const uid=window._uid||'anon';
+  const dismissed=localStorage.getItem('wellpath_install_dismissed_'+uid);
+  const forever=localStorage.getItem('wellpath_install_forever_'+uid);
+  const card=document.getElementById('install-prompt-card');
+  if(!card)return;
+  // Never show if dismissed forever
+  if(forever)return;
+  // Show on second+ login (first login they just did onboarding)
+  const loginCount=parseInt(localStorage.getItem('wellpath_login_count_'+uid)||'0');
+  if(loginCount>=2&&!dismissed){
+    card.style.display='block';
+  }
+}
+
+function incrementLoginCount(){
+  const uid=window._uid||'anon';
+  const count=parseInt(localStorage.getItem('wellpath_login_count_'+uid)||'0');
+  localStorage.setItem('wellpath_login_count_'+uid,count+1);
+}
+
+function dismissInstallPrompt(){
+  // Hide for this session only
+  const uid=window._uid||'anon';
+  localStorage.setItem('wellpath_install_dismissed_'+uid,'1');
+  document.getElementById('install-prompt-card').style.display='none';
+}
+
+function dismissInstallPromptForever(){
+  const uid=window._uid||'anon';
+  localStorage.setItem('wellpath_install_forever_'+uid,'1');
+  document.getElementById('install-prompt-card').style.display='none';
+}
+
+function showInstallInstructions(){
+  // Detect platform and show targeted instructions
+  const isIOS=/iPhone|iPad|iPod/.test(navigator.userAgent);
+  const isAndroid=/Android/.test(navigator.userAgent);
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  let steps='';
+  if(isIOS){
+    steps='<div style="font-size:15px;font-weight:600;margin-bottom:16px">Adding to iPhone home screen</div>'
+      +'<div style="font-size:13px;color:var(--muted);line-height:1.9">'
+      +'1. Make sure you&#39;re in <strong>Safari</strong> (not Chrome or another browser)<br>'
+      +'2. Tap the <strong>Share</strong> button at the bottom of the screen &#9650;<br>'
+      +'3. Scroll down and tap <strong>Add to Home Screen</strong><br>'
+      +'4. Tap <strong>Add</strong> in the top right corner<br><br>'
+      +'MyWellpath will appear on your home screen with the wp icon!</div>';
+  } else if(isAndroid){
+    steps='<div style="font-size:15px;font-weight:600;margin-bottom:16px">Adding to Android home screen</div>'
+      +'<div style="font-size:13px;color:var(--muted);line-height:1.9">'
+      +'1. Make sure you&#39;re in <strong>Chrome</strong><br>'
+      +'2. Tap the <strong>&#8942; menu</strong> (three dots) in the top right<br>'
+      +'3. Tap <strong>Add to Home screen</strong><br>'
+      +'4. Tap <strong>Add</strong> to confirm<br><br>'
+      +'MyWellpath will appear on your home screen with the wp icon!</div>';
+  } else {
+    steps='<div style="font-size:15px;font-weight:600;margin-bottom:16px">Adding to your home screen</div>'
+      +'<div style="font-size:13px;color:var(--muted);line-height:1.9">'
+      +'<strong>iPhone/iPad (Safari):</strong> Share button &#8594; Add to Home Screen &#8594; Add<br><br>'
+      +'<strong>Android (Chrome):</strong> &#8942; Menu &#8594; Add to Home screen &#8594; Add<br><br>'
+      +'<strong>Desktop (Chrome/Edge):</strong> Look for the install icon &#8984; in the address bar<br><br>'
+      +'Note: must be in Safari on iPhone or Chrome on Android.</div>';
+  }
+  modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
+    +steps
+    +'<button class="btn btn-primary" style="width:100%;margin-top:20px" onclick="this.closest(&#39;.date-picker-modal&#39;).remove();dismissInstallPrompt()">Got it!</button>'
+    +'</div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
 
@@ -1532,6 +1653,8 @@ window.appInit=async function(){
   await checkAndAwardBadges();
   renderBadges();
   applyVitalSettings();
+  incrementLoginCount();
+  checkInstallPrompt();
   await checkMidnightAnalysis();
   await checkFirstLoginOfDay();
   scheduleMidnightAnalysis();
