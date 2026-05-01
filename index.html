@@ -631,7 +631,7 @@ async function changeDateAsync(delta){
   viewDate=nd;
   await ensureDateLoaded(viewDate);
   // Also preload surrounding days for charts
-  const surrounding=get14Days();
+  const surrounding=getNutritionDays();
   await Promise.all(surrounding.map(day=>ensureDateLoaded(day)));
   updateDateNav();
   renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
