@@ -1484,6 +1484,7 @@ window.appInit=async function(){
   cache.vitalSettings=vs||{trackBP:false,trackBS:false};
   if(bpd){cache.vitals.bp[TODAY]=bpd.bp||[];cache.vitals.bs[TODAY]=bpd.bs||[];}
   else{cache.vitals.bp[TODAY]=[];cache.vitals.bs[TODAY]=[];}
+  _loadedVitalDates.add(TODAY);
   renderBadges();
   // Load last 7 days food + all journal in background — don't block UI
   // Mark today as loaded (already fetched above)
@@ -2617,14 +2618,12 @@ async function saveVitalSettings(){
   const trackBS=document.getElementById('toggle-bs')?.checked||false;
   cache.vitalSettings={trackBP,trackBS};
   // Save with full overwrite to ensure clean state
-  const saved=await fbSetFull('vitals','settings',{trackBP,trackBS});
-  if(saved){
-    applyVitalSettings();
-    if((trackBP||trackBS)&&document.getElementById('sec-vitals')){
-      await ensureVitalsLoaded(viewDate);
-    }
-    renderDashboardVitals();
+  await fbSetFull('vitals','settings',{trackBP,trackBS});
+  applyVitalSettings();
+  if(trackBP||trackBS){
+    await ensureVitalsLoaded(viewDate);
   }
+  renderDashboardVitals();
 }
 
 function selectBsContext(btn,ctx){
@@ -2659,8 +2658,10 @@ function getVitalsForRange(type, startDate, endDate){
   return all.sort((a,b)=>a.ts-b.ts);
 }
 
+const _loadedVitalDates=new Set();
 async function ensureVitalsLoaded(date){
-  if(cache.vitals.bp[date]!==undefined)return;
+  if(_loadedVitalDates.has(date))return;
+  _loadedVitalDates.add(date);
   const d=await fbGet('vitals',date);
   cache.vitals.bp[date]=d?(d.bp||[]):[];
   cache.vitals.bs[date]=d?(d.bs||[]):[];
@@ -2784,6 +2785,7 @@ async function logBloodPressure(){
   const btn=document.getElementById('log-bp-btn');btn.disabled=true;btn.textContent='Analyzing...';
   const now=new Date();
   const reading={systolic:sys,diastolic:dia,date:viewDate,time:now.getHours()+':'+String(now.getMinutes()).padStart(2,'0'),ts:Date.now()};
+  await ensureVitalsLoaded(viewDate);// make sure cache is initialized
   if(!cache.vitals.bp[viewDate])cache.vitals.bp[viewDate]=[];
   cache.vitals.bp[viewDate].push(reading);
   await saveVitalsForDate(viewDate);
@@ -2813,6 +2815,7 @@ async function logBloodSugar(){
   }
   const btn=document.getElementById('log-bs-btn');btn.disabled=true;btn.textContent='Analyzing...';
   const reading={value:val,context:selectedBsContext,date:viewDate,ts:Date.now()};
+  await ensureVitalsLoaded(viewDate);// make sure cache is initialized
   if(!cache.vitals.bs[viewDate])cache.vitals.bs[viewDate]=[];
   cache.vitals.bs[viewDate].push(reading);
   await saveVitalsForDate(viewDate);
