@@ -552,6 +552,12 @@ window.fbSet = async (col,id,data) => {
   try{await setDoc(doc(db,'users',window._uid,col,id),data,{merge:true});setSyncStatus('synced');return true;}
   catch(e){setSyncStatus('error');return false;}
 };
+// Full overwrite — no merge, so deleted keys are actually removed
+window.fbSetFull = async (col,id,data) => {
+  setSyncStatus('syncing');
+  try{await setDoc(doc(db,'users',window._uid,col,id),data);setSyncStatus('synced');return true;}
+  catch(e){setSyncStatus('error');return false;}
+};
 window.fbGet = async (col,id) => {
   try{const s=await getDoc(doc(db,'users',window._uid,col,id));return s.exists()?s.data():null;}
   catch(e){return null;}
@@ -577,7 +583,7 @@ function changeDate(delta){
   if(nd>TODAY)return; // can't go to future
   viewDate=nd;
   updateDateNav();
-  renderFoodEntries();renderFavorites();renderFitnessDay();renderMeds();refreshDashboard();
+  renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
 }
 
 async function ensureDateLoaded(date){
@@ -597,7 +603,7 @@ async function changeDateAsync(delta){
   const surrounding=get14Days();
   await Promise.all(surrounding.map(day=>ensureDateLoaded(day)));
   updateDateNav();
-  renderFoodEntries();renderFavorites();renderFitnessDay();renderMeds();refreshDashboard();
+  renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
 }
 
 function updateDateNav(){
@@ -1233,7 +1239,7 @@ async function addMedicationAI(){
       if(!med.id||!med.name)return;
       cache.medsList[med.id]=med;
     });
-    await fbSet('medications','list',{meds:cache.medsList});
+    await fbSetFull('medications','list',{meds:cache.medsList});
     document.getElementById('med-name-input').value='';
     renderMeds();
   }catch(e){
@@ -1241,7 +1247,7 @@ async function addMedicationAI(){
     const id='med-'+Date.now();
     if(!cache.medsList)cache.medsList={};
     cache.medsList[id]={id,name:raw,dose:'',qty:1,times:['am']};
-    await fbSet('medications','list',{meds:cache.medsList});
+    await fbSetFull('medications','list',{meds:cache.medsList});
     document.getElementById('med-name-input').value='';
     renderMeds();
   }
@@ -1251,7 +1257,7 @@ async function addMedicationAI(){
 async function deleteMed(id){
   if(!cache.medsList)return;
   delete cache.medsList[id];
-  await fbSet('medications','list',{meds:cache.medsList});renderMeds();
+  await fbSetFull('medications','list',{meds:cache.medsList});renderMeds();
 }
 async function toggleMed(k){
   if(!cache.meds[viewDate])cache.meds[viewDate]={};
