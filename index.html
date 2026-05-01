@@ -194,7 +194,7 @@ textarea{min-height:80px;}
     <!-- SIGN IN PANEL -->
     <div id="panel-signin">
       <div class="login-lock">&#128274;</div>
-      <div style="text-align:center;margin-bottom:8px"><img src="https://mattzmud.github.io/my-health-tracker/My_Health.png" alt="Wellpath" style="height:60px;width:auto;object-fit:contain"/></div>
+      <div style="text-align:center;margin-bottom:8px"><img src="https://mattzmud.github.io/my-health-tracker/My%20Health.png" alt="Wellpath" style="height:60px;width:auto;object-fit:contain"/></div>
       <label class="form-label">Email address</label>
       <input class="form-input" type="email" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="email"/>
       <label class="form-label">Password</label>
@@ -209,7 +209,7 @@ textarea{min-height:80px;}
     <!-- REGISTER PANEL -->
     <div id="panel-register" style="display:none">
       <div class="login-lock">&#127874;</div>
-      <div style="text-align:center;margin-bottom:8px"><img src="https://mattzmud.github.io/my-health-tracker/My_Health.png" alt="Wellpath" style="height:60px;width:auto;object-fit:contain"/></div>
+      <div style="text-align:center;margin-bottom:8px"><img src="https://mattzmud.github.io/my-health-tracker/My%20Health.png" alt="Wellpath" style="height:60px;width:auto;object-fit:contain"/></div>
       <div class="login-sub" style="margin-top:8px">Enter your invite code to get started</div>
       <label class="form-label">Invite code</label>
       <input class="form-input" type="text" id="reg-code" placeholder="Enter your invite code" style="letter-spacing:0.1em;text-transform:uppercase" onkeydown="if(event.key==='Enter')document.getElementById('reg-email').focus()"/>
@@ -247,7 +247,7 @@ textarea{min-height:80px;}
 <!-- APP -->
 <div id="app-screen" class="screen">
   <nav class="nav">
-    <div class="nav-logo"><img src="https://mattzmud.github.io/my-health-tracker/My_Health.png" alt="Wellpath" style="height:28px;width:auto;object-fit:contain;vertical-align:middle"/></div>
+    <div class="nav-logo"><img src="https://mattzmud.github.io/my-health-tracker/My%20Health.png" alt="Wellpath" style="height:28px;width:auto;object-fit:contain;vertical-align:middle"/></div>
     <span class="sync-dot" id="sync-dot"></span>
     <span class="sync-label" id="sync-label">Connecting...</span>
     <button class="nav-btn active" onclick="showSection('dashboard')" id="nav-dashboard">
@@ -292,7 +292,7 @@ textarea{min-height:80px;}
             </div>
           </div>
           <div style="flex:1;min-width:180px">
-            <div class="welcome-title" id="welcome-title">Wellpath</div>
+            <div class="welcome-title" id="welcome-title">My Wellpath</div>
             <div class="welcome-sub" id="welcome-sub">Loading your personalized plan...</div>
             <div id="quote-of-day" style="font-size:12px;color:var(--accent);margin-top:8px;font-style:italic;line-height:1.5"></div>
           </div>
@@ -1011,7 +1011,7 @@ window.appInit=async function(){
     'Health is built one good decision at a time. You\'re here — that counts.',
     'Progress, not perfection. Every logged meal and workout adds up.',
   ];
-  document.getElementById('welcome-title').textContent='Wellpath';
+  document.getElementById('welcome-title').textContent='My Wellpath';
   document.getElementById('welcome-sub').textContent=subMessages[new Date().getDate()%subMessages.length];
   document.getElementById('chat-welcome').textContent='Hey '+p.name+'! I\'m your personal health coach. I know your goals, your plan, and your preferences. Ask me anything — recipes, exercise form, grocery help, or to update your workout plan!';
 
