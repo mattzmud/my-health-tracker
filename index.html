@@ -376,11 +376,6 @@ textarea{min-height:80px;}
     <!-- DASHBOARD -->
     <section id="sec-dashboard" class="section active">
       <div class="sec-header"><div class="sec-title" id="dash-greeting">Hello</div><div class="sec-sub" id="dash-date"></div></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
-        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
-        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
-      </div>
       <div class="welcome-card">
         <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
           <div style="flex-shrink:0">
@@ -404,7 +399,7 @@ textarea{min-height:80px;}
       </div>
       <div class="grid2">
         <div class="card">
-          <div class="card-title">Today's goals</div>
+          <div class="card-title" id="goals-card-title">Today's goals</div>
           <div class="prog-wrap"><div class="prog-label"><span>Protein</span><span id="prog-protein-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-protein" style="width:0%;background:var(--accent)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
@@ -416,34 +411,33 @@ textarea{min-height:80px;}
           <div id="weight-history" style="font-size:13px;color:var(--muted)">Loading...</div>
         </div>
       </div>
-      <div class="card">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
-          <div class="card-title" style="margin:0">Weight progress</div>
-          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
-            <button class="range-btn active" onclick="setChartRange('7d',this)">7d</button>
-            <button class="range-btn" onclick="setChartRange('30d',this)">30d</button>
-            <button class="range-btn" onclick="setChartRange('all',this)">All</button>
-          </div>
+
+      <!-- UNIFIED CHART DATE RANGE PICKER -->
+      <div class="card" style="padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+          <div style="font-size:13px;font-weight:500;color:var(--text)">&#128202; Chart range</div>
+          <div style="font-size:12px;color:var(--accent);font-weight:500" id="dash-range-label">Today</div>
         </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="range-btn active" id="dash-range-today" onclick="setDashRange('today',this)">Today</button>
+          <button class="range-btn" id="dash-range-yesterday" onclick="setDashRange('yesterday',this)">Yesterday</button>
+          <button class="range-btn" id="dash-range-7d" onclick="setDashRange('7d',this)">Last 7 days</button>
+          <button class="range-btn" id="dash-range-30d" onclick="setDashRange('30d',this)">Last 30 days</button>
+          <button class="range-btn" id="dash-range-custom" onclick="openDashCustomRange()">Custom</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title" style="margin-bottom:14px">Weight progress</div>
         <canvas id="weight-chart" height="160"></canvas>
       </div>
       <div class="grid2">
         <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-            <div class="card-title" style="margin:0" id="protein-chart-title">7-day protein</div>
-            <div style="display:flex;gap:6px;flex-wrap:wrap">
-              <button class="range-btn active" onclick="setNutritionRange('7d',this)">7d</button>
-              <button class="range-btn" onclick="setNutritionRange('14d',this)">14d</button>
-              <button class="range-btn" onclick="setNutritionRange('30d',this)">30d</button>
-              <button class="range-btn" onclick="openCustomRange()">Custom</button>
-            </div>
-          </div>
+          <div class="card-title" id="protein-chart-title" style="margin-bottom:14px">Protein</div>
           <canvas id="protein-chart" height="160"></canvas>
         </div>
         <div class="card">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-            <div class="card-title" style="margin:0" id="water-chart-title">7-day water</div>
-          </div>
+          <div class="card-title" id="water-chart-title" style="margin-bottom:14px">Water</div>
           <canvas id="water-chart" height="160"></canvas>
         </div>
       </div>
@@ -471,10 +465,11 @@ textarea{min-height:80px;}
       <div class="sec-header"><div class="sec-title">&#128147; Vitals</div><div class="sec-sub">Track your blood pressure and blood sugar over time.</div></div>
 
       <!-- Date nav -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
-        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
-        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="food-today-btn" onclick="pageJumpDate('food','today',this)">Today</button>
+        <button class="range-btn" id="food-yesterday-btn" onclick="pageJumpDate('food','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('food')" id="food-pick-btn">&#128197; Pick date</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="food-date-display">Today</div>
       </div>
 
       <!-- Blood Pressure -->
@@ -618,10 +613,11 @@ textarea{min-height:80px;}
     <!-- FOOD -->
     <section id="sec-food" class="section">
       <div class="sec-header"><div class="sec-title">Food Diary</div><div class="sec-sub">Log meals — AI analyzes macros and gives personalized feedback.</div></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
-        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
-        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="fitness-today-btn" onclick="pageJumpDate('fitness','today',this)">Today</button>
+        <button class="range-btn" id="fitness-yesterday-btn" onclick="pageJumpDate('fitness','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('fitness')" id="fitness-pick-btn">&#128197; Pick date</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="fitness-date-display">Today</div>
       </div>
       <div class="card">
         <div class="card-title">Log a meal or snack</div>
@@ -696,10 +692,11 @@ textarea{min-height:80px;}
     <!-- FITNESS -->
     <section id="sec-fitness" class="section">
       <div class="sec-header"><div class="sec-title">Fitness Plan</div><div class="sec-sub">Your personalized weekly workout. Tap "How to" for YouTube form videos.</div></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
-        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
-        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="meds-today-btn" onclick="pageJumpDate('meds','today',this)">Today</button>
+        <button class="range-btn" id="meds-yesterday-btn" onclick="pageJumpDate('meds','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('meds')" id="meds-pick-btn">&#128197; Pick date</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="meds-date-display">Today</div>
       </div>
 
       <div style="margin-bottom:12px">
@@ -712,10 +709,12 @@ textarea{min-height:80px;}
     <!-- MEDS -->
     <section id="sec-meds" class="section">
       <div class="sec-header"><div class="sec-title">Medication Tracker</div><div class="sec-sub">Check off each medication as you take it.</div></div>
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
-        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
-        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="vitals-today-btn" onclick="pageJumpDate('vitals','today',this)">Today</button>
+        <button class="range-btn" id="vitals-yesterday-btn" onclick="pageJumpDate('vitals','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('vitals')" id="vitals-pick-btn">&#128197; Pick date</button>
+        <button class="range-btn" onclick="openVitalsRangePicker()" id="vitals-range-btn">&#128202; Date range</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="vitals-date-display">Today</div>
       </div>
       <div class="today-banner"><strong id="meds-date-label">Today</strong> — tap each medication to mark it as taken.</div>
       <div class="grid2" id="meds-grid">
@@ -981,12 +980,129 @@ function changeDate(delta){
   viewDate=nd;
   updateDateNav();
   renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
+  if(document.getElementById('sec-vitals').classList.contains('active'))renderVitals();
 }
 
 async function ensureDateLoaded(date){
   if(!cache.food[date]){const fd=await fbGet('food',date);cache.food[date]=fd?(fd.entries||[]):[]; }
   if(!cache.fitness[date]){const fi=await fbGet('fitness',date);cache.fitness[date]=fi?(fi.done||{}):{};} 
   if(!cache.meds[date]){const m=await fbGet('meds',date);cache.meds[date]=m?(m.taken||{}):{};} 
+}
+
+// ── PAGE-LEVEL DATE PICKERS ──────────────────────────────────
+let vitalsRangeStart=null,vitalsRangeEnd=null,vitalsRangeMode=false;
+
+function syncPageDateDisplay(page){
+  // Update the date display label and active button when switching tabs
+  const isToday=viewDate===TODAY;
+  const isYesterday=viewDate===getYesterday();
+  ['today','yesterday','pick','range'].forEach(id=>{
+    document.getElementById(page+'-'+id+'-btn')?.classList.remove('active');
+  });
+  if(isToday){
+    document.getElementById(page+'-today-btn')?.classList.add('active');
+    const el=document.getElementById(page+'-date-display');if(el)el.textContent='Today';
+  } else if(isYesterday){
+    document.getElementById(page+'-yesterday-btn')?.classList.add('active');
+    const el=document.getElementById(page+'-date-display');if(el)el.textContent='Yesterday';
+  } else {
+    document.getElementById(page+'-pick-btn')?.classList.add('active');
+    const el=document.getElementById(page+'-date-display');if(el)el.textContent=viewDate.slice(5);
+  }
+}
+function getYesterday(){
+  const d=new Date();d.setDate(d.getDate()-1);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+}
+
+function updatePageDateDisplay(page,label){
+  const el=document.getElementById(page+'-date-display');
+  if(el)el.textContent=label;
+  // Update active button states
+  ['today','yesterday','pick','range'].forEach(id=>{
+    const btn=document.getElementById(page+'-'+id+'-btn');
+    if(btn)btn.classList.remove('active');
+  });
+}
+
+async function pageJumpDate(page,when,btn){
+  vitalsRangeMode=false;vitalsRangeStart=null;vitalsRangeEnd=null;
+  const date=when==='today'?TODAY:getYesterday();
+  viewDate=date;
+  await ensureDateLoaded(viewDate);
+  if(page==='vitals')await ensureVitalsLoaded(viewDate);
+  updateDateNav();
+  const label=when==='today'?'Today':'Yesterday';
+  updatePageDateDisplay(page,label);
+  if(btn){
+    document.querySelectorAll('#'+page+'-today-btn,#'+page+'-yesterday-btn,#'+page+'-pick-btn,#'+page+'-range-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+  }
+  renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
+  if(page==='vitals')renderVitals();
+}
+
+function openPageDatePicker(page){
+  vitalsRangeMode=false;
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:16px">&#128197; Pick a date</div>'
+    +'<input type="date" id="page-date-input" style="margin-bottom:18px" max="'+TODAY+'" value="'+viewDate+'"/>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-primary" style="flex:2" onclick="applyPageDate(&#39;'+page+'&#39;);this.closest(&#39;.date-picker-modal&#39;).remove()">Go</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+async function applyPageDate(page){
+  const val=document.getElementById('page-date-input')?.value;
+  if(!val||val>TODAY)return;
+  vitalsRangeMode=false;
+  viewDate=val;
+  await ensureDateLoaded(viewDate);
+  if(page==='vitals')await ensureVitalsLoaded(viewDate);
+  updateDateNav();
+  updatePageDateDisplay(page,formatDate(viewDate));
+  document.getElementById(page+'-pick-btn')?.classList.add('active');
+  renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
+  if(page==='vitals')renderVitals();
+}
+
+function openVitalsRangePicker(){
+  const d=new Date();d.setDate(d.getDate()-6);
+  const def=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:16px">&#128202; Vitals date range</div>'
+    +'<label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Start date</label>'
+    +'<input type="date" id="vitals-range-start" style="margin-bottom:12px" max="'+TODAY+'" value="'+(vitalsRangeStart||def)+'"/>'
+    +'<label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">End date</label>'
+    +'<input type="date" id="vitals-range-end" style="margin-bottom:18px" max="'+TODAY+'" value="'+(vitalsRangeEnd||TODAY)+'"/>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-primary" style="flex:2" onclick="applyVitalsRange();this.closest(&#39;.date-picker-modal&#39;).remove()">Apply</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+async function applyVitalsRange(){
+  vitalsRangeStart=document.getElementById('vitals-range-start')?.value;
+  vitalsRangeEnd=document.getElementById('vitals-range-end')?.value;
+  if(!vitalsRangeStart||!vitalsRangeEnd)return;
+  if(vitalsRangeStart>vitalsRangeEnd){alert('Start date must be before end date.');return;}
+  vitalsRangeMode=true;
+  // Preload all dates in range
+  const days=[];let d=new Date(vitalsRangeStart+'T12:00:00');const end=new Date(vitalsRangeEnd+'T12:00:00');
+  while(d<=end){const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');days.push(ds);d.setDate(d.getDate()+1);}
+  await Promise.all(days.map(day=>ensureVitalsLoaded(day)));
+  updatePageDateDisplay('vitals',vitalsRangeStart.slice(5)+' – '+vitalsRangeEnd.slice(5));
+  document.getElementById('vitals-range-btn')?.classList.add('active');
+  renderVitals();
 }
 
 async function changeDateAsync(delta){
@@ -996,6 +1112,7 @@ async function changeDateAsync(delta){
   if(nd>TODAY)return;
   viewDate=nd;
   await ensureDateLoaded(viewDate);
+  await ensureVitalsLoaded(viewDate);
   // Also preload surrounding days for charts
   const surrounding=getNutritionDays();
   await Promise.all(surrounding.map(day=>ensureDateLoaded(day)));
@@ -1055,12 +1172,13 @@ function showSection(name){
   document.getElementById('mob-'+name)?.classList.add('active');
   if(name==='dashboard')refreshDashboard();
   if(name==='fitness')renderFitness();
-  if(name==='meds')renderMeds();
-  if(name==='food'){renderFoodEntries();renderFavorites();}
+  if(name==='meds'){renderMeds();syncPageDateDisplay('meds');}
+  if(name==='food'){renderFoodEntries();renderFavorites();syncPageDateDisplay('food');}
+  if(name==='fitness'){renderFitness();syncPageDateDisplay('fitness');}
   if(name==='grocery')renderGroceryList();
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
   if(name==='profile')renderProfile();
-  if(name==='vitals')renderVitals();
+  if(name==='vitals'){ensureVitalsLoaded(viewDate).then(()=>renderVitals());syncPageDateDisplay('vitals');}
 }
 
 // ── ONBOARDING ──────────────────────────────────────────────
@@ -1268,7 +1386,7 @@ function getDefaultWorkoutPlan(){
 function showApp(){document.getElementById('app-screen').style.display='block';}
 
 // ── CACHE ──────────────────────────────────────────────────
-let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:[],bs:[]},vitalSettings:{trackBP:false,trackBS:false},trackMeds:true,groceryAnalysis:''};
+let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:{},bs:{}},vitalSettings:{trackBP:false,trackBS:false},trackMeds:true,groceryAnalysis:''};
 
 window.appInit=async function(){
   // Close mobile menu when tapping outside
@@ -1340,11 +1458,13 @@ window.appInit=async function(){
   const vs=await fbGet('vitals','settings');
   cache.vitalSettings=vs||{trackBP:false,trackBS:false};
   if(cache.vitalSettings.trackBP||cache.vitalSettings.trackBS){
-    const bpd=await fbGet('vitals','bp');cache.vitals.bp=bpd?(bpd.readings||[]):[];
-    const bsd=await fbGet('vitals','bs');cache.vitals.bs=bsd?(bsd.readings||[]):[];
+    // Load today's vitals by date key
+    const bpd=await fbGet('vitals',viewDate);
+    if(bpd){cache.vitals.bp[viewDate]=bpd.bp||[];cache.vitals.bs[viewDate]=bpd.bs||[];}
+    else{cache.vitals.bp[viewDate]=[];cache.vitals.bs[viewDate]=[];}
   }
   setSyncStatus('synced');
-  refreshDashboard();renderFoodEntries();renderFavorites();
+  updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
   selectedFitnessDay=getActiveFitnessDay();
   renderFitness();renderMeds();renderGroceryList();loadAvatar();
   initChat();
@@ -1399,11 +1519,11 @@ function refreshDashboard(){
   const _vd=new Date(viewDate+'T12:00:00');
   const _viewDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_vd.getDay()];
   const todayPlan=plan.find(d=>d.day===_viewDay)||{exercises:[]};
-  const exData=cache.fitness[viewDate]||{};
+  const exData=cache.fitness[goalsDate]||{};
   const exDone=todayPlan.exercises.filter(e=>exData[e.name]).length;
   document.getElementById('prog-ex').style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
   document.getElementById('prog-ex-label').textContent=exDone+' / '+todayPlan.exercises.length+' done';
-  const ms=cache.meds[viewDate]||{};
+  const ms=cache.meds[goalsDate]||{};
   // Count each daily time slot as one dose (am, af, pm only — exclude wk and prn)
   const dailyTimes=['am','af','pm'];
   let totalMedChecks=0,doneMedChecks=0;
@@ -1437,9 +1557,12 @@ function co(){return{responsive:true,plugins:{legend:{display:false}},scales:{x:
 function renderWeightChart(){
   const ctx=document.getElementById('weight-chart').getContext('2d');if(weightChart)weightChart.destroy();
   const gw=(window._profile||{}).goalWeight||130;
+  const days=getDashDays();
   let weights=cache.weights;
-  if(chartRange==='7d')weights=weights.filter(w=>{const d=new Date(w.date+'T12:00:00');const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);return d>=cutoff;});
-  else if(chartRange==='30d')weights=weights.filter(w=>{const d=new Date(w.date+'T12:00:00');const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);return d>=cutoff;});
+  if(days.length>1){
+    const start=days[0],end=days[days.length-1];
+    weights=weights.filter(w=>w.date>=start&&w.date<=end);
+  }
   if(weights.length<2){ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText(weights.length===0?'No weight entries in this range.':'Log at least 2 weight entries to see your trend.',450,80);return;}
   weightChart=new Chart(ctx,{type:'line',data:{labels:weights.map(w=>w.date.slice(5)),datasets:[{label:'Weight',data:weights.map(w=>w.val),borderColor:'#7eb8a4',backgroundColor:'rgba(126,184,164,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#7eb8a4',pointRadius:4},{label:'Goal',data:weights.map(()=>gw),borderColor:'rgba(201,169,110,0.5)',borderDash:[6,4],fill:false,pointRadius:0}]},options:co()});
 }
@@ -1468,10 +1591,12 @@ async function jumpToDate(date){
   if(!date||date>TODAY)return;
   viewDate=date;
   await ensureDateLoaded(viewDate);
+  await ensureVitalsLoaded(viewDate);
   const surrounding=getNutritionDays();
   await Promise.all(surrounding.map(d=>ensureDateLoaded(d)));
   updateDateNav();
   renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
+  if(document.getElementById('sec-vitals').classList.contains('active'))renderVitals();
 }
 
 function jumpRelative(days){
@@ -1480,85 +1605,97 @@ function jumpRelative(days){
   jumpToDate(nd);
 }
 
+// ── UNIFIED DASHBOARD RANGE ──────────────────────────────────
+let dashRange='today';
+let dashRangeStart=TODAY;
+let dashRangeEnd=TODAY;
 let chartRange='7d';
 let customRangeStart=null,customRangeEnd=null;
 let nutritionRange='7d';
 
-function getChartDays(n){
-  const days=[];
-  const anchor=new Date(viewDate+'T12:00:00');
-  for(let i=n-1;i>=0;i--){const d=new Date(anchor);d.setDate(d.getDate()-i);const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(ds<=TODAY)days.push(ds);}
-  return days;
-}
-
-function getNutritionDays(){
-  if(nutritionRange==='custom'&&customRangeStart&&customRangeEnd){
-    const days=[];let d=new Date(customRangeStart+'T12:00:00');const end=new Date(customRangeEnd+'T12:00:00');
+function getDashDays(){
+  if(dashRange==='today')return[TODAY];
+  if(dashRange==='yesterday'){const d=new Date();d.setDate(d.getDate()-1);return[d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')];}
+  if(dashRange==='custom'&&dashRangeStart&&dashRangeEnd){
+    const days=[];let d=new Date(dashRangeStart+'T12:00:00');const end=new Date(dashRangeEnd+'T12:00:00');
     while(d<=end){const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');days.push(ds);d.setDate(d.getDate()+1);}
     return days;
   }
-  const n=nutritionRange==='30d'?30:nutritionRange==='14d'?14:7;
-  return getChartDays(n);
+  const n=dashRange==='30d'?30:7;
+  const days=[];
+  for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}
+  return days;
 }
 
-function setChartRange(range,btn){
-  chartRange=range;
-  document.querySelectorAll('.range-btn').forEach(b=>{if(b.closest('#weight-chart')?.parentElement||b.onclick?.toString().includes('setChartRange'))b.classList.remove('active');});
-  btn.classList.add('active');
-  renderWeightChart();
+function getNutritionDays(){return getDashDays();}
+function getChartDays(n){return getDashDays();}
+
+function updateDashRangeLabel(){
+  const el=document.getElementById('dash-range-label');if(!el)return;
+  const days=getDashDays();
+  if(dashRange==='today')el.textContent='Today — '+TODAY.slice(5);
+  else if(dashRange==='yesterday')el.textContent='Yesterday — '+(days[0]||'').slice(5);
+  else if(dashRange==='7d')el.textContent='Last 7 days: '+(days[0]||'').slice(5)+' – '+(days[days.length-1]||'').slice(5);
+  else if(dashRange==='30d')el.textContent='Last 30 days: '+(days[0]||'').slice(5)+' – '+(days[days.length-1]||'').slice(5);
+  else if(dashRange==='custom')el.textContent='Custom: '+dashRangeStart.slice(5)+' – '+dashRangeEnd.slice(5);
 }
 
-function setNutritionRange(range,btn){
-  nutritionRange=range;
-  document.querySelectorAll('.range-btn').forEach(b=>{if(b.onclick?.toString().includes('setNutritionRange'))b.classList.remove('active');});
+async function setDashRange(range,btn){
+  dashRange=range;
+  document.querySelectorAll('[id^="dash-range-"]').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  const label=range==='30d'?'30-day':range==='14d'?'14-day':range==='custom'?'Custom':'7-day';
-  const pt=document.getElementById('protein-chart-title');if(pt)pt.textContent=label+' protein';
-  const wt=document.getElementById('water-chart-title');if(wt)wt.textContent=label+' water';
-  // Preload any missing days
-  const days=getNutritionDays();
-  Promise.all(days.map(d=>cache.food[d]?Promise.resolve():fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[];})))
-    .then(()=>{renderProteinChart();renderWaterChart();});
+  const days=getDashDays();
+  // Single-day ranges update viewDate so Today goals card stays in sync
+  if(days.length===1){viewDate=days[0];updateDateNav();await ensureDateLoaded(viewDate);}
+  // Preload all days
+  await Promise.all(days.map(d=>cache.food[d]?Promise.resolve():fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[]; })));
+  updateDashRangeLabel();
+  refreshDashboard();
 }
 
-function openCustomRange(){
+function openDashCustomRange(){
+  const d=new Date();d.setDate(d.getDate()-6);
+  const def=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
-  modal.innerHTML=`<div class="date-picker-card">
-    <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:16px">Custom date range</div>
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Start date</label>
-    <input type="date" id="custom-start" style="margin-bottom:12px" max="${TODAY}" value="${customRangeStart||getChartDays(30)[0]}"/>
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">End date</label>
-    <input type="date" id="custom-end" style="margin-bottom:18px" max="${TODAY}" value="${customRangeEnd||TODAY}"/>
-    <div style="display:flex;gap:10px">
-      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.date-picker-modal').remove()">Cancel</button>
-      <button class="btn btn-primary" style="flex:2" onclick="applyCustomRange();this.closest('.date-picker-modal').remove()">Apply</button>
-    </div>
-  </div>`;
+  modal.innerHTML='<div class="date-picker-card">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:16px">&#128197; Custom date range</div>'
+    +'<label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Start date</label>'
+    +'<input type="date" id="dash-custom-start" style="margin-bottom:12px" max="'+TODAY+'" value="'+(dashRangeStart||def)+'"/>'
+    +'<label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">End date</label>'
+    +'<input type="date" id="dash-custom-end" style="margin-bottom:18px" max="'+TODAY+'" value="'+(dashRangeEnd||TODAY)+'"/>'
+    +'<div style="display:flex;gap:10px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-primary" style="flex:2" onclick="applyDashCustomRange();this.closest(&#39;.date-picker-modal&#39;).remove()">Apply</button>'
+    +'</div></div>';
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
 }
 
-function applyCustomRange(){
-  customRangeStart=document.getElementById('custom-start')?.value;
-  customRangeEnd=document.getElementById('custom-end')?.value;
-  if(!customRangeStart||!customRangeEnd)return;
-  if(customRangeStart>customRangeEnd){alert('Start date must be before end date.');return;}
-  nutritionRange='custom';
-  document.getElementById('protein-chart-title').textContent='Custom protein';
-  document.getElementById('water-chart-title').textContent='Custom water';
-  setNutritionRange('custom',null);
+async function applyDashCustomRange(){
+  dashRangeStart=document.getElementById('dash-custom-start')?.value;
+  dashRangeEnd=document.getElementById('dash-custom-end')?.value;
+  if(!dashRangeStart||!dashRangeEnd)return;
+  if(dashRangeStart>dashRangeEnd){alert('Start date must be before end date.');return;}
+  customRangeStart=dashRangeStart;customRangeEnd=dashRangeEnd;nutritionRange='custom';
+  await setDashRange('custom',document.getElementById('dash-range-custom'));
 }
 
+// Legacy stubs
+function setChartRange(){}
+function setNutritionRange(){}
+function openCustomRange(){openDashCustomRange();}
+function applyCustomRange(){applyDashCustomRange();}
+
 function renderProteinChart(){
-  const days=getNutritionDays(),goal=(window._profile||{}).proteinGoal||120;
+  const days=getDashDays(),goal=(window._profile||{}).proteinGoal||120;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0)));
   const ctx=document.getElementById('protein-chart').getContext('2d');if(proteinChart)proteinChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');const label=days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;});
   proteinChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Protein',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.9)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(140,164,232,0.5)'),borderRadius:4},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
 }
 function renderWaterChart(){
-  const days=getNutritionDays(),goal=(window._profile||{}).waterGoal||80;
+  const days=getDashDays(),goal=(window._profile||{}).waterGoal||80;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0)));
   const ctx=document.getElementById('water-chart').getContext('2d');if(waterChart)waterChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');const label=days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;});
@@ -1748,7 +1885,12 @@ const MEAL_ORDER=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late n
 function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML='';
-  const entries=cache.food[viewDate]||[];
+  // Today's Goals only reflects single-day data
+  const isSingleDay=getDashDays().length===1;
+  const goalsDate=isSingleDay?getDashDays()[0]:TODAY;
+  const goalTitle=document.getElementById('goals-card-title');
+  if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
+  const entries=cache.food[goalsDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   const p=window._profile||{};
   const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100;
@@ -2441,66 +2583,133 @@ function renderVitals(){
   if(s.trackBS)renderBSHistory();
 }
 
+function getVitalsForDate(type, date){
+  return (cache.vitals[type][date]||[]);
+}
+
+function getVitalsForRange(type, startDate, endDate){
+  const all=[];
+  const s=new Date(startDate+'T12:00:00'), e=new Date(endDate+'T12:00:00');
+  Object.entries(cache.vitals[type]).forEach(([d,readings])=>{
+    const dt=new Date(d+'T12:00:00');
+    if(dt>=s&&dt<=e)readings.forEach(r=>all.push({...r,date:d}));
+  });
+  return all.sort((a,b)=>a.ts-b.ts);
+}
+
+async function ensureVitalsLoaded(date){
+  if(cache.vitals.bp[date]!==undefined)return;
+  const d=await fbGet('vitals',date);
+  cache.vitals.bp[date]=d?(d.bp||[]):[];
+  cache.vitals.bs[date]=d?(d.bs||[]):[];
+}
+
+async function saveVitalsForDate(date){
+  await fbSet('vitals',date,{bp:cache.vitals.bp[date]||[],bs:cache.vitals.bs[date]||[],date});
+}
+
+function bpAvg(readings){
+  if(!readings.length)return null;
+  const avgSys=Math.round(readings.reduce((a,r)=>a+r.systolic,0)/readings.length);
+  const avgDia=Math.round(readings.reduce((a,r)=>a+r.diastolic,0)/readings.length);
+  return{systolic:avgSys,diastolic:avgDia};
+}
+
+function bsAvg(readings){
+  if(!readings.length)return null;
+  return Math.round(readings.reduce((a,r)=>a+r.value,0)/readings.length);
+}
+
+function renderBPReadingRow(r, showDate=false){
+  const cat=bpCategory(r.systolic,r.diastolic);
+  return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+    +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.systolic+'/'+r.diastolic+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mmHg</span></div>'
+    +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
+    +'<div style="font-size:12px;color:var(--muted)">'+(showDate?r.date+' ':'')+( r.time||'')+'</div>'
+    +'</div>';
+}
+
+function renderBSReadingRow(r, showDate=false){
+  const cat=bsCategory(r.value,r.context);
+  const ctxLabels={fasting:'Fasting',before_meal:'Before meal',after_breakfast:'After breakfast',after_lunch:'After lunch',after_dinner:'After dinner',after_snack:'After snack',random:'Random'};
+  return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+    +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.value+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mg/dL</span>'
+    +(r.context?'<div style="font-size:11px;color:var(--muted)">'+(ctxLabels[r.context]||r.context)+'</div>':'')
+    +'</div>'
+    +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
+    +'<div style="font-size:12px;color:var(--muted)">'+(showDate?r.date:'')+'</div>'
+    +'</div>';
+}
+
+function renderAvgRow(label, avgHtml, cat){
+  return'<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(85,107,47,0.06);border-radius:var(--radius-sm);margin-bottom:12px">'
+    +'<div style="flex:1"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">'+label+'</div>'
+    +'<div style="font-size:17px;font-weight:600;color:var(--text)">'+avgHtml+'</div></div>'
+    +(cat?'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>':'')
+    +'</div>';
+}
+
 function renderBPHistory(){
   const el=document.getElementById('bp-history');if(!el)return;
-  const readings=(cache.vitals.bp||[]).slice(-7).reverse();
-  if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No readings logged yet.</div>';return;}
-  el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">Recent readings</div>'
-    +readings.map(r=>{
-      const cat=bpCategory(r.systolic,r.diastolic);
-      return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.systolic+'/'+r.diastolic+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mmHg</span></div>'
-        +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
-        +'<div style="font-size:12px;color:var(--muted)">'+r.date+(r.time?' '+r.time:'')+'</div>'
-      +'</div>';
-    }).join('');
+  let readings;
+  let title='';
+  if(vitalsRangeMode&&vitalsRangeStart&&vitalsRangeEnd){
+    readings=getVitalsForRange('bp',vitalsRangeStart,vitalsRangeEnd);
+    title='Range: '+vitalsRangeStart.slice(5)+' – '+vitalsRangeEnd.slice(5)+' ('+readings.length+' readings)';
+  } else {
+    readings=getVitalsForDate('bp',viewDate);
+    title=readings.length>1?'All readings ('+readings.length+')':'';
+  }
+  if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No blood pressure readings for this '+(vitalsRangeMode?'range':'day')+'.</div>';return;}
+  const avg=bpAvg(readings);
+  const avgCat=bpCategory(avg.systolic,avg.diastolic);
+  const avgLabel=(vitalsRangeMode?'Range average':'Daily average');
+  let html=renderAvgRow(avgLabel,avg.systolic+'/'+avg.diastolic+' <span style="font-size:13px;color:var(--muted)">mmHg</span>',avgCat);
+  if(readings.length>1||vitalsRangeMode){
+    if(title)html+='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px">'+title+'</div>';
+    html+=readings.slice().reverse().map(r=>renderBPReadingRow(r,vitalsRangeMode)).join('');
+  }
+  el.innerHTML=html;
 }
 
 function renderBSHistory(){
   const el=document.getElementById('bs-history');if(!el)return;
-  const readings=(cache.vitals.bs||[]).slice(-7).reverse();
-  if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No readings logged yet.</div>';return;}
-  const ctxLabels={fasting:'Fasting',before_meal:'Before meal',after_breakfast:'After breakfast',after_lunch:'After lunch',after_dinner:'After dinner',after_snack:'After snack',random:'Random'};
-  el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">Recent readings</div>'
-    +readings.map(r=>{
-      const cat=bsCategory(r.value,r.context);
-      return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.value+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mg/dL</span>'
-        +(r.context?'<div style="font-size:11px;color:var(--muted)">'+ctxLabels[r.context]+'</div>':'')
-        +'</div>'
-        +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
-        +'<div style="font-size:12px;color:var(--muted)">'+r.date+'</div>'
-      +'</div>';
-    }).join('');
+  let readings;
+  let title='';
+  if(vitalsRangeMode&&vitalsRangeStart&&vitalsRangeEnd){
+    readings=getVitalsForRange('bs',vitalsRangeStart,vitalsRangeEnd);
+    title='Range: '+vitalsRangeStart.slice(5)+' – '+vitalsRangeEnd.slice(5)+' ('+readings.length+' readings)';
+  } else {
+    readings=getVitalsForDate('bs',viewDate);
+    title=readings.length>1?'All readings ('+readings.length+')':'';
+  }
+  if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No blood sugar readings for this '+(vitalsRangeMode?'range':'day')+'.</div>';return;}
+  const avg=bsAvg(readings);
+  const avgCat=bsCategory(avg,null);
+  const avgLabel=(vitalsRangeMode?'Range average':'Daily average');
+  let html=renderAvgRow(avgLabel,avg+' <span style="font-size:13px;color:var(--muted)">mg/dL</span>',avgCat);
+  if(readings.length>1||vitalsRangeMode){
+    if(title)html+='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px">'+title+'</div>';
+    html+=readings.slice().reverse().map(r=>renderBSReadingRow(r,vitalsRangeMode)).join('');
+  }
+  el.innerHTML=html;
 }
 
-function bpCategory(sys,dia){
-  if(sys<120&&dia<80)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
-  if(sys<130&&dia<80)return{label:'Elevated',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
-  if(sys<140||dia<90)return{label:'High Stage 1',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
-  if(sys>=180||dia>=120)return{label:'Crisis',bg:'rgba(176,48,48,0.2)',color:'var(--red)'};
-  return{label:'High Stage 2',bg:'rgba(176,48,48,0.15)',color:'var(--red)'};
-}
-
-function bsCategory(val,ctx){
-  const isAfterMeal=ctx&&(ctx.startsWith('after')||ctx==='after_snack');
-  const isFasting=ctx==='fasting'||ctx==='before_meal';
-  if(isFasting){
-    if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
-    if(val<=99)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
-    if(val<=125)return{label:'Pre-diabetic',bg:'rgba(138,106,26,0.15)',color:'var(--amber)'};
-    return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
-  }
-  if(isAfterMeal){
-    if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
-    if(val<=139)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
-    if(val<=199)return{label:'Elevated',bg:'rgba(138,106,26,0.15)',color:'var(--amber)'};
-    return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
-  }
-  // General
-  if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
-  if(val<=140)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
-  return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+function renderVitals(){
+  const s=cache.vitalSettings||{};
+  const bpCard=document.getElementById('bp-card');
+  const bsCard=document.getElementById('bs-card');
+  const emptyEl=document.getElementById('vitals-empty');
+  if(bpCard)bpCard.style.display=s.trackBP?'block':'none';
+  if(bsCard)bsCard.style.display=s.trackBS?'block':'none';
+  if(emptyEl)emptyEl.style.display=(s.trackBP||s.trackBS)?'none':'block';
+  // In range mode, hide the log forms and show range history only
+  const logForms=document.querySelectorAll('#bp-card .btn-primary,#bs-card .btn-primary,#bp-systolic,#bp-diastolic,#bs-value,#bs-context-grid');
+  logForms.forEach(el=>{if(el)el.style.display=vitalsRangeMode?'none':'';});
+  document.getElementById('bp-feedback').innerHTML='';
+  document.getElementById('bs-feedback').innerHTML='';
+  if(s.trackBP)renderBPHistory();
+  if(s.trackBS)renderBSHistory();
 }
 
 async function logBloodPressure(){
@@ -2512,10 +2721,10 @@ async function logBloodPressure(){
   }
   const btn=document.getElementById('log-bp-btn');btn.disabled=true;btn.textContent='Analyzing...';
   const now=new Date();
-  const reading={systolic:sys,diastolic:dia,date:TODAY,time:now.getHours()+':'+String(now.getMinutes()).padStart(2,'0'),ts:Date.now()};
-  cache.vitals.bp.push(reading);
-  await fbSet('vitals','bp',{readings:cache.vitals.bp});
-  // AI feedback
+  const reading={systolic:sys,diastolic:dia,date:viewDate,time:now.getHours()+':'+String(now.getMinutes()).padStart(2,'0'),ts:Date.now()};
+  if(!cache.vitals.bp[viewDate])cache.vitals.bp[viewDate]=[];
+  cache.vitals.bp[viewDate].push(reading);
+  await saveVitalsForDate(viewDate);
   try{
     const cat=bpCategory(sys,dia);
     const res=await callAI(
@@ -2541,9 +2750,10 @@ async function logBloodSugar(){
     return;
   }
   const btn=document.getElementById('log-bs-btn');btn.disabled=true;btn.textContent='Analyzing...';
-  const reading={value:val,context:selectedBsContext,date:TODAY,ts:Date.now()};
-  cache.vitals.bs.push(reading);
-  await fbSet('vitals','bs',{readings:cache.vitals.bs});
+  const reading={value:val,context:selectedBsContext,date:viewDate,ts:Date.now()};
+  if(!cache.vitals.bs[viewDate])cache.vitals.bs[viewDate]=[];
+  cache.vitals.bs[viewDate].push(reading);
+  await saveVitalsForDate(viewDate);
   const ctxLabels={fasting:'while fasting',before_meal:'before a meal',after_breakfast:'after breakfast',after_lunch:'after lunch',after_dinner:'after dinner',after_snack:'after a snack',random:'',null:''};
   try{
     const cat=bsCategory(val,selectedBsContext);
@@ -2572,30 +2782,51 @@ function renderDashboardVitals(){
   if(!card)return;
   card.style.display='block';
   const inner=document.getElementById('dashboard-vitals-content');
+  if(!inner)return;
   let html='';
+
+  // Determine if we have a date range or single date
+  const isRange=customRangeStart&&customRangeEnd&&nutritionRange==='custom';
+  const rangeLabel=isRange?(customRangeStart.slice(5)+' – '+customRangeEnd.slice(5)):(viewDate===TODAY?'Today':viewDate.slice(5));
+
   if(s.trackBP){
-    const last=(cache.vitals.bp||[]).slice(-1)[0];
-    if(last){
-      const cat=bpCategory(last.systolic,last.diastolic);
-      html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="flex:1"><div style="font-size:12px;color:var(--muted)">&#10084;&#65039; Blood pressure</div>'
-        +'<div style="font-size:18px;font-weight:600;color:var(--text)">'+last.systolic+'/'+last.diastolic+' <span style="font-size:12px;color:var(--muted)">mmHg</span></div></div>'
+    const readings=isRange
+      ?getVitalsForRange('bp',customRangeStart,customRangeEnd)
+      :getVitalsForDate('bp',viewDate);
+    if(readings.length){
+      const avg=bpAvg(readings);
+      const cat=bpCategory(avg.systolic,avg.diastolic);
+      html+='<div style="margin-bottom:12px">'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:4px">&#10084;&#65039; Blood pressure — '+rangeLabel+'</div>'
+        +(readings.length>1?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+readings.length+' readings · average:</div>':'')
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div style="font-size:20px;font-weight:600;color:var(--text)">'+avg.systolic+'/'+avg.diastolic+' <span style="font-size:12px;color:var(--muted)">mmHg</span></div>'
         +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>'
-        +'<div style="font-size:11px;color:var(--muted)">'+last.date+'</div></div>';
-    }else{html+='<div style="font-size:13px;color:var(--muted);padding:8px 0">&#10084;&#65039; No blood pressure readings yet.</div>';}
+        +'</div>'
+        +(readings.length>1?readings.map(r=>'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+r.systolic+'/'+r.diastolic+(r.time?' at '+r.time:'')+(isRange?' on '+r.date:'')+'</div>').join(''):'')
+        +'</div>';
+    }else{html+='<div style="font-size:13px;color:var(--muted);margin-bottom:8px">&#10084;&#65039; No blood pressure readings for this period.</div>';}
   }
   if(s.trackBS){
-    const last=(cache.vitals.bs||[]).slice(-1)[0];
-    if(last){
-      const cat=bsCategory(last.value,last.context);
-      html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0">'
-        +'<div style="flex:1"><div style="font-size:12px;color:var(--muted)">&#129482; Blood sugar</div>'
-        +'<div style="font-size:18px;font-weight:600;color:var(--text)">'+last.value+' <span style="font-size:12px;color:var(--muted)">mg/dL</span></div></div>'
+    const readings=isRange
+      ?getVitalsForRange('bs',customRangeStart,customRangeEnd)
+      :getVitalsForDate('bs',viewDate);
+    if(readings.length){
+      const avg=bsAvg(readings);
+      const cat=bsCategory(avg,null);
+      const ctxLabels={fasting:'Fasting',before_meal:'Before meal',after_breakfast:'After breakfast',after_lunch:'After lunch',after_dinner:'After dinner',after_snack:'After snack',random:'Random'};
+      html+='<div style="margin-bottom:4px">'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:4px">&#129482; Blood sugar — '+rangeLabel+'</div>'
+        +(readings.length>1?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+readings.length+' readings · average:</div>':'')
+        +'<div style="display:flex;align-items:center;gap:10px">'
+        +'<div style="font-size:20px;font-weight:600;color:var(--text)">'+avg+' <span style="font-size:12px;color:var(--muted)">mg/dL</span></div>'
         +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>'
-        +'<div style="font-size:11px;color:var(--muted)">'+last.date+'</div></div>';
-    }else{html+='<div style="font-size:13px;color:var(--muted);padding:8px 0">&#129482; No blood sugar readings yet.</div>';}
+        +'</div>'
+        +(readings.length>1?readings.map(r=>'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+r.value+' mg/dL'+(r.context?' · '+(ctxLabels[r.context]||r.context):'')+(isRange?' on '+r.date:'')+'</div>').join(''):'')
+        +'</div>';
+    }else{html+='<div style="font-size:13px;color:var(--muted)">&#129482; No blood sugar readings for this period.</div>';}
   }
-  document.getElementById('dashboard-vitals-content').innerHTML=html;
+  inner.innerHTML=html||'<div style="font-size:13px;color:var(--muted)">No vitals logged for this period.</div>';
 }
 
 // ── CHAT WITH PERSISTENT SESSIONS ─────────────────────────────
