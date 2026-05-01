@@ -1396,7 +1396,9 @@ function refreshDashboard(){
   document.getElementById('prog-protein-label').textContent=Math.round(tp)+' / '+pg+'g';
   document.getElementById('prog-water-label').textContent=Math.round(tw)+' / '+wg+' oz';
   const plan=(window._profile&&window._profile.workoutPlan)||[];
-  const todayPlan=plan.find(d=>d.day===getActiveFitnessDay())||{exercises:[]};
+  const _vd=new Date(viewDate+'T12:00:00');
+  const _viewDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_vd.getDay()];
+  const todayPlan=plan.find(d=>d.day===_viewDay)||{exercises:[]};
   const exData=cache.fitness[viewDate]||{};
   const exDone=todayPlan.exercises.filter(e=>exData[e.name]).length;
   document.getElementById('prog-ex').style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
