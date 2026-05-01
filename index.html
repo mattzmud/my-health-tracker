@@ -199,6 +199,9 @@ textarea{min-height:80px;}
 .grocery-del{color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px;}
 .grocery-del:hover{color:var(--red);}
 @keyframes spin{to{transform:rotate(360deg)}}
+.disclaimer{background:rgba(138,106,26,0.07);border:1px solid rgba(138,106,26,0.25);border-left:3px solid var(--amber);border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:var(--muted);line-height:1.7;margin-top:14px;}
+.disclaimer strong{color:var(--amber);}
+.disclaimer a{color:var(--accent);}
 .range-btn{padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all 0.18s;}
 .range-btn:hover{color:var(--text);border-color:var(--accent);}
 .range-btn.active{background:var(--accent);color:#ffffff;border-color:var(--accent);}
@@ -274,7 +277,8 @@ textarea{min-height:80px;}
       <input class="form-input" type="password" id="reg-password" placeholder="Choose a password (min 6 characters)" onkeydown="if(event.key==='Enter')document.getElementById('reg-password2').focus()" autocomplete="new-password"/>
       <label class="form-label">Confirm password</label>
       <input class="form-input" type="password" id="reg-password2" placeholder="Confirm your password" onkeydown="if(event.key==='Enter')doRegister()" autocomplete="new-password"/>
-      <button class="login-btn" onclick="doRegister()" id="reg-btn">Create account</button>
+<div class="disclaimer" style="margin-top:16px;margin-bottom:4px"><strong>&#9888;&#65039; Please read before signing up.</strong> MyWellpath is a personal wellness tracking app powered by AI. The insights, feedback, and suggestions provided by this app are for <strong>general informational purposes only</strong> and are not medical advice. MyWellpath is not a healthcare provider and does not diagnose, treat, or prevent any medical condition. Always consult a qualified healthcare professional before making changes to your health routine, medications, or diet.</div>
+      <button class="login-btn" onclick="doRegister()" id="reg-btn">Create account &#10003;</button>
       <div class="msg-box" id="reg-msg"></div>
       <button class="text-link" onclick="showPanel('signin')" style="margin-top:8px;color:var(--muted)">&#8592; Back to sign in</button>
     </div>
@@ -404,7 +408,7 @@ textarea{min-height:80px;}
           <div class="prog-wrap"><div class="prog-label"><span>Protein</span><span id="prog-protein-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-protein" style="width:0%;background:var(--accent)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
-          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
+          <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px;display:none"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
         </div>
         <div class="card">
           <div class="card-title">Log weight</div>
@@ -522,6 +526,7 @@ textarea{min-height:80px;}
       <div id="vitals-empty" style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">
         No vitals tracking enabled. Enable blood pressure or blood sugar tracking in your <button onclick="showSection('profile')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px;font-family:var(--font-body)">Profile settings</button>.
       </div>
+      <div class="disclaimer" style="margin-top:20px"><strong>&#9888;&#65039; Important health notice.</strong> MyWellpath uses AI to provide context and general guidance on your vitals readings. This is <strong>not</strong> medical advice and should never replace professional medical evaluation. Blood pressure and blood sugar readings can indicate serious health conditions &mdash; if you are concerned about a reading, contact your doctor or seek emergency care immediately. The feedback provided here is for general wellness awareness only.</div>
     </section>
 
     <!-- PROFILE -->
@@ -555,6 +560,19 @@ textarea{min-height:80px;}
         <div id="profile-badges-display"><div style="font-size:13px;color:var(--muted)">No badges yet — keep going!</div></div>
       </div>
 
+      <!-- Meds tracking settings -->
+      <div class="card">
+        <div class="card-title">&#128138; Medication tracking</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Enable to track daily medications. The Meds tab and dashboard progress will show when enabled.</div>
+        <label style="display:flex;align-items:center;gap:12px;cursor:pointer">
+          <input type="checkbox" id="toggle-meds" onchange="saveMedsTrackingSetting()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer"/>
+          <div>
+            <div style="font-size:14px;font-weight:500;color:var(--text)">&#128138; Track medications</div>
+            <div style="font-size:12px;color:var(--muted)">Show Meds tab and daily medication progress</div>
+          </div>
+        </label>
+      </div>
+
       <!-- Vitals tracking settings -->
       <div class="card">
         <div class="card-title">&#128147; Vitals tracking</div>
@@ -575,6 +593,7 @@ textarea{min-height:80px;}
             </div>
           </label>
         </div>
+        <div class="disclaimer" style="margin-top:20px"><strong>&#9888;&#65039; Important health notice.</strong> MyWellpath uses AI to provide context and general guidance on your vitals readings. This is <strong>not</strong> medical advice and should never replace professional medical evaluation. Blood pressure and blood sugar readings can indicate serious health conditions &mdash; if you are concerned about a reading, contact your doctor or seek emergency care immediately. The feedback provided here is for general wellness awareness only.</div>
       </div>
 
       <!-- Change password -->
@@ -741,7 +760,7 @@ textarea{min-height:80px;}
         <div class="card-title">&#10133; Add medication</div>
         <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">Enter naturally, e.g. "Metformin 1000mg, twice daily" or "Vitamin D 2000IU, once in morning"</div>
         <textarea id="med-name-input" placeholder="Medication name, dose, and when you take it..." style="min-height:70px;margin-bottom:10px"></textarea>
-        <button class="btn btn-primary btn-sm" onclick="addMedicationAI()" id="add-med-btn">&#128161; Parse &amp; Add</button>
+        <button class="btn btn-primary btn-sm" onclick="addMedicationAI()" id="add-med-btn">Add</button>
       </div>
     </section>
 
@@ -800,6 +819,7 @@ textarea{min-height:80px;}
           </div>
         </div>
       </div>
+      <div class="disclaimer"><strong>&#9888;&#65039; AI-powered app &mdash; not medical advice.</strong> MyWellpath uses AI to provide personalized insights, suggestions, and feedback. This information is for general wellness purposes only and is <strong>not</strong> a substitute for professional medical advice, diagnosis, or treatment. Always consult your doctor or a qualified healthcare provider with any questions about your health or before making changes to your medications, diet, or exercise routine.</div>
     </section>
   </main>
 </div>
@@ -1049,8 +1069,9 @@ const OB_STEPS=[
    fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_age',label:'Age',type:'number',placeholder:'e.g. 35'},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
   {id:'health',title:'Health conditions',sub:'Select any that apply.',
    multi:['Type 2 Diabetes','Type 1 Diabetes','High blood pressure','High cholesterol','Heart condition','Thyroid condition','PCOS','Anxiety / Depression','Chronic pain','None of the above']},
-  {id:'medications',title:'Medications & supplements',sub:'List your medications naturally — include the name, dose, and when you take them. The app will sort them into the right columns automatically.',
-   fields:[{id:'ob_meds_all',label:'Your medications & supplements (one per line)',type:'textarea',placeholder:'e.g.\nMetformin 1000mg, twice daily\nAtorvastatin 20mg, once at night\nVitamin D, once in morning\nMounjaro 15mg, once weekly\nFish oil, as needed'}]},
+  {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath?',
+   single_label:'',single:['Yes, I take medications I want to track','No, skip this for now'],
+   fields_conditional:{condition:'medications_single',value:'Yes, I take medications I want to track',fields:[{id:'ob_meds_all',label:'Your medications & supplements (one per line)',type:'textarea',placeholder:'e.g.\nMetformin 1000mg, twice daily\nAtorvastatin 20mg, once at night\nVitamin D, once in morning\nMounjaro 15mg, once weekly\nFish oil, as needed'}]}},
   {id:'nutrition',title:'Your eating habits',sub:'Help us understand your preferences.',
    fields:[{id:'ob_fav_foods',label:'Foods you love',type:'textarea',placeholder:'e.g. chicken, Greek yogurt, berries, wraps'},{id:'ob_avoid_foods',label:'Foods you avoid or dislike',type:'textarea',placeholder:'e.g. fish, mushrooms, spicy food'}],
    multi_label:'Any dietary preferences?',multi:['No restrictions','Low carb / Keto','Vegetarian','Vegan','Gluten free','Dairy free','Low sodium']},
@@ -1086,6 +1107,17 @@ function renderObStep(){
     if(step.multi_label)html+=`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:500">${step.multi_label}</div>`;
     const sel=obData[step.id+'_multi']||[];
     html+=`<div class="tag-wrap">${step.multi.map(o=>`<div class="tag ${sel.includes(o)?'selected':''}" onclick="toggleMulti('${step.id}','${o.replace(/'/g,"&#39;")}')">${o}</div>`).join('')}</div>`;
+  }
+  // Handle conditional fields (shown only when a specific option is selected)
+  if(step.fields_conditional){
+    const fc=step.fields_conditional;
+    if(obData[fc.condition]===fc.value){
+      fc.fields.forEach(f=>{
+        if(f.label)html+=`<label class="form-label">${f.label}</label>`;
+        if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
+        else html+=`<input class="form-input" type="${f.type}" id="${f.id}" placeholder="${f.placeholder}" value="${obData[f.id]||''}" style="margin-bottom:12px"/>`;
+      });
+    }
   }
   if(step.fields){
     step.fields.forEach(f=>{
@@ -1123,9 +1155,14 @@ function toggleMulti(stepId,val){
 function obSaveCurrentFields(){
   const step=OB_STEPS[obStep];
   if(step.fields)step.fields.forEach(f=>{
-    if(f.type==='photo')return;// handled separately via obHandlePhoto
+    if(f.type==='photo')return;
     const el=document.getElementById(f.id);if(el)obData[f.id]=el.value.trim();
   });
+  if(step.fields_conditional){
+    step.fields_conditional.fields.forEach(f=>{
+      const el=document.getElementById(f.id);if(el)obData[f.id]=el.value.trim();
+    });
+  }
 }
 
 function obHandlePhoto(event){
@@ -1164,6 +1201,8 @@ async function generatePlan(){
   await fbSet('profile','survey',profile);
   // Save medications
   // AI-parse medications from survey
+  // Save trackMeds setting
+  profile.trackMeds=obData.medications_single==='Yes, I take medications I want to track';
   const allMedsRaw=(obData.ob_meds_all||'').trim();
   if(allMedsRaw){
     try{
@@ -1211,7 +1250,7 @@ async function generatePlan(){
 }
 
 function buildProfileFromObData(){
-  return{name:obData.ob_name||'Friend',age:parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar')};
+  return{name:obData.ob_name||'Friend',age:parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
 }
 
 function getDefaultWorkoutPlan(){
@@ -1229,7 +1268,7 @@ function getDefaultWorkoutPlan(){
 function showApp(){document.getElementById('app-screen').style.display='block';}
 
 // ── CACHE ──────────────────────────────────────────────────
-let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:[],bs:[]},vitalSettings:{trackBP:false,trackBS:false},groceryAnalysis:''};
+let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:[],bs:[]},vitalSettings:{trackBP:false,trackBS:false},trackMeds:true,groceryAnalysis:''};
 
 window.appInit=async function(){
   // Close mobile menu when tapping outside
@@ -1309,6 +1348,7 @@ window.appInit=async function(){
   selectedFitnessDay=getActiveFitnessDay();
   renderFitness();renderMeds();renderGroceryList();loadAvatar();
   initChat();
+  applyMedsVisibility();
   await checkAndAwardBadges();
   renderBadges();
   applyVitalSettings();
@@ -1365,7 +1405,7 @@ function refreshDashboard(){
   // Count each daily time slot as one dose (am, af, pm only — exclude wk and prn)
   const dailyTimes=['am','af','pm'];
   let totalMedChecks=0,doneMedChecks=0;
-  Object.values(cache.medsList||{}).forEach(med=>{
+  if(cache.trackMeds!==false)Object.values(cache.medsList||{}).forEach(med=>{
     const dailySlots=(med.times||['am']).filter(t=>dailyTimes.includes(t));
     dailySlots.forEach(t=>{
       totalMedChecks++;
@@ -1383,6 +1423,7 @@ function refreshDashboard(){
   }
   renderWeightChart();renderProteinChart();renderWaterChart();
   renderDashboardVitals();
+  applyMedsVisibility();
 }
 async function logWeight(){
   const v=parseFloat(document.getElementById('weight-input').value);
@@ -1703,6 +1744,8 @@ function scheduleMidnightAnalysis(){
 
 const MEAL_ORDER=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late night','Water'];
 function renderFoodEntries(){
+  // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
+  const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML='';
   const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   const p=window._profile||{};
@@ -2011,7 +2054,7 @@ async function addMedicationAI(){
     document.getElementById('med-name-input').value='';
     renderMeds();
   }
-  btn.disabled=false;btn.innerHTML='&#128161; Parse &amp; Add';
+  btn.disabled=false;btn.innerHTML='Add';
 }
 
 async function deleteMed(id){
@@ -2275,6 +2318,8 @@ function renderProfile(){
   const p=window._profile||{};
   const auth_user=window._authUser||{};
   document.getElementById('profile-name').textContent=p.name||'—';
+  const cbMeds=document.getElementById('toggle-meds');
+  if(cbMeds)cbMeds.checked=cache.trackMeds!==false;
   document.getElementById('profile-email').textContent=auth_user.email||'—';
   document.getElementById('profile-age-weight').textContent='Age '+p.age+' · '+p.currentWeight+' lbs starting · Goal: '+p.goalWeight+' lbs';
   // Sync avatar
@@ -2346,6 +2391,26 @@ function applyVitalSettings(){
   const cbBS=document.getElementById('toggle-bs');
   if(cbBP)cbBP.checked=!!s.trackBP;
   if(cbBS)cbBS.checked=!!s.trackBS;
+}
+
+async function saveMedsTrackingSetting(){
+  const checked=document.getElementById('toggle-meds')?.checked;
+  cache.trackMeds=!!checked;
+  // Save to profile survey doc
+  if(window._profile){window._profile.trackMeds=cache.trackMeds;await fbSet('profile','survey',window._profile);}
+  applyMedsVisibility();
+}
+
+function applyMedsVisibility(){
+  const show=cache.trackMeds;
+  // Nav tab
+  const navMeds=document.getElementById('nav-meds');
+  const mobMeds=document.getElementById('mob-meds');
+  if(navMeds)navMeds.style.display=show?'':'none';
+  if(mobMeds)mobMeds.style.display=show?'':'none';
+  // Dashboard progress bar
+  const wrap=document.getElementById('prog-meds-wrap');
+  if(wrap)wrap.style.display=show?'block':'none';
 }
 
 async function saveVitalSettings(){
