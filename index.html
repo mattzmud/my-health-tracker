@@ -190,17 +190,41 @@ textarea{min-height:80px;}
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="login-card">
-    <div class="login-lock">&#128274;</div>
-    <div class="login-logo">My Health Journey</div>
-    <div class="login-sub">Sign in to access your personal health tracker</div>
-    <label class="form-label">Email address</label>
-    <input class="form-input" type="email" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="email"/>
-    <label class="form-label">Password</label>
-    <input class="form-input" type="password" id="login-password" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password"/>
-    <button class="login-btn" onclick="doLogin()" id="login-btn">Sign in</button>
-    <div class="msg-box" id="login-msg"></div>
-    <button class="text-link" onclick="doForgotPassword()">Forgot your password? Send a reset email</button>
-    <div class="login-footer">&#128272; Your data is private and encrypted.</div>
+
+    <!-- SIGN IN PANEL -->
+    <div id="panel-signin">
+      <div class="login-lock">&#128274;</div>
+      <div class="login-logo">My Health Journey</div>
+      <div class="login-sub">Sign in to access your personal health tracker</div>
+      <label class="form-label">Email address</label>
+      <input class="form-input" type="email" id="login-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="email"/>
+      <label class="form-label">Password</label>
+      <input class="form-input" type="password" id="login-password" placeholder="Your password" onkeydown="if(event.key==='Enter')doLogin()" autocomplete="current-password"/>
+      <button class="login-btn" onclick="doLogin()" id="login-btn">Sign in</button>
+      <div class="msg-box" id="login-msg"></div>
+      <button class="text-link" onclick="doForgotPassword()">Forgot your password? Send a reset email</button>
+      <button class="text-link" onclick="showPanel('register')" style="margin-top:8px;color:var(--muted)">Don't have an account? Create one &#8594;</button>
+      <div class="login-footer">&#128272; Your data is private and encrypted.</div>
+    </div>
+
+    <!-- REGISTER PANEL -->
+    <div id="panel-register" style="display:none">
+      <div class="login-lock">&#127874;</div>
+      <div class="login-logo">Create Account</div>
+      <div class="login-sub">Enter your invite code to get started</div>
+      <label class="form-label">Invite code</label>
+      <input class="form-input" type="text" id="reg-code" placeholder="Enter your invite code" style="letter-spacing:0.1em;text-transform:uppercase" onkeydown="if(event.key==='Enter')document.getElementById('reg-email').focus()"/>
+      <label class="form-label">Email address</label>
+      <input class="form-input" type="email" id="reg-email" placeholder="you@email.com" onkeydown="if(event.key==='Enter')document.getElementById('reg-password').focus()" autocomplete="email"/>
+      <label class="form-label">Password</label>
+      <input class="form-input" type="password" id="reg-password" placeholder="Choose a password (min 6 characters)" onkeydown="if(event.key==='Enter')document.getElementById('reg-password2').focus()" autocomplete="new-password"/>
+      <label class="form-label">Confirm password</label>
+      <input class="form-input" type="password" id="reg-password2" placeholder="Confirm your password" onkeydown="if(event.key==='Enter')doRegister()" autocomplete="new-password"/>
+      <button class="login-btn" onclick="doRegister()" id="reg-btn">Create account</button>
+      <div class="msg-box" id="reg-msg"></div>
+      <button class="text-link" onclick="showPanel('signin')" style="margin-top:8px;color:var(--muted)">&#8592; Back to sign in</button>
+    </div>
+
   </div>
 </div>
 
@@ -564,6 +588,61 @@ window.doLogin = async () => {
   }
 };
 window.doSignOut = async () => { if(confirm('Sign out?')) await signOut(auth); };
+
+window.showPanel = (panel) => {
+  document.getElementById('panel-signin').style.display = panel==='signin' ? 'block' : 'none';
+  document.getElementById('panel-register').style.display = panel==='register' ? 'block' : 'none';
+  document.getElementById('login-msg').style.display = 'none';
+  document.getElementById('reg-msg').style.display = 'none';
+};
+
+window.doRegister = async () => {
+  const code = document.getElementById('reg-code').value.trim();
+  const email = document.getElementById('reg-email').value.trim();
+  const pw = document.getElementById('reg-password').value;
+  const pw2 = document.getElementById('reg-password2').value;
+  const btn = document.getElementById('reg-btn');
+  const msg = document.getElementById('reg-msg');
+  msg.style.display = 'none';
+
+  // Basic validation
+  if (!code) { showMsg('reg-msg','Please enter your invite code.','error'); return; }
+  if (!email) { showMsg('reg-msg','Please enter your email address.','error'); return; }
+  if (pw.length < 6) { showMsg('reg-msg','Password must be at least 6 characters.','error'); return; }
+  if (pw !== pw2) { showMsg('reg-msg','Passwords do not match.','error'); return; }
+
+  btn.disabled = true; btn.textContent = 'Verifying invite code...';
+
+  try {
+    // Validate invite code via Cloudflare Worker
+    const res = await fetch('https://health-tracker-api.matt-zmud.workers.dev', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'validate_code', code })
+    });
+    const data = await res.json();
+
+    if (!data.valid) {
+      showMsg('reg-msg','Invalid invite code. Please check the code and try again.','error');
+      btn.disabled = false; btn.textContent = 'Create account';
+      return;
+    }
+
+    // Code valid — create Firebase account
+    btn.textContent = 'Creating your account...';
+    const { createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    await createUserWithEmailAndPassword(auth, email, pw);
+    // onAuthStateChanged will fire and take them to onboarding automatically
+
+  } catch(e) {
+    let m = 'Could not create account. Please try again.';
+    if (e.code === 'auth/email-already-in-use') m = 'An account with this email already exists. Try signing in instead.';
+    if (e.code === 'auth/invalid-email') m = 'Please enter a valid email address.';
+    if (e.code === 'auth/network-request-failed') m = 'Network error. Check your connection.';
+    showMsg('reg-msg', m, 'error');
+    btn.disabled = false; btn.textContent = 'Create account';
+  }
+};
 window.doForgotPassword = async () => {
   const email=document.getElementById('login-email').value.trim();
   if(!email){showMsg('login-msg','Enter your email above first.','info');return;}
@@ -675,8 +754,8 @@ const OB_STEPS=[
    fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_age',label:'Age',type:'number',placeholder:'e.g. 35'},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
   {id:'health',title:'Health conditions',sub:'Select any that apply.',
    multi:['Type 2 Diabetes','Type 1 Diabetes','High blood pressure','High cholesterol','Heart condition','Thyroid condition','PCOS','Anxiety / Depression','Chronic pain','None of the above']},
-  {id:'medications',title:'Medications & supplements',sub:'List any medications or supplements you take.',
-   fields:[{id:'ob_meds_am',label:'Morning medications (one per line)',type:'textarea',placeholder:'e.g.\nMetformin 500mg\nVitamin D'},{id:'ob_meds_pm',label:'Evening medications (one per line)',type:'textarea',placeholder:'e.g.\nAtorvastatin 20mg\nMagnesium 200mg'}]},
+  {id:'medications',title:'Medications & supplements',sub:'List your medications naturally — include the name, dose, and when you take them. The app will sort them into the right columns automatically.',
+   fields:[{id:'ob_meds_all',label:'Your medications & supplements (one per line)',type:'textarea',placeholder:'e.g.\nMetformin 1000mg, twice daily\nAtorvastatin 20mg, once at night\nVitamin D, once in morning\nMounjaro 15mg, once weekly\nFish oil, as needed'}]},
   {id:'nutrition',title:'Your eating habits',sub:'Help us understand your preferences.',
    fields:[{id:'ob_fav_foods',label:'Foods you love',type:'textarea',placeholder:'e.g. chicken, Greek yogurt, berries, wraps'},{id:'ob_avoid_foods',label:'Foods you avoid or dislike',type:'textarea',placeholder:'e.g. fish, mushrooms, spicy food'}],
    multi_label:'Any dietary preferences?',multi:['No restrictions','Low carb / Keto','Vegetarian','Vegan','Gluten free','Dairy free','Low sodium']},
@@ -686,7 +765,9 @@ const OB_STEPS=[
    fields:[{id:'ob_equipment',label:'Equipment available',type:'textarea',placeholder:'e.g. apartment gym with treadmill, resistance bands, light dumbbells'},{id:'ob_injuries',label:'Any injuries or limitations?',type:'text',placeholder:'e.g. bad knees, lower back pain, or none'}]},
   {id:'lifestyle',title:'A bit more about you',sub:'The more we know, the better your plan will be.',
    single_label:'Time per exercise session?',single:['15-20 minutes','20-30 minutes','30-45 minutes','45-60 minutes'],
-   fields:[{id:'ob_job',label:'What do you do for work?',type:'text',placeholder:'e.g. work from home at a desk, nurse, teacher'},{id:'ob_notes',label:'Anything else your coach should know?',type:'textarea',placeholder:'e.g. I have a sweet tooth, I love walking outdoors...'}]}
+   fields:[{id:'ob_job',label:'What do you do for work?',type:'text',placeholder:'e.g. work from home at a desk, nurse, teacher'},{id:'ob_notes',label:'Anything else your coach should know?',type:'textarea',placeholder:'e.g. I have a sweet tooth, I love walking outdoors...'}]},
+  {id:'photo',title:'Add a profile photo',sub:'Optional — add a photo that will appear on your dashboard. You can always change it later.',
+   fields:[{id:'ob_photo',label:'',type:'photo',placeholder:''}]}
 ];
 
 let obStep=0, obData={};
@@ -711,9 +792,24 @@ function renderObStep(){
   }
   if(step.fields){
     step.fields.forEach(f=>{
-      html+=`<label class="form-label">${f.label}</label>`;
-      if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
-      else html+=`<input class="form-input" type="${f.type}" id="${f.id}" placeholder="${f.placeholder}" value="${obData[f.id]||''}" style="margin-bottom:12px"/>`;
+      if(f.type==='photo'){
+        // Photo upload UI
+        const hasPhoto=obData.ob_photo_data;
+        html+=`<div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:10px 0">
+          <div id="ob-avatar-preview" onclick="document.getElementById('ob-photo-input').click()" style="width:100px;height:100px;border-radius:50%;background:var(--surface2);border:2px dashed rgba(126,184,164,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:border-color 0.2s" title="Tap to choose photo">
+            ${hasPhoto?`<img src="${obData.ob_photo_data}" style="width:100%;height:100%;object-fit:cover"/>`:'<span style="font-size:40px">&#128100;</span>'}
+          </div>
+          <div style="text-align:center">
+            <button class="btn btn-ghost btn-sm" onclick="document.getElementById('ob-photo-input').click()" type="button">${hasPhoto?'&#128247; Change photo':'&#128247; Choose photo'}</button>
+            ${hasPhoto?'<div style="font-size:12px;color:var(--green);margin-top:6px">&#10003; Photo selected</div>':'<div style="font-size:12px;color:var(--muted);margin-top:6px">Optional — you can skip this step</div>'}
+          </div>
+          <input type="file" id="ob-photo-input" accept="image/*" style="display:none" onchange="obHandlePhoto(event)"/>
+        </div>`;
+      } else {
+        if(f.label)html+=`<label class="form-label">${f.label}</label>`;
+        if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
+        else html+=`<input class="form-input" type="${f.type}" id="${f.id}" placeholder="${f.placeholder}" value="${obData[f.id]||''}" style="margin-bottom:12px"/>`;
+      }
     });
   }
   html+=`<div class="onboard-nav">${obStep>0?'<button class="btn-back" onclick="obBack()">&#8592; Back</button>':''}<button class="btn-next" onclick="obNext()">${obStep===OB_STEPS.length-1?'&#10024; Build my plan':'Continue &#8594;'}</button></div></div>`;
@@ -729,7 +825,29 @@ function toggleMulti(stepId,val){
 }
 function obSaveCurrentFields(){
   const step=OB_STEPS[obStep];
-  if(step.fields)step.fields.forEach(f=>{const el=document.getElementById(f.id);if(el)obData[f.id]=el.value.trim();});
+  if(step.fields)step.fields.forEach(f=>{
+    if(f.type==='photo')return;// handled separately via obHandlePhoto
+    const el=document.getElementById(f.id);if(el)obData[f.id]=el.value.trim();
+  });
+}
+
+function obHandlePhoto(event){
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const img=new Image();
+    img.onload=()=>{
+      const canvas=document.createElement('canvas'),size=200;
+      canvas.width=size;canvas.height=size;
+      const ctx=canvas.getContext('2d'),scale=Math.max(size/img.width,size/img.height);
+      const w=img.width*scale,h=img.height*scale;
+      ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
+      obData.ob_photo_data=canvas.toDataURL('image/jpeg',0.8);
+      renderObStep();// re-render to show preview
+    };
+    img.src=e.target.result;
+  };
+  reader.readAsDataURL(file);
 }
 function obBack(){obSaveCurrentFields();obStep--;renderObStep();}
 async function obNext(){
@@ -749,7 +867,7 @@ async function generatePlan(){
   await fbSet('profile','survey',profile);
   // Save medications
   // AI-parse medications from survey
-  const allMedsRaw=((obData.ob_meds_am||'')+'\n'+(obData.ob_meds_pm||'')).trim();
+  const allMedsRaw=(obData.ob_meds_all||'').trim();
   if(allMedsRaw){
     try{
       const medLines=allMedsRaw.split('\n').map(m=>m.trim()).filter(Boolean);
@@ -780,12 +898,16 @@ async function generatePlan(){
     // AI failed or timed out — default plan already saved, just continue
     console.log('AI plan generation skipped, using default plan');
   }
+  // Save avatar photo if provided during onboarding
+  if(obData.ob_photo_data){
+    await fbSet('profile','avatar',{img:obData.ob_photo_data});
+  }
   document.getElementById('generating-screen').style.display='none';
   showApp();window.appInit();
 }
 
 function buildProfileFromObData(){
-  return{name:obData.ob_name||'Friend',age:parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAm:(obData.ob_meds_am||'').split('\n').map(m=>m.trim()).filter(Boolean),medsPm:(obData.ob_meds_pm||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100};
+  return{name:obData.ob_name||'Friend',age:parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100};
 }
 
 function getDefaultWorkoutPlan(){
