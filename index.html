@@ -295,6 +295,11 @@ textarea{min-height:80px;}
     <!-- FOOD -->
     <section id="sec-food" class="section">
       <div class="sec-header"><div class="sec-title">Food Diary</div><div class="sec-sub">Log meals — AI analyzes macros and gives personalized feedback.</div></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
+        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      </div>
       <div class="card">
         <div class="card-title">Log a meal or snack</div>
         <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
@@ -330,6 +335,11 @@ textarea{min-height:80px;}
     <!-- FITNESS -->
     <section id="sec-fitness" class="section">
       <div class="sec-header"><div class="sec-title">Fitness Plan</div><div class="sec-sub">Your personalized weekly workout. Tap "How to" for YouTube form videos.</div></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
+        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap;align-items:center">
         <div class="day-tabs" id="fitness-day-tabs" style="flex:1;margin-bottom:12px"></div>
         <button class="btn btn-ghost btn-sm" onclick="regenerateWorkout()" id="regen-btn" style="margin-bottom:12px">&#128260; Update plan</button>
@@ -340,16 +350,21 @@ textarea{min-height:80px;}
     <!-- MEDS -->
     <section id="sec-meds" class="section">
       <div class="sec-header"><div class="sec-title">Medication Tracker</div><div class="sec-sub">Check off each medication as you take it.</div></div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
+        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      </div>
       <div class="today-banner"><strong id="meds-date-label">Today</strong> — tap each medication to mark it as taken.</div>
-      <div class="grid2">
-        <div class="card">
+      <div class="grid2" id="meds-grid">
+        <div class="card" id="meds-am-card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div class="card-title" style="margin:0">&#9728;&#65039; Morning</div>
             <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('am')">Check all</button>
           </div>
           <div id="meds-morning"><div style="font-size:13px;color:var(--muted)">No morning medications added.</div></div>
         </div>
-        <div class="card">
+        <div class="card" id="meds-pm-card">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
             <div class="card-title" style="margin:0">&#127768; Evening</div>
             <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('pm')">Check all</button>
@@ -357,13 +372,18 @@ textarea{min-height:80px;}
           <div id="meds-evening"><div style="font-size:13px;color:var(--muted)">No evening medications added.</div></div>
         </div>
       </div>
+      <div class="card" id="meds-afternoon-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin:0">&#9728; Afternoon</div>
+          <button class="btn btn-ghost btn-sm" onclick="checkAllMeds('af')">Check all</button>
+        </div>
+        <div id="meds-afternoon"><div style="font-size:13px;color:var(--muted)">No afternoon medications added.</div></div>
+      </div>
       <div class="card">
         <div class="card-title">&#10133; Add medication</div>
-        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
-          <input type="text" id="med-name-input" placeholder="Medication name &amp; dose" style="flex:2;min-width:160px"/>
-          <select id="med-time-input" style="flex:1;min-width:110px"><option value="am">Morning</option><option value="pm">Evening</option><option value="both">Both</option></select>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="addMedication()">Add medication</button>
+        <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">Enter naturally, e.g. "Metformin 1000mg, twice daily" or "Vitamin D 2000IU, once in morning"</div>
+        <textarea id="med-name-input" placeholder="Medication name, dose, and when you take it..." style="min-height:70px;margin-bottom:10px"></textarea>
+        <button class="btn btn-primary btn-sm" onclick="addMedicationAI()" id="add-med-btn">&#128161; Parse &amp; Add</button>
       </div>
     </section>
 
@@ -496,7 +516,44 @@ window.fbDel = async (col,id) => {
 </script>
 
 <script>
-const TODAY=new Date().toISOString().split('T')[0];
+const _now=new Date();
+const TODAY=_now.getFullYear()+'-'+String(_now.getMonth()+1).padStart(2,'0')+'-'+String(_now.getDate()).padStart(2,'0');
+let viewDate=TODAY; // currently viewed date (can navigate back)
+
+function changeDate(delta){
+  const d=new Date(viewDate+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  const nd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(nd>TODAY)return; // can't go to future
+  viewDate=nd;
+  updateDateNav();
+  renderFoodEntries();renderFavorites();renderFitnessDay();renderMeds();refreshDashboard();
+}
+
+async function ensureDateLoaded(date){
+  if(!cache.food[date]){const fd=await fbGet('food',date);cache.food[date]=fd?(fd.entries||[]):[]; }
+  if(!cache.fitness[date]){const fi=await fbGet('fitness',date);cache.fitness[date]=fi?(fi.done||{}):{};} 
+  if(!cache.meds[date]){const m=await fbGet('meds',date);cache.meds[date]=m?(m.taken||{}):{};} 
+}
+
+async function changeDateAsync(delta){
+  const d=new Date(viewDate+'T12:00:00');
+  d.setDate(d.getDate()+delta);
+  const nd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  if(nd>TODAY)return;
+  viewDate=nd;
+  await ensureDateLoaded(viewDate);
+  updateDateNav();
+  renderFoodEntries();renderFavorites();renderFitnessDay();renderMeds();refreshDashboard();
+}
+
+function updateDateNav(){
+  const isToday=viewDate===TODAY;
+  const label=isToday?'Today':formatDate(viewDate);
+  document.querySelectorAll('.date-nav-label').forEach(el=>el.textContent=label);
+  document.querySelectorAll('.date-nav-next').forEach(el=>el.disabled=isToday);
+  document.getElementById('meds-date-label').textContent=isToday?'Today':formatDate(viewDate);
+}
 const DAY_NAMES=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
 const MONTH_NAMES=['January','February','March','April','May','June','July','August','September','October','November','December'];
 const API='https://health-tracker-api.matt-zmud.workers.dev';
@@ -597,12 +654,23 @@ async function generatePlan(){
   profile.createdAt=TODAY;
   await fbSet('profile','survey',profile);
   // Save medications
-  const medsAm=(obData.ob_meds_am||'').split('\n').map(m=>m.trim()).filter(Boolean);
-  const medsPm=(obData.ob_meds_pm||'').split('\n').map(m=>m.trim()).filter(Boolean);
-  const allMeds={};
-  medsAm.forEach(m=>{allMeds['am-'+m]={name:m,time:'am'};});
-  medsPm.forEach(m=>{allMeds['pm-'+m]={name:m,time:'pm'};});
-  if(Object.keys(allMeds).length>0)await fbSet('medications','list',{meds:allMeds});
+  // AI-parse medications from survey
+  const allMedsRaw=((obData.ob_meds_am||'')+'\n'+(obData.ob_meds_pm||'')).trim();
+  if(allMedsRaw){
+    try{
+      const medLines=allMedsRaw.split('\n').map(m=>m.trim()).filter(Boolean);
+      const medRes=await callAI('Parse these medication entries. Return JSON array ONLY, no other text:\n'+medLines.join('\n')+'\n\nFor EACH entry return an object: {"id":"unique-slug","name":"Drug name only","dose":"dose string or empty","qty":1,"times":["am","pm","af"]}. Times: am=morning, pm=evening, af=afternoon. If taken twice daily use both am and pm. Return ONLY a JSON array.');
+      const parsedMeds=JSON.parse(medRes.replace(/```json|```/g,'').trim());
+      const allMeds={};
+      parsedMeds.forEach(med=>{if(med.id&&med.name)allMeds[med.id]=med;});
+      if(Object.keys(allMeds).length>0)await fbSet('medications','list',{meds:allMeds});
+    }catch(e){
+      const allMeds={};
+      const lines=allMedsRaw.split('\n').map(m=>m.trim()).filter(Boolean);
+      lines.forEach((line,i)=>{const id='med-'+i;allMeds[id]={id,name:line,dose:'',qty:1,times:['am']};});
+      if(Object.keys(allMeds).length>0)await fbSet('medications','list',{meds:allMeds});
+    }
+  }
   window._profile=profile;
   // Now try AI workout generation with a 20-second timeout
   try{
@@ -646,7 +714,7 @@ let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocer
 window.appInit=async function(){
   const p=window._profile;
   const hr=new Date().getHours();
-  const greeting=hr<12?'Good morning':hr<17?'Good afternoon':hr<21?'Good evening':'Good night';
+  const greeting=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
   document.getElementById('dash-greeting').textContent=greeting;
   document.getElementById('dash-date').textContent=formatDate(TODAY);
   document.getElementById('meds-date-label').textContent=formatDate(TODAY);
@@ -694,7 +762,7 @@ async function uploadAvatar(event){
 let weightChart,proteinChart,waterChart;
 function refreshDashboard(){
   const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80;
-  const entries=cache.food[TODAY]||[];
+  const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
@@ -708,14 +776,15 @@ function refreshDashboard(){
   document.getElementById('prog-water-label').textContent=Math.round(tw)+' / '+wg+' oz';
   const plan=(window._profile&&window._profile.workoutPlan)||[];
   const todayPlan=plan.find(d=>d.day===getActiveFitnessDay())||{exercises:[]};
-  const exData=cache.fitness[TODAY]||{};
+  const exData=cache.fitness[viewDate]||{};
   const exDone=todayPlan.exercises.filter(e=>exData[e.name]).length;
   document.getElementById('prog-ex').style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
   document.getElementById('prog-ex-label').textContent=exDone+' / '+todayPlan.exercises.length+' done';
-  const ms=cache.meds[TODAY]||{},allMK=Object.keys(cache.medsList||{});
-  const md=allMK.filter(k=>ms[k]).length;
-  document.getElementById('prog-meds').style.width=allMK.length?(md/allMK.length)*100+'%':'0%';
-  document.getElementById('prog-meds-label').textContent=md+' / '+allMK.length+' taken';
+  const ms=cache.meds[viewDate]||{};
+  let totalMedChecks=0,doneMedChecks=0;
+  Object.values(cache.medsList||{}).forEach(med=>{(med.times||['am']).forEach(t=>{totalMedChecks++;if(ms[t+'-'+(med.id||med.name)])doneMedChecks++;});});
+  document.getElementById('prog-meds').style.width=totalMedChecks?(doneMedChecks/totalMedChecks)*100+'%':'0%';
+  document.getElementById('prog-meds-label').textContent=doneMedChecks+' / '+totalMedChecks+' taken';
   const wh=document.getElementById('weight-history');
   if(!cache.weights.length){wh.textContent='No weight logged yet. Log your starting weight!';}
   else{
@@ -841,17 +910,18 @@ async function analyzeDayFood(){
 }
 
 function renderFoodEntries(){
-  const entries=cache.food[TODAY]||[];
+  const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   document.getElementById('food-protein-total').textContent=Math.round(tp)+'g';
   document.getElementById('food-water-total').textContent=Math.round(tw)+' oz';
   document.getElementById('food-carb-total').textContent=Math.round(tc)+'g';
   const el=document.getElementById('food-entries');
-  if(!entries.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet today.</div>';return;}
-  el.innerHTML=entries.map((e,i)=>'<div class="food-entry"><div class="food-time">'+e.time+'</div><div style="flex:1"><div style="font-size:14px;color:var(--text)">'+escHtml(e.text)+'</div><div style="font-size:12px;margin-top:3px">'+(e.protein?'<span class="pill pill-blue" style="font-size:11px">~'+Math.round(e.protein)+'g protein</span> ':'')+(e.carbs?'<span class="pill pill-amber" style="font-size:11px">~'+Math.round(e.carbs)+'g carbs</span> ':'')+(e.water?'<span class="pill pill-green" style="font-size:11px">'+e.water+' oz water</span>':'')+'</div></div><div class="food-delete" onclick="deleteEntry('+i+')">&#215;</div></div>').join('');
+  const isPast=viewDate!==TODAY;
+  if(!entries.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">'+(isPast?'No food logged on this day.':'Nothing logged yet today.')+'</div>';return;}
+  el.innerHTML=entries.map((e,i)=>'<div class="food-entry"><div class="food-time">'+e.time+'</div><div style="flex:1"><div style="font-size:14px;color:var(--text)">'+escHtml(e.text)+'</div><div style="font-size:12px;margin-top:3px">'+(e.protein?'<span class="pill pill-blue" style="font-size:11px">~'+Math.round(e.protein)+'g protein</span> ':'')+(e.carbs?'<span class="pill pill-amber" style="font-size:11px">~'+Math.round(e.carbs)+'g carbs</span> ':'')+(e.water?'<span class="pill pill-green" style="font-size:11px">'+e.water+' oz water</span>':'')+'</div></div>'+(isPast?'':'<div class="food-delete" onclick="deleteEntry('+i+')">&#215;</div>')+'</div>').join('');
 }
-async function deleteEntry(i){if(!cache.food[TODAY])return;cache.food[TODAY].splice(i,1);await fbSet('food',TODAY,{entries:cache.food[TODAY],date:TODAY});renderFoodEntries();}
-async function clearTodayFood(){if(!confirm('Clear all food entries for today?'))return;cache.food[TODAY]=[];await fbSet('food',TODAY,{entries:[],date:TODAY});renderFoodEntries();document.getElementById('food-feedback').innerHTML='';}
+async function deleteEntry(i){if(!cache.food[viewDate])return;cache.food[viewDate].splice(i,1);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
+async function clearTodayFood(){if(!confirm('Clear all food entries for this day?'))return;cache.food[viewDate]=[];await fbSet('food',viewDate,{entries:[],date:viewDate});renderFoodEntries();document.getElementById('food-feedback').innerHTML='';}
 
 // ── FITNESS ──────────────────────────────────────────────────
 function getActiveFitnessDay(){return['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];}
@@ -866,7 +936,7 @@ function selectFitnessDay(d){selectedFitnessDay=d;renderFitness();}
 function renderFitnessDay(){
   const plan=(window._profile&&window._profile.workoutPlan)||[];
   const dayPlan=plan.find(d=>d.day===selectedFitnessDay)||{day:selectedFitnessDay,focus:'Rest',rest:true,exercises:[]};
-  const exData=cache.fitness[TODAY]||{},isToday=selectedFitnessDay===getActiveFitnessDay();
+  const exData=cache.fitness[viewDate]||{},isToday=selectedFitnessDay===getActiveFitnessDay()&&viewDate===TODAY;
   const colors=['#8ca4e8','#7eb8a4','#b08ce8','#c9a96e','#e88c8c'];
   let html='<div class="card"><div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap"><div class="card-title" style="margin:0">'+dayPlan.day+'</div><span class="pill pill-blue">'+dayPlan.focus+'</span>'+(isToday?'<span class="pill pill-green" style="font-size:11px">Today</span>':'')+'</div>';
   if(dayPlan.rest){
@@ -885,9 +955,9 @@ function renderFitnessDay(){
   document.getElementById('fitness-day-content').innerHTML=html;
 }
 async function toggleExercise(name){
-  if(!cache.fitness[TODAY])cache.fitness[TODAY]={};
-  cache.fitness[TODAY][name]=!cache.fitness[TODAY][name];
-  await fbSet('fitness',TODAY,{done:cache.fitness[TODAY],date:TODAY});
+  if(!cache.fitness[viewDate])cache.fitness[viewDate]={};
+  cache.fitness[viewDate][name]=!cache.fitness[viewDate][name];
+  await fbSet('fitness',viewDate,{done:cache.fitness[viewDate],date:viewDate});
   renderFitnessDay();refreshDashboard();
 }
 async function regenerateWorkout(){
@@ -901,41 +971,95 @@ async function regenerateWorkout(){
 }
 
 // ── MEDICATIONS ──────────────────────────────────────────────
+function getMedsByTime(time){
+  const ml=cache.medsList||{};
+  return Object.entries(ml)
+    .filter(([k,v])=>v.times&&v.times.includes(time))
+    .map(([k,v])=>v)
+    .sort((a,b)=>a.name.localeCompare(b.name));
+}
+
 function renderMeds(){
-  const ms=cache.meds[TODAY]||{},ml=cache.medsList||{};
-  const amMeds=Object.entries(ml).filter(([k,v])=>v.time==='am'||v.time==='both').map(([k,v])=>v.name);
-  const pmMeds=Object.entries(ml).filter(([k,v])=>v.time==='pm'||v.time==='both').map(([k,v])=>v.name);
-  function buildList(meds,pre,cid){
-    const el=document.getElementById(cid);
-    if(!meds.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No '+(pre==='am'?'morning':'evening')+' medications added.</div>';return;}
-    el.innerHTML=meds.map(name=>{const key=pre+'-'+name,done=!!ms[key];return'<div class="check-item '+(done?'done':'')+'" onclick="toggleMed(\''+key.replace(/'/g,'\\\'')+'\')"><div class="check-box">'+(done?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f1117" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div><div class="check-label">'+name+'</div><div onclick="event.stopPropagation();deleteMed(\''+key.replace(/'/g,'\\\'')+'\')\" style="color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px" title="Remove">&#10005;</div></div>';}).join('');
+  const ms=cache.meds[viewDate]||{};
+  const checkSvg='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f1117" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+
+  function buildMedItem(med,time){
+    const key=time+'-'+med.id;
+    const done=!!ms[key];
+    const qty=med.qty&&med.qty>1?' &nbsp;<span style="font-size:12px;color:var(--muted)">Qty: '+med.qty+'</span>':'';
+    return'<div class="check-item '+(done?'done':'')+'" onclick="toggleMed(\''+key+'\')">'
+      +'<div class="check-box">'+(done?checkSvg:'')+'</div>'
+      +'<div style="flex:1"><span style="font-weight:600;color:var(--text)">'+escHtml(med.name)+'</span>'
+      +(med.dose?' <span style="color:var(--muted);font-size:13px">'+escHtml(med.dose)+'</span>':'')
+      +qty+'</div>'
+      +'<div onclick="event.stopPropagation();deleteMed(\''+med.id+'\')" style="color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px">&#10005;</div>'
+    +'</div>';
   }
-  buildList(amMeds,'am','meds-morning');buildList(pmMeds,'pm','meds-evening');
+
+  function buildList(time,cid){
+    const meds=getMedsByTime(time);
+    const el=document.getElementById(cid);
+    if(!el)return;
+    if(!meds.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No medications added.</div>';return;}
+    el.innerHTML=meds.map(med=>buildMedItem(med,time)).join('');
+  }
+
+  buildList('am','meds-morning');
+  buildList('pm','meds-evening');
+  buildList('af','meds-afternoon');
+
+  // Show/hide afternoon card
+  const afMeds=getMedsByTime('af');
+  const afCard=document.getElementById('meds-afternoon-card');
+  if(afCard)afCard.style.display=afMeds.length?'block':'none';
 }
-async function addMedication(){
-  const name=document.getElementById('med-name-input').value.trim(),time=document.getElementById('med-time-input').value;
-  if(!name){alert('Please enter a medication name.');return;}
-  if(!cache.medsList)cache.medsList={};
-  const key=time+'-'+name;cache.medsList[key]={name,time};
-  await fbSet('medications','list',{meds:cache.medsList});
-  document.getElementById('med-name-input').value='';renderMeds();
+
+async function addMedicationAI(){
+  const raw=document.getElementById('med-name-input').value.trim();
+  if(!raw){alert('Please enter a medication.');return;}
+  const btn=document.getElementById('add-med-btn');
+  btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Parsing...';
+  try{
+    const res=await callAI(
+      'Parse this medication entry and return JSON ONLY:\n"'+raw+'"\n\nReturn an array of medication objects. Each object must have:\n- id: unique slug (lowercase, hyphens)\n- name: medication name only (no dose, no timing)\n- dose: dosage string (e.g. "10mg", "1000mg", "2.5mg") or ""\n- qty: quantity per dose as integer (default 1)\n- times: array of time codes from ["am","af","pm"] meaning morning/afternoon/evening\n\nExamples:\n"Metformin 1000mg twice daily" -> [{"id":"metformin-1000mg","name":"Metformin","dose":"1000mg","qty":1,"times":["am","pm"]}]\n"Fiber supplement 5 capsules morning and evening" -> [{"id":"fiber-supplement","name":"Fiber Supplement","dose":"","qty":5,"times":["am","pm"]}]\n"Vitamin D once in morning" -> [{"id":"vitamin-d","name":"Vitamin D","dose":"","qty":1,"times":["am"]}]\n\nReturn ONLY a valid JSON array, no other text.'
+    );
+    const parsed=JSON.parse(res.replace(/```json|```/g,'').trim());
+    if(!cache.medsList)cache.medsList={};
+    parsed.forEach(med=>{
+      if(!med.id||!med.name)return;
+      cache.medsList[med.id]=med;
+    });
+    await fbSet('medications','list',{meds:cache.medsList});
+    document.getElementById('med-name-input').value='';
+    renderMeds();
+  }catch(e){
+    // Fallback: add as simple morning med
+    const id='med-'+Date.now();
+    if(!cache.medsList)cache.medsList={};
+    cache.medsList[id]={id,name:raw,dose:'',qty:1,times:['am']};
+    await fbSet('medications','list',{meds:cache.medsList});
+    document.getElementById('med-name-input').value='';
+    renderMeds();
+  }
+  btn.disabled=false;btn.innerHTML='&#128161; Parse &amp; Add';
 }
-async function deleteMed(key){
-  if(!cache.medsList)return;delete cache.medsList[key];
+
+async function deleteMed(id){
+  if(!cache.medsList)return;
+  delete cache.medsList[id];
   await fbSet('medications','list',{meds:cache.medsList});renderMeds();
 }
 async function toggleMed(k){
-  if(!cache.meds[TODAY])cache.meds[TODAY]={};
-  cache.meds[TODAY][k]=!cache.meds[TODAY][k];
-  await fbSet('meds',TODAY,{taken:cache.meds[TODAY],date:TODAY});renderMeds();refreshDashboard();
+  if(!cache.meds[viewDate])cache.meds[viewDate]={};
+  cache.meds[viewDate][k]=!cache.meds[viewDate][k];
+  await fbSet('meds',viewDate,{taken:cache.meds[viewDate],date:viewDate});renderMeds();refreshDashboard();
 }
 async function checkAllMeds(prefix){
-  if(!cache.meds[TODAY])cache.meds[TODAY]={};
-  const ml=cache.medsList||{};
-  const meds=Object.entries(ml).filter(([k,v])=>v.time===prefix||v.time==='both').map(([k,v])=>prefix+'-'+v.name);
-  const allDone=meds.every(k=>cache.meds[TODAY][k]);
-  meds.forEach(k=>{cache.meds[TODAY][k]=!allDone;});
-  await fbSet('meds',TODAY,{taken:cache.meds[TODAY],date:TODAY});renderMeds();refreshDashboard();
+  if(!cache.meds[viewDate])cache.meds[viewDate]={};
+  const meds=getMedsByTime(prefix).map(m=>prefix+'-'+m.id);
+  const allDone=meds.every(k=>cache.meds[viewDate][k]);
+  meds.forEach(k=>{cache.meds[viewDate][k]=!allDone;});
+  await fbSet('meds',viewDate,{taken:cache.meds[viewDate],date:viewDate});renderMeds();refreshDashboard();
 }
 
 // ── GROCERY ──────────────────────────────────────────────────
