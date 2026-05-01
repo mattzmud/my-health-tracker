@@ -193,14 +193,29 @@ textarea{min-height:80px;}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
 ::-webkit-scrollbar-thumb{background:rgba(85,107,47,0.25);border-radius:3px;}
+/* Hamburger menu styles */
+.hamburger{display:none;flex-direction:column;justify-content:center;gap:5px;width:36px;height:36px;padding:4px;background:none;border:none;cursor:pointer;flex-shrink:0;border-radius:var(--radius-sm);}
+.hamburger:hover{background:var(--surface2);}
+.hamburger span{display:block;width:22px;height:2px;background:var(--accent);border-radius:2px;transition:all 0.25s;}
+.hamburger.open span:nth-child(1){transform:translateY(7px) rotate(45deg);}
+.hamburger.open span:nth-child(2){opacity:0;}
+.hamburger.open span:nth-child(3){transform:translateY(-7px) rotate(-45deg);}
+.mobile-menu{display:none;position:fixed;top:60px;left:0;right:0;background:var(--nav-bg);border-bottom:1px solid var(--border2);z-index:99;flex-direction:column;padding:8px 0;box-shadow:0 4px 16px rgba(85,107,47,0.12);}
+.mobile-menu.open{display:flex;}
+.mobile-menu-btn{display:flex;align-items:center;gap:14px;padding:13px 20px;background:none;border:none;color:var(--text);font-family:var(--font-body);font-size:15px;cursor:pointer;text-align:left;width:100%;transition:background 0.15s;}
+.mobile-menu-btn:hover{background:var(--surface2);}
+.mobile-menu-btn.active{color:var(--accent);font-weight:600;}
+.mobile-menu-btn svg{width:20px;height:20px;flex-shrink:0;color:var(--accent);}
+.mobile-menu-divider{height:1px;background:var(--border);margin:6px 0;}
+
 @media(max-width:600px){
-  .nav{padding:0 8px;gap:1px;}
-  .nav-logo{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:90px;flex-shrink:1;}
-  .nav-btn span{display:none;}
-  .nav-btn{padding:7px 8px;flex-shrink:0;}
+  .nav{padding:0 12px;}
+  .nav-logo img{height:38px;}
+  .nav-btn{display:none;}
+  .signout-btn{display:none;}
   .sync-label{display:none;}
-  .sync-dot{margin-right:2px;}
-  .signout-btn{padding:5px 7px;font-size:11px;flex-shrink:0;}
+  .sync-dot{margin-right:4px;}
+  .hamburger{display:flex;}
   .section{padding:20px 14px;}
 }
 </style>
@@ -292,7 +307,40 @@ textarea{min-height:80px;}
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span>
     </button>
     <button class="signout-btn" onclick="doSignOut()">Sign out</button>
+    <!-- Hamburger (mobile only) -->
+    <button class="hamburger" id="hamburger-btn" onclick="toggleMobileMenu()" aria-label="Menu">
+      <span></span><span></span><span></span>
+    </button>
   </nav>
+
+  <!-- Mobile dropdown menu -->
+  <div class="mobile-menu" id="mobile-menu">
+    <button class="mobile-menu-btn active" id="mob-dashboard" onclick="showSection('dashboard');closeMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>Dashboard
+    </button>
+    <button class="mobile-menu-btn" id="mob-food" onclick="showSection('food');closeMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>Food Diary
+    </button>
+    <button class="mobile-menu-btn" id="mob-fitness" onclick="showSection('fitness');closeMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8a6 6 0 0 1-7.743 5.743L10 14l-1 1-1 1H6v2H2v-4l4.257-4.257A6 6 0 1 1 18 8z"/></svg>Fitness
+    </button>
+    <button class="mobile-menu-btn" id="mob-meds" onclick="showSection('meds');closeMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Medications
+    </button>
+    <button class="mobile-menu-btn" id="mob-grocery" onclick="showSection('grocery');closeMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Grocery List
+    </button>
+    <button class="mobile-menu-btn" id="mob-chat" onclick="showSection('chat');closeMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Health Coach
+    </button>
+    <button class="mobile-menu-btn" id="mob-profile" onclick="showSection('profile');closeMobileMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>Profile
+    </button>
+    <div class="mobile-menu-divider"></div>
+    <button class="mobile-menu-btn" onclick="doSignOut();closeMobileMenu()" style="color:var(--red)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Sign out
+    </button>
+  </div>
 
   <main class="main">
     <!-- DASHBOARD -->
@@ -813,11 +861,24 @@ function getLast7Days(){const days=[];for(let i=6;i>=0;i--){const d=new Date();d
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
 
+function toggleMobileMenu(){
+  const btn=document.getElementById('hamburger-btn');
+  const menu=document.getElementById('mobile-menu');
+  btn.classList.toggle('open');
+  menu.classList.toggle('open');
+}
+function closeMobileMenu(){
+  document.getElementById('hamburger-btn')?.classList.remove('open');
+  document.getElementById('mobile-menu')?.classList.remove('open');
+}
+
 function showSection(name){
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.mobile-menu-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('sec-'+name).classList.add('active');
-  document.getElementById('nav-'+name).classList.add('active');
+  document.getElementById('nav-'+name)?.classList.add('active');
+  document.getElementById('mob-'+name)?.classList.add('active');
   if(name==='dashboard')refreshDashboard();
   if(name==='fitness')renderFitness();
   if(name==='meds')renderMeds();
@@ -1007,6 +1068,12 @@ function showApp(){document.getElementById('app-screen').style.display='block';}
 let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[]};
 
 window.appInit=async function(){
+  // Close mobile menu when tapping outside
+  document.addEventListener('click',e=>{
+    if(!e.target.closest('.mobile-menu')&&!e.target.closest('#hamburger-btn')){
+      closeMobileMenu();
+    }
+  });
   const p=window._profile;
   const hr=new Date().getHours();
   // Rotating greetings by time of day
