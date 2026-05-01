@@ -1701,8 +1701,11 @@ async function setDashRange(range,btn){
   const days=getDashDays();
   // Single-day ranges update viewDate so Today goals card stays in sync
   if(days.length===1){viewDate=days[0];updateDateNav();await ensureDateLoaded(viewDate);}
-  // Preload all days
-  await Promise.all(days.map(d=>cache.food[d]?Promise.resolve():fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[]; })));
+  // Preload food + vitals for all days in range in parallel
+  await Promise.all(days.map(d=>Promise.all([
+    cache.food[d]?Promise.resolve():fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[]; }),
+    ensureVitalsLoaded(d)
+  ])));
   updateDashRangeLabel();
   refreshDashboard();
 }
