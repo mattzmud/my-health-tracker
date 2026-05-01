@@ -2907,14 +2907,18 @@ function renderDashboardVitals(){
   if(!inner)return;
   let html='';
 
-  // Determine if we have a date range or single date
-  const isRange=customRangeStart&&customRangeEnd&&nutritionRange==='custom';
-  const rangeLabel=isRange?(customRangeStart.slice(5)+' – '+customRangeEnd.slice(5)):(viewDate===TODAY?'Today':viewDate.slice(5));
+  // Use getDashDays() — same source of truth as all other dashboard charts
+  const days=getDashDays();
+  const isMultiDay=days.length>1;
+  const rangeLabel=document.getElementById('dash-range-label')?.textContent||
+    (isMultiDay?(days[0].slice(5)+' – '+days[days.length-1].slice(5)):(viewDate===TODAY?'Today':viewDate.slice(5)));
+
+  const ctxLabels={fasting:'Fasting',before_meal:'Before meal',after_breakfast:'After breakfast',after_lunch:'After lunch',after_dinner:'After dinner',after_snack:'After snack',random:'Random'};
 
   if(s.trackBP){
-    const readings=isRange
-      ?getVitalsForRange('bp',customRangeStart,customRangeEnd)
-      :getVitalsForDate('bp',viewDate);
+    const readings=isMultiDay
+      ?days.flatMap(d=>(cache.vitals.bp[d]||[]).map(r=>({...r,date:d}))).sort((a,b)=>a.ts-b.ts)
+      :(cache.vitals.bp[days[0]]||[]);
     if(readings.length){
       const avg=bpAvg(readings);
       const cat=bpCategory(avg.systolic,avg.diastolic);
@@ -2925,18 +2929,17 @@ function renderDashboardVitals(){
         +'<div style="font-size:20px;font-weight:600;color:var(--text)">'+avg.systolic+'/'+avg.diastolic+' <span style="font-size:12px;color:var(--muted)">mmHg</span></div>'
         +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>'
         +'</div>'
-        +(readings.length>1?readings.map(r=>'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+r.systolic+'/'+r.diastolic+(r.time?' at '+r.time:'')+(isRange?' on '+r.date:'')+'</div>').join(''):'')
+        +(readings.length>0?readings.slice().reverse().map(r=>'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+r.systolic+'/'+r.diastolic+(r.time?' at '+r.time:'')+(isMultiDay?' on '+r.date:'')+'</div>').join(''):'')
         +'</div>';
     }else{html+='<div style="font-size:13px;color:var(--muted);margin-bottom:8px">&#10084;&#65039; No blood pressure readings for this period.</div>';}
   }
   if(s.trackBS){
-    const readings=isRange
-      ?getVitalsForRange('bs',customRangeStart,customRangeEnd)
-      :getVitalsForDate('bs',viewDate);
+    const readings=isMultiDay
+      ?days.flatMap(d=>(cache.vitals.bs[d]||[]).map(r=>({...r,date:d}))).sort((a,b)=>a.ts-b.ts)
+      :(cache.vitals.bs[days[0]]||[]);
     if(readings.length){
       const avg=bsAvg(readings);
       const cat=bsCategory(avg,null);
-      const ctxLabels={fasting:'Fasting',before_meal:'Before meal',after_breakfast:'After breakfast',after_lunch:'After lunch',after_dinner:'After dinner',after_snack:'After snack',random:'Random'};
       html+='<div style="margin-bottom:4px">'
         +'<div style="font-size:12px;color:var(--muted);margin-bottom:4px">&#129482; Blood sugar — '+rangeLabel+'</div>'
         +(readings.length>1?'<div style="font-size:11px;color:var(--muted);margin-bottom:6px">'+readings.length+' readings · average:</div>':'')
@@ -2944,7 +2947,7 @@ function renderDashboardVitals(){
         +'<div style="font-size:20px;font-weight:600;color:var(--text)">'+avg+' <span style="font-size:12px;color:var(--muted)">mg/dL</span></div>'
         +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>'
         +'</div>'
-        +(readings.length>1?readings.map(r=>'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+r.value+' mg/dL'+(r.context?' · '+(ctxLabels[r.context]||r.context):'')+(isRange?' on '+r.date:'')+'</div>').join(''):'')
+        +(readings.length>0?readings.slice().reverse().map(r=>'<div style="font-size:12px;color:var(--muted);margin-top:3px">'+r.value+' mg/dL'+(r.context?' · '+(ctxLabels[r.context]||r.context):'')+(isMultiDay?' on '+r.date:'')+'</div>').join(''):'')
         +'</div>';
     }else{html+='<div style="font-size:13px;color:var(--muted)">&#129482; No blood sugar readings for this period.</div>';}
   }
