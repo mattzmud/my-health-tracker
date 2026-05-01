@@ -1356,36 +1356,45 @@ async function generatePlan(){
     }
   }
   window._profile=profile;
-  // Now try AI workout generation with a 20-second timeout
+  // Run nutrition goals + workout plan in parallel — both independent
+  const nutritionPromise=callAI(
+    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80}\nProtein in grams, water in oz, net carbs in grams. Be specific to this person.',
+    'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
+  ).catch(()=>null);
+
+  const workoutPromise=callAI(
+    'You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.'
+  ).catch(()=>null);
+
+  // Await both with a shared 25s timeout
+  const timeout=new Promise(r=>setTimeout(r,25000));
+  await Promise.race([Promise.all([nutritionPromise,workoutPromise]),timeout]);
+
+  // Apply nutrition goals (independently of workout plan success)
   try{
-    // Run workout plan + nutrition goals in parallel
-    const nutritionPromise=callAI(
-      'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nReturn ONLY valid JSON with no explanation: {"proteinGoal":150,"waterGoal":96,"carbGoal":80}\nProtein in grams, water in oz, net carbs in grams. Be specific to this person.',
-      'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
-    );
-    const aiPromise=callAI('You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.');
-    const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),20000));
-    const res=await Promise.race([aiPromise,timeoutPromise]);
-    const parsed=JSON.parse(res.replace(/```json|```/g,'').trim());
-    if(parsed.plan&&parsed.plan.length>0){
-      window._profile.workoutPlan=parsed.plan;
-      // Also resolve nutrition goals
-      try{
-        const nutritionRes=await nutritionPromise;
-        const nm=nutritionRes.match(/\{[^}]+\}/);
-        if(nm){
-          const ng=JSON.parse(nm[0]);
-          if(ng.proteinGoal)window._profile.proteinGoal=Math.round(ng.proteinGoal);
-          if(ng.waterGoal)window._profile.waterGoal=Math.round(ng.waterGoal);
-          if(ng.carbGoal)window._profile.carbGoal=Math.round(ng.carbGoal);
-        }
-      }catch(e){}
-      await fbSet('profile','survey',window._profile);
+    const nutritionRes=await nutritionPromise;
+    if(nutritionRes){
+      const nm=nutritionRes.replace(/```json|```/g,'').trim().match(/\{[^}]+\}/);
+      if(nm){
+        const ng=JSON.parse(nm[0]);
+        if(ng.proteinGoal&&ng.proteinGoal>0)window._profile.proteinGoal=Math.round(ng.proteinGoal);
+        if(ng.waterGoal&&ng.waterGoal>0)window._profile.waterGoal=Math.round(ng.waterGoal);
+        if(ng.carbGoal&&ng.carbGoal>0)window._profile.carbGoal=Math.round(ng.carbGoal);
+      }
     }
-  }catch(e){
-    // AI failed or timed out — default plan already saved, just continue
-    console.log('AI plan generation skipped, using default plan');
-  }
+  }catch(e){}
+
+  // Apply workout plan (independently of nutrition goals success)
+  try{
+    const workoutRes=await workoutPromise;
+    if(workoutRes){
+      const parsed=JSON.parse(workoutRes.replace(/```json|```/g,'').trim());
+      if(parsed.plan&&parsed.plan.length>0)window._profile.workoutPlan=parsed.plan;
+    }
+  }catch(e){}
+
+  // Single save with both results applied
+  await fbSet('profile','survey',window._profile);
   // Save avatar photo if provided during onboarding
   if(obData.ob_photo_data){
     await fbSet('profile','avatar',{img:obData.ob_photo_data});
