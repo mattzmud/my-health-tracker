@@ -591,30 +591,32 @@ async function obNext(){
 
 async function generatePlan(){
   const profile=buildProfileFromObData();
+  // Save profile immediately with default plan so refresh doesn't get stuck
+  profile.workoutPlan=getDefaultWorkoutPlan();
+  profile.completed=true;
+  profile.createdAt=TODAY;
+  await fbSet('profile','survey',profile);
+  // Save medications
+  const medsAm=(obData.ob_meds_am||'').split('\n').map(m=>m.trim()).filter(Boolean);
+  const medsPm=(obData.ob_meds_pm||'').split('\n').map(m=>m.trim()).filter(Boolean);
+  const allMeds={};
+  medsAm.forEach(m=>{allMeds['am-'+m]={name:m,time:'am'};});
+  medsPm.forEach(m=>{allMeds['pm-'+m]={name:m,time:'pm'};});
+  if(Object.keys(allMeds).length>0)await fbSet('medications','list',{meds:allMeds});
+  window._profile=profile;
+  // Now try AI workout generation with a 20-second timeout
   try{
-    const res=await callAI(`You are a fitness coach. Create a personalized 7-day weekly workout plan for:
-Name: ${profile.name}, Age: ${profile.age}, Weight: ${profile.currentWeight}lbs, Goal: ${profile.goalWeight}lbs
-Conditions: ${profile.conditions.join(', ')||'None'}, Goals: ${profile.fitnessGoals.join(', ')}
-Activity level: ${profile.activityLevel}, Equipment: ${profile.equipment}
-Injuries: ${profile.injuries||'None'}, Session time: ${profile.sessionTime}
-Create structured 7-day plan. Format as JSON ONLY:
-{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}
-Return ONLY valid JSON.`);
-    let workoutPlan=[];
-    try{const p=JSON.parse(res.replace(/```json|```/g,'').trim());workoutPlan=p.plan||[];}
-    catch(e){workoutPlan=getDefaultWorkoutPlan();}
-    const surveyData={...profile,workoutPlan,completed:true,createdAt:TODAY};
-    await fbSet('profile','survey',surveyData);
-    const medsAm=(obData.ob_meds_am||'').split('\n').map(m=>m.trim()).filter(Boolean);
-    const medsPm=(obData.ob_meds_pm||'').split('\n').map(m=>m.trim()).filter(Boolean);
-    const allMeds={};
-    medsAm.forEach(m=>{allMeds['am-'+m]={name:m,time:'am'};});
-    medsPm.forEach(m=>{allMeds['pm-'+m]={name:m,time:'pm'};});
-    if(Object.keys(allMeds).length>0)await fbSet('medications','list',{meds:allMeds});
-    window._profile=surveyData;
+    const aiPromise=callAI('You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.');
+    const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),20000));
+    const res=await Promise.race([aiPromise,timeoutPromise]);
+    const parsed=JSON.parse(res.replace(/```json|```/g,'').trim());
+    if(parsed.plan&&parsed.plan.length>0){
+      window._profile.workoutPlan=parsed.plan;
+      await fbSet('profile','survey',window._profile);
+    }
   }catch(e){
-    const p2=buildProfileFromObData();p2.workoutPlan=getDefaultWorkoutPlan();p2.completed=true;p2.createdAt=TODAY;
-    await fbSet('profile','survey',p2);window._profile=p2;
+    // AI failed or timed out — default plan already saved, just continue
+    console.log('AI plan generation skipped, using default plan');
   }
   document.getElementById('generating-screen').classList.remove('active');
   showApp();window.appInit();
@@ -648,7 +650,7 @@ window.appInit=async function(){
   document.getElementById('dash-greeting').textContent=greeting;
   document.getElementById('dash-date').textContent=formatDate(TODAY);
   document.getElementById('meds-date-label').textContent=formatDate(TODAY);
-  document.getElementById('welcome-title').textContent='Your Journey, '+p.name+' \uD83D\uDCAA';
+  document.getElementById('welcome-title').textContent='Your Journey, '+p.name+'!';
   document.getElementById('welcome-sub').textContent='Every step counts. You\'re working toward '+p.goalWeight+' lbs and a healthier, more energized life.';
   document.getElementById('chat-welcome').textContent='Hey '+p.name+'! I\'m your personal health coach. I know your goals, your plan, and your preferences. Ask me anything — recipes, exercise form, grocery help, or to update your workout plan!';
   setSyncStatus('syncing');
