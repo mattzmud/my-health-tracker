@@ -640,7 +640,10 @@ async function changeDateAsync(delta){
 function updateDateNav(){
   const isToday=viewDate===TODAY;
   const label=isToday?'Today':formatDate(viewDate);
-  document.querySelectorAll('.date-nav-label').forEach(el=>el.textContent=label);
+  document.querySelectorAll('.date-nav-label').forEach(el=>{
+    // Preserve the onclick and just update the text, keeping the calendar icon
+    el.innerHTML=escHtml(label)+' &#128197;';
+  });
   document.querySelectorAll('.date-nav-next').forEach(el=>el.disabled=isToday);
   document.getElementById('meds-date-label').textContent=isToday?'Today':formatDate(viewDate);
 }
@@ -921,8 +924,8 @@ function openDatePicker(labelEl){
     <input type="date" id="date-pick-input" style="margin-bottom:18px" max="${TODAY}" value="${viewDate}"/>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
       <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpToDate('${TODAY}');this.closest('.date-picker-modal').remove()">Today</button>
-      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpRelative(-7);this.closest('.date-picker-modal').remove()">-7 days</button>
-      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpRelative(-30);this.closest('.date-picker-modal').remove()">-30 days</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpRelative(-7);this.closest('.date-picker-modal').remove()">Last 7 days</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpRelative(-30);this.closest('.date-picker-modal').remove()">Last 30 days</button>
     </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.date-picker-modal').remove()">Cancel</button>
