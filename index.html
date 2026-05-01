@@ -1929,7 +1929,7 @@ const MEAL_ORDER=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late n
 function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML='';
-  const entries=cache.food[goalsDate]||[];
+  const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   const p=window._profile||{};
   const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100;
