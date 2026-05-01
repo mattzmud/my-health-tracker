@@ -326,11 +326,29 @@ textarea{min-height:80px;}
         <div id="favorites-list"><div style="font-size:13px;color:var(--muted)">No favorites yet. Log food and save items you eat regularly!</div></div>
       </div>
       <div class="card">
-        <div class="card-title">Today's log</div>
-        <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap">
-          <div><span style="font-size:13px;color:var(--muted)">Protein: </span><span id="food-protein-total" style="font-size:15px;font-weight:600;color:var(--blue)">0g</span></div>
-          <div><span style="font-size:13px;color:var(--muted)">Water: </span><span id="food-water-total" style="font-size:15px;font-weight:600;color:var(--green)">0 oz</span></div>
-          <div><span style="font-size:13px;color:var(--muted)">Net carbs: </span><span id="food-carb-total" style="font-size:15px;font-weight:600;color:var(--amber)">0g</span></div>
+        <div class="card-title" id="food-log-title">Today's log</div>
+        <div style="margin-bottom:16px">
+          <div class="prog-wrap">
+            <div class="prog-label">
+              <span>&#128167; Protein</span>
+              <span><span id="food-protein-total" style="color:var(--blue);font-weight:600">0g</span> <span id="food-protein-goal-label" style="color:var(--muted)">/ 120g</span></span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-protein" style="width:0%;background:var(--blue)"></div></div>
+          </div>
+          <div class="prog-wrap" style="margin-top:10px">
+            <div class="prog-label">
+              <span>&#128166; Water</span>
+              <span><span id="food-water-total" style="color:var(--green);font-weight:600">0 oz</span> <span id="food-water-goal-label" style="color:var(--muted)">/ 80 oz</span></span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-water" style="width:0%;background:var(--green)"></div></div>
+          </div>
+          <div class="prog-wrap" style="margin-top:10px">
+            <div class="prog-label">
+              <span>&#127859; Net carbs</span>
+              <span><span id="food-carb-total" style="color:var(--amber);font-weight:600">0g</span> <span id="food-carb-goal-label" style="color:var(--muted)">/ 100g limit</span></span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-carb" style="width:0%;background:var(--amber)"></div></div>
+          </div>
         </div>
         <div id="food-entries"><div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet today.</div></div>
         <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="clearTodayFood()">Clear today's log</button>
@@ -864,41 +882,49 @@ function buildUserContext(){
 
 // ── FOOD DIARY ──────────────────────────────────────────────
 async function logFood(){
-  const text=document.getElementById('food-input').value.trim();
+  const rawText=document.getElementById('food-input').value.trim();
   const woz=parseFloat(document.getElementById('water-log').value)||0;
   const mt=document.getElementById('meal-time').value;
-  if(!text&&woz===0){alert('Please describe what you ate or enter water oz.');return;}
+  if(!rawText&&woz===0){alert('Please describe what you ate or enter water oz.');return;}
+  const items=rawText?rawText.split(',').map(s=>s.trim()).filter(Boolean):[];
+  if(items.length===0&&woz>0)items.push('');
   const btn=document.getElementById('log-food-btn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing...';
   document.getElementById('food-feedback').innerHTML='';
+  if(!cache.food[TODAY])cache.food[TODAY]=[];
   try{
+    const itemList=items.length>0?items.join(', '):'Nothing food-wise, just water.';
     const res=await callAI(
-      'I just ate ('+mt+'): '+(text||'Nothing food-wise, just water.')+(woz>0?' Also drank '+woz+' oz of water.':''),
-      'You are a nutrition coach. '+buildUserContext()+'\n\nEstimate protein(g), net carbs(g), calories. Give 2-3 sentences warm personalized feedback. End ONLY with: {"protein":30,"carbs":15,"calories":300}. Under 130 words total.'
+      'I just ate ('+mt+'): '+itemList+(woz>0?' Also drank '+woz+' oz of water.':''),
+      'You are a nutrition coach. '+buildUserContext()+'\n\nEstimate TOTAL protein(g), net carbs(g), calories for all items combined. Give 2-3 sentences warm personalized feedback. End ONLY with: {"protein":30,"carbs":15,"calories":300}. Under 130 words total.'
     );
-    let p=0,c=0,cal=0;
+    let totalP=0,totalC=0,totalCal=0;
     const jm=res.match(/\{"protein"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"carbs"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"calories"\s*:\s*(\d+(?:\.\d+)?)\}/);
-    if(jm){p=parseFloat(jm[1]);c=parseFloat(jm[2]);cal=parseFloat(jm[3]);}
+    if(jm){totalP=parseFloat(jm[1]);totalC=parseFloat(jm[2]);totalCal=parseFloat(jm[3]);}
     const displayText=res.replace(/```json|```/g,'').replace(/\{[^}]*\}/,'').trim();
-    if(!cache.food[TODAY])cache.food[TODAY]=[];
-    cache.food[TODAY].push({time:mt,text:text||'(water only)',protein:p,carbs:c,calories:cal,water:woz,ts:Date.now()});
+    const perItem=items.length||1;
+    items.forEach((item,i)=>{
+      cache.food[TODAY].push({time:mt,text:item||'(water only)',protein:Math.round(totalP/perItem*10)/10,carbs:Math.round(totalC/perItem*10)/10,calories:Math.round(totalCal/perItem),water:i===0?woz:0,ts:Date.now()+i});
+    });
     await fbSet('food',TODAY,{entries:cache.food[TODAY],date:TODAY});
-    const idx=cache.food[TODAY].length-1;
-    document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">&#127807; '+escHtml(displayText)+'<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(126,184,164,0.2)"><button class="btn btn-ghost btn-sm" onclick="saveFavorite('+idx+')" style="font-size:12px">&#11088; Save to favorites</button></div></div>';
+    document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">&#127807; '+escHtml(displayText)+'</div>';
     document.getElementById('food-input').value='';document.getElementById('water-log').value='';
     renderFoodEntries();
   }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
 }
 
-async function saveFavorite(idx){
-  const entry=cache.food[TODAY][idx];if(!entry)return;
+async function saveFavorite(idx,date){
+  const d=date||viewDate;
+  const entry=(cache.food[d]||[])[idx];if(!entry)return;
   if(cache.favorites.find(f=>f.text===entry.text&&f.time===entry.time)){
-    event.target.textContent='Already saved!';return;
+    const btn=event.target.closest('button')||event.target;
+    btn.textContent='Already saved!';return;
   }
   cache.favorites.push({text:entry.text,time:entry.time,protein:entry.protein,carbs:entry.carbs,calories:entry.calories,id:Date.now()});
   await fbSet('favorites','list',{items:cache.favorites});
   renderFavorites();
-  event.target.textContent='&#10003; Saved!';event.target.disabled=true;
+  const btn=event.target.closest('button')||event.target;
+  btn.textContent='&#10003; Saved!';btn.disabled=true;
 }
 
 function addFavoriteToLog(idx){
@@ -942,13 +968,33 @@ async function analyzeDayFood(){
 function renderFoodEntries(){
   const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
+  const p=window._profile||{};
+  const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100;
   document.getElementById('food-protein-total').textContent=Math.round(tp)+'g';
   document.getElementById('food-water-total').textContent=Math.round(tw)+' oz';
   document.getElementById('food-carb-total').textContent=Math.round(tc)+'g';
+  document.getElementById('food-protein-goal-label').textContent='/ '+pg+'g goal';
+  document.getElementById('food-water-goal-label').textContent='/ '+wg+' oz goal';
+  document.getElementById('food-carb-goal-label').textContent='/ '+cg+'g limit';
+  document.getElementById('food-prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
+  document.getElementById('food-prog-water').style.width=Math.min(100,(tw/wg)*100)+'%';
+  // Carb bar turns red if over limit
+  const carbPct=Math.min(100,(tc/cg)*100);
+  const carbBar=document.getElementById('food-prog-carb');
+  carbBar.style.width=carbPct+'%';
+  carbBar.style.background=tc>cg?'var(--red)':'var(--amber)';
+  // Update log title to reflect date
+  const logTitle=document.getElementById('food-log-title');
+  if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
   const el=document.getElementById('food-entries');
   const isPast=viewDate!==TODAY;
   if(!entries.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">'+(isPast?'No food logged on this day.':'Nothing logged yet today.')+'</div>';return;}
-  el.innerHTML=entries.map((e,i)=>'<div class="food-entry"><div class="food-time">'+e.time+'</div><div style="flex:1"><div style="font-size:14px;color:var(--text)">'+escHtml(e.text)+'</div><div style="font-size:12px;margin-top:3px">'+(e.protein?'<span class="pill pill-blue" style="font-size:11px">~'+Math.round(e.protein)+'g protein</span> ':'')+(e.carbs?'<span class="pill pill-amber" style="font-size:11px">~'+Math.round(e.carbs)+'g carbs</span> ':'')+(e.water?'<span class="pill pill-green" style="font-size:11px">'+e.water+' oz water</span>':'')+'</div></div>'+(isPast?'':'<div class="food-delete" onclick="deleteEntry('+i+')">&#215;</div>')+'</div>').join('');
+  el.innerHTML=entries.map((e,i)=>{
+    const macros=(e.protein?'<span class="pill pill-blue" style="font-size:11px">~'+Math.round(e.protein)+'g protein</span> ':'')+(e.carbs?'<span class="pill pill-amber" style="font-size:11px">~'+Math.round(e.carbs)+'g carbs</span> ':'')+(e.water?'<span class="pill pill-green" style="font-size:11px">'+e.water+' oz water</span>':'');
+    const favBtn='<button onclick="saveFavorite('+i+',\''+viewDate+'\');event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;transition:color 0.2s" title="Save to favorites" onmouseover="this.style.color=\'var(--amber)\'" onmouseout="this.style.color=\'var(--muted)\'">&#11088;</button>';
+    const delBtn=isPast?'':'<button onclick="deleteEntry('+i+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px;transition:color 0.2s" title="Remove" onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--muted)\'">&#215;</button>';
+    return'<div class="food-entry"><div class="food-time">'+e.time+'</div><div style="flex:1"><div style="font-size:14px;color:var(--text)">'+escHtml(e.text)+'</div><div style="font-size:12px;margin-top:3px">'+macros+'</div></div><div style="display:flex;align-items:center;gap:2px">'+favBtn+delBtn+'</div></div>';
+  }).join('');
 }
 async function deleteEntry(i){if(!cache.food[viewDate])return;cache.food[viewDate].splice(i,1);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
 async function clearTodayFood(){if(!confirm('Clear all food entries for this day?'))return;cache.food[viewDate]=[];await fbSet('food',viewDate,{entries:[],date:viewDate});renderFoodEntries();document.getElementById('food-feedback').innerHTML='';}
