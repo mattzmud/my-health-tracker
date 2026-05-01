@@ -988,6 +988,7 @@ function changeDate(delta){
 }
 
 const _loadedDates=new Set();
+const _loadedVitalDates=new Set();
 async function ensureDateLoaded(date){
   if(_loadedDates.has(date))return;
   _loadedDates.add(date);
@@ -2658,7 +2659,6 @@ function getVitalsForRange(type, startDate, endDate){
   return all.sort((a,b)=>a.ts-b.ts);
 }
 
-const _loadedVitalDates=new Set();
 async function ensureVitalsLoaded(date){
   if(_loadedVitalDates.has(date))return;
   _loadedVitalDates.add(date);
@@ -2838,6 +2838,34 @@ async function logBloodSugar(){
   btn.disabled=false;btn.textContent='Log blood sugar';
   renderBSHistory();
   renderDashboardVitals();
+}
+
+function bpCategory(sys,dia){
+  if(sys<120&&dia<80)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+  if(sys<130&&dia<80)return{label:'Elevated',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+  if(sys>=180||dia>=120)return{label:'Crisis',bg:'rgba(176,48,48,0.2)',color:'var(--red)'};
+  if(sys<140||dia<90)return{label:'High Stage 1',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+  return{label:'High Stage 2',bg:'rgba(176,48,48,0.15)',color:'var(--red)'};
+}
+
+function bsCategory(val,ctx){
+  const isAfterMeal=ctx&&(ctx.startsWith('after')||ctx==='after_snack');
+  const isFasting=ctx==='fasting'||ctx==='before_meal';
+  if(isFasting){
+    if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+    if(val<=99)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+    if(val<=125)return{label:'Pre-diabetic',bg:'rgba(138,106,26,0.15)',color:'var(--amber)'};
+    return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+  }
+  if(isAfterMeal){
+    if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+    if(val<=139)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+    if(val<=199)return{label:'Elevated',bg:'rgba(138,106,26,0.15)',color:'var(--amber)'};
+    return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+  }
+  if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+  if(val<=140)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+  return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
 }
 
 function renderDashboardVitals(){
