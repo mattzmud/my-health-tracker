@@ -875,16 +875,15 @@ function refreshDashboard(){
   document.getElementById('prog-ex').style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
   document.getElementById('prog-ex-label').textContent=exDone+' / '+todayPlan.exercises.length+' done';
   const ms=cache.meds[viewDate]||{};
-  // Count each med once (exclude weekly 'wk' and as-needed 'prn')
-  // A med is "done" if ALL its daily time slots are checked
+  // Count each daily time slot as one dose (am, af, pm only — exclude wk and prn)
   const dailyTimes=['am','af','pm'];
   let totalMedChecks=0,doneMedChecks=0;
   Object.values(cache.medsList||{}).forEach(med=>{
     const dailySlots=(med.times||['am']).filter(t=>dailyTimes.includes(t));
-    if(dailySlots.length===0)return;// skip weekly/prn
-    totalMedChecks++;
-    const allDone=dailySlots.every(t=>ms[t+'-'+(med.id||med.name)]);
-    if(allDone)doneMedChecks++;
+    dailySlots.forEach(t=>{
+      totalMedChecks++;
+      if(ms[t+'-'+(med.id||med.name)])doneMedChecks++;
+    });
   });
   document.getElementById('prog-meds').style.width=totalMedChecks?(doneMedChecks/totalMedChecks)*100+'%':'0%';
   document.getElementById('prog-meds-label').textContent=doneMedChecks+' / '+totalMedChecks+' taken';
