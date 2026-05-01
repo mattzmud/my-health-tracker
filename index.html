@@ -188,6 +188,10 @@ textarea{min-height:80px;}
 .range-btn:hover{color:var(--text);border-color:var(--accent);}
 .range-btn.active{background:var(--accent);color:#ffffff;border-color:var(--accent);}
 .date-picker-modal{position:fixed;inset:0;background:rgba(30,25,15,0.5);z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;}
+.bs-context-grid{display:flex;flex-wrap:wrap;gap:8px;}
+.bs-ctx-btn{padding:7px 14px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:13px;cursor:pointer;font-family:var(--font-body);transition:all 0.18s;}
+.bs-ctx-btn:hover{border-color:var(--accent);color:var(--text);}
+.bs-ctx-btn.selected{background:var(--accent);color:#fff;border-color:var(--accent);}
 .date-picker-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:28px;max-width:340px;width:100%;animation:fadeUp 0.2s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 ::-webkit-scrollbar{width:5px;height:5px;}
@@ -297,6 +301,9 @@ textarea{min-height:80px;}
     <button class="nav-btn" onclick="showSection('meds')" id="nav-meds">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg><span>Meds</span>
     </button>
+    <button class="nav-btn" onclick="showSection('vitals')" id="nav-vitals" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg><span>Vitals</span>
+    </button>
     <button class="nav-btn" onclick="showSection('grocery')" id="nav-grocery">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg><span>Grocery</span>
     </button>
@@ -326,6 +333,9 @@ textarea{min-height:80px;}
     </button>
     <button class="mobile-menu-btn" id="mob-meds" onclick="showSection('meds');closeMobileMenu()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>Medications
+    </button>
+    <button class="mobile-menu-btn" id="mob-vitals" onclick="showSection('vitals');closeMobileMenu()" style="display:none">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Vitals
     </button>
     <button class="mobile-menu-btn" id="mob-grocery" onclick="showSection('grocery');closeMobileMenu()">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>Grocery List
@@ -418,12 +428,83 @@ textarea{min-height:80px;}
         </div>
       </div>
       <!-- BADGES -->
+      <!-- Vitals dashboard card (shown only when tracking enabled) -->
+      <div class="card" id="dashboard-vitals-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin:0">&#128147; Latest vitals</div>
+          <button class="btn btn-ghost btn-sm" onclick="showSection('vitals')">View all</button>
+        </div>
+        <div id="dashboard-vitals-content"></div>
+      </div>
+
       <div class="card" id="badges-card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div class="card-title" style="margin:0">&#127942; Badges earned</div>
           <span id="badge-count" style="font-size:13px;color:var(--muted)">Loading...</span>
         </div>
         <div id="badges-display"><div style="font-size:13px;color:var(--muted)">Keep logging to earn your first badge!</div></div>
+      </div>
+    </section>
+
+    <!-- VITALS -->
+    <section id="sec-vitals" class="section">
+      <div class="sec-header"><div class="sec-title">&#128147; Vitals</div><div class="sec-sub">Track your blood pressure and blood sugar over time.</div></div>
+
+      <!-- Date nav -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
+        <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
+        <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
+      </div>
+
+      <!-- Blood Pressure -->
+      <div class="card" id="bp-card" style="display:none">
+        <div class="card-title">&#10084;&#65039; Blood Pressure</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Normal: below 120/80 mmHg</div>
+        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:14px">
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Systolic (top)</label>
+            <input type="number" id="bp-systolic" placeholder="e.g. 118" style="width:110px" min="60" max="250"/>
+          </div>
+          <div style="font-size:24px;color:var(--muted);padding-bottom:8px">/</div>
+          <div>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Diastolic (bottom)</label>
+            <input type="number" id="bp-diastolic" placeholder="e.g. 76" style="width:110px" min="40" max="150"/>
+          </div>
+          <div style="padding-bottom:6px;font-size:13px;color:var(--muted)">mmHg</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="logBloodPressure()" id="log-bp-btn">Log blood pressure</button>
+        <div id="bp-feedback" style="margin-top:12px"></div>
+        <div id="bp-history" style="margin-top:16px"></div>
+      </div>
+
+      <!-- Blood Sugar -->
+      <div class="card" id="bs-card" style="display:none">
+        <div class="card-title">&#129482; Blood Sugar</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Normal fasting: 70–99 mg/dL &nbsp;·&nbsp; Normal after meal: under 140 mg/dL</div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Blood sugar level (mg/dL)</label>
+          <input type="number" id="bs-value" placeholder="e.g. 105" style="max-width:150px" min="30" max="600"/>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:500">When are you logging this?</div>
+          <div class="bs-context-grid" id="bs-context-grid">
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'fasting')">Fasting (nothing eaten 8+ hrs)</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'before_meal')">Before a meal</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_breakfast')">After breakfast</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_lunch')">After lunch</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_dinner')">After dinner</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_snack')">After a snack</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'random')">Random / not sure</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="logBloodSugar()" id="log-bs-btn">Log blood sugar</button>
+        <div id="bs-feedback" style="margin-top:12px"></div>
+        <div id="bs-history" style="margin-top:16px"></div>
+      </div>
+
+      <div id="vitals-empty" style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">
+        No vitals tracking enabled. Enable blood pressure or blood sugar tracking in your <button onclick="showSection('profile')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:14px;font-family:var(--font-body)">Profile settings</button>.
       </div>
     </section>
 
@@ -456,6 +537,28 @@ textarea{min-height:80px;}
       <div class="card">
         <div class="card-title">&#127942; My badges</div>
         <div id="profile-badges-display"><div style="font-size:13px;color:var(--muted)">No badges yet — keep going!</div></div>
+      </div>
+
+      <!-- Vitals tracking settings -->
+      <div class="card">
+        <div class="card-title">&#128147; Vitals tracking</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Enable the vitals you want to track. A Vitals tab will appear in the navigation.</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer">
+            <input type="checkbox" id="toggle-bp" onchange="saveVitalSettings()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer"/>
+            <div>
+              <div style="font-size:14px;font-weight:500;color:var(--text)">&#10084;&#65039; Blood pressure</div>
+              <div style="font-size:12px;color:var(--muted)">Log systolic/diastolic readings with AI feedback</div>
+            </div>
+          </label>
+          <label style="display:flex;align-items:center;gap:12px;cursor:pointer">
+            <input type="checkbox" id="toggle-bs" onchange="saveVitalSettings()" style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer"/>
+            <div>
+              <div style="font-size:14px;font-weight:500;color:var(--text)">&#129482; Blood sugar</div>
+              <div style="font-size:12px;color:var(--muted)">Log glucose readings with meal context and AI feedback</div>
+            </div>
+          </label>
+        </div>
       </div>
 
       <!-- Change password -->
@@ -908,6 +1011,7 @@ function showSection(name){
   if(name==='grocery')renderGroceryList();
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
   if(name==='profile')renderProfile();
+  if(name==='vitals')renderVitals();
 }
 
 // ── ONBOARDING ──────────────────────────────────────────────
@@ -928,6 +1032,8 @@ const OB_STEPS=[
   {id:'lifestyle',title:'A bit more about you',sub:'The more we know, the better your plan will be.',
    single_label:'Time per exercise session?',single:['15-20 minutes','20-30 minutes','30-45 minutes','45-60 minutes'],
    fields:[{id:'ob_job',label:'What do you do for work?',type:'text',placeholder:'e.g. work from home at a desk, nurse, teacher'},{id:'ob_notes',label:'Anything else your coach should know?',type:'textarea',placeholder:'e.g. I have a sweet tooth, I love walking outdoors...'}]},
+  {id:'vitals',title:'Optional health tracking',sub:'Would you like to track any of the following? You can always change this later in your Profile.',
+   multi:['Blood pressure','Blood sugar']},
   {id:'photo',title:'Add a profile photo',sub:'Optional — add a photo that will appear on your dashboard. You can always change it later.',
    fields:[{id:'ob_photo',label:'',type:'photo',placeholder:''}]}
 ];
@@ -1064,12 +1170,19 @@ async function generatePlan(){
   if(obData.ob_photo_data){
     await fbSet('profile','avatar',{img:obData.ob_photo_data});
   }
+  // Save vitals settings from onboarding
+  const vsData={
+    trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),
+    trackBS:(obData.vitals_multi||[]).includes('Blood sugar')
+  };
+  cache.vitalSettings=vsData;
+  await fbSet('vitals','settings',vsData);
   document.getElementById('generating-screen').style.display='none';
   showApp();window.appInit();
 }
 
 function buildProfileFromObData(){
-  return{name:obData.ob_name||'Friend',age:parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100};
+  return{name:obData.ob_name||'Friend',age:parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar')};
 }
 
 function getDefaultWorkoutPlan(){
@@ -1087,7 +1200,7 @@ function getDefaultWorkoutPlan(){
 function showApp(){document.getElementById('app-screen').style.display='block';}
 
 // ── CACHE ──────────────────────────────────────────────────
-let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[]};
+let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:[],bs:[]},vitalSettings:{trackBP:false,trackBS:false}};
 
 window.appInit=async function(){
   // Close mobile menu when tapping outside
@@ -1156,6 +1269,12 @@ window.appInit=async function(){
   // Load journal entries
   const jc=await fbGetCol('journal');Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;});
   const bc=await fbGet('badges','earned');cache.badges=bc?(bc.list||[]):[];
+  const vs=await fbGet('vitals','settings');
+  cache.vitalSettings=vs||{trackBP:false,trackBS:false};
+  if(cache.vitalSettings.trackBP||cache.vitalSettings.trackBS){
+    const bpd=await fbGet('vitals','bp');cache.vitals.bp=bpd?(bpd.readings||[]):[];
+    const bsd=await fbGet('vitals','bs');cache.vitals.bs=bsd?(bsd.readings||[]):[];
+  }
   setSyncStatus('synced');
   refreshDashboard();renderFoodEntries();renderFavorites();
   selectedFitnessDay=getActiveFitnessDay();
@@ -1163,6 +1282,7 @@ window.appInit=async function(){
   initChat();
   await checkAndAwardBadges();
   renderBadges();
+  applyVitalSettings();
   await checkMidnightAnalysis();
   await checkFirstLoginOfDay();
   scheduleMidnightAnalysis();
@@ -1232,6 +1352,7 @@ function refreshDashboard(){
     if(cache.weights.length>1){const diff=+(cache.weights[cache.weights.length-1].val-cache.weights[cache.weights.length-2].val).toFixed(1);wh.innerHTML+='<div style="font-size:12px;color:'+(diff<0?'var(--green)':diff>0?'var(--red)':'var(--muted)')+'">vs last: '+(diff>0?'+':'')+diff+' lbs</div>';}
   }
   renderWeightChart();renderProteinChart();renderWaterChart();
+  renderDashboardVitals();
 }
 async function logWeight(){
   const v=parseFloat(document.getElementById('weight-input').value);
@@ -1239,7 +1360,7 @@ async function logWeight(){
   cache.weights.push({date:TODAY,val:v});await fbSet('weights',TODAY,{val:v,date:TODAY});
   document.getElementById('weight-input').value='';refreshDashboard();
 }
-function co(){return{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8a8fa8',font:{family:'DM Sans'}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#8a8fa8',font:{family:'DM Sans'}}}}};}
+function co(){return{responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}}}};}
 function renderWeightChart(){
   const ctx=document.getElementById('weight-chart').getContext('2d');if(weightChart)weightChart.destroy();
   const gw=(window._profile||{}).goalWeight||130;
@@ -1627,7 +1748,7 @@ function toggleWeeklyView(){
     if(btn)btn.textContent='&#128197; View full week';
     return;
   }
-  if(btn)btn.textContent='&#215; Hide full week';
+  if(btn)btn.textContent='✕ Hide full week';
   container.style.display='block';
   const plan=(window._profile&&window._profile.workoutPlan)||[];
   const colors=['#556b2f','#7a9a3a','#8a6a1a','#2a5a8a','#5a3a8a','#8a3a3a','#3a6a5a'];
@@ -2169,6 +2290,211 @@ async function changePassword(){
     showMsg('password-msg',m,'error');
   }
   if(btn){btn.disabled=false;btn.textContent='Update password';}
+}
+
+// ── VITALS ───────────────────────────────────────────────────
+let selectedBsContext = null;
+
+function applyVitalSettings(){
+  const s=cache.vitalSettings||{};
+  const showVitals=s.trackBP||s.trackBS;
+  // Show/hide nav
+  const navBtn=document.getElementById('nav-vitals');
+  const mobBtn=document.getElementById('mob-vitals');
+  if(navBtn)navBtn.style.display=showVitals?'':'none';
+  if(mobBtn)mobBtn.style.display=showVitals?'':'none';
+  // Sync profile checkboxes
+  const cbBP=document.getElementById('toggle-bp');
+  const cbBS=document.getElementById('toggle-bs');
+  if(cbBP)cbBP.checked=!!s.trackBP;
+  if(cbBS)cbBS.checked=!!s.trackBS;
+}
+
+async function saveVitalSettings(){
+  const trackBP=document.getElementById('toggle-bp')?.checked||false;
+  const trackBS=document.getElementById('toggle-bs')?.checked||false;
+  cache.vitalSettings={trackBP,trackBS};
+  await fbSet('vitals','settings',{trackBP,trackBS});
+  applyVitalSettings();
+}
+
+function selectBsContext(btn,ctx){
+  document.querySelectorAll('.bs-ctx-btn').forEach(b=>b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedBsContext=ctx;
+}
+
+function renderVitals(){
+  const s=cache.vitalSettings||{};
+  const bpCard=document.getElementById('bp-card');
+  const bsCard=document.getElementById('bs-card');
+  const emptyEl=document.getElementById('vitals-empty');
+  if(bpCard)bpCard.style.display=s.trackBP?'block':'none';
+  if(bsCard)bsCard.style.display=s.trackBS?'block':'none';
+  if(emptyEl)emptyEl.style.display=(s.trackBP||s.trackBS)?'none':'block';
+  if(s.trackBP)renderBPHistory();
+  if(s.trackBS)renderBSHistory();
+}
+
+function renderBPHistory(){
+  const el=document.getElementById('bp-history');if(!el)return;
+  const readings=(cache.vitals.bp||[]).slice(-7).reverse();
+  if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No readings logged yet.</div>';return;}
+  el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">Recent readings</div>'
+    +readings.map(r=>{
+      const cat=bpCategory(r.systolic,r.diastolic);
+      return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.systolic+'/'+r.diastolic+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mmHg</span></div>'
+        +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
+        +'<div style="font-size:12px;color:var(--muted)">'+r.date+(r.time?' '+r.time:'')+'</div>'
+      +'</div>';
+    }).join('');
+}
+
+function renderBSHistory(){
+  const el=document.getElementById('bs-history');if(!el)return;
+  const readings=(cache.vitals.bs||[]).slice(-7).reverse();
+  if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No readings logged yet.</div>';return;}
+  const ctxLabels={fasting:'Fasting',before_meal:'Before meal',after_breakfast:'After breakfast',after_lunch:'After lunch',after_dinner:'After dinner',after_snack:'After snack',random:'Random'};
+  el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">Recent readings</div>'
+    +readings.map(r=>{
+      const cat=bsCategory(r.value,r.context);
+      return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.value+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mg/dL</span>'
+        +(r.context?'<div style="font-size:11px;color:var(--muted)">'+ctxLabels[r.context]+'</div>':'')
+        +'</div>'
+        +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
+        +'<div style="font-size:12px;color:var(--muted)">'+r.date+'</div>'
+      +'</div>';
+    }).join('');
+}
+
+function bpCategory(sys,dia){
+  if(sys<120&&dia<80)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+  if(sys<130&&dia<80)return{label:'Elevated',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+  if(sys<140||dia<90)return{label:'High Stage 1',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+  if(sys>=180||dia>=120)return{label:'Crisis',bg:'rgba(176,48,48,0.2)',color:'var(--red)'};
+  return{label:'High Stage 2',bg:'rgba(176,48,48,0.15)',color:'var(--red)'};
+}
+
+function bsCategory(val,ctx){
+  const isAfterMeal=ctx&&(ctx.startsWith('after')||ctx==='after_snack');
+  const isFasting=ctx==='fasting'||ctx==='before_meal';
+  if(isFasting){
+    if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+    if(val<=99)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+    if(val<=125)return{label:'Pre-diabetic',bg:'rgba(138,106,26,0.15)',color:'var(--amber)'};
+    return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+  }
+  if(isAfterMeal){
+    if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+    if(val<=139)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+    if(val<=199)return{label:'Elevated',bg:'rgba(138,106,26,0.15)',color:'var(--amber)'};
+    return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+  }
+  // General
+  if(val<70)return{label:'Low',bg:'rgba(138,106,26,0.12)',color:'var(--amber)'};
+  if(val<=140)return{label:'Normal',bg:'rgba(85,107,47,0.12)',color:'var(--green)'};
+  return{label:'High',bg:'rgba(176,48,48,0.12)',color:'var(--red)'};
+}
+
+async function logBloodPressure(){
+  const sys=parseInt(document.getElementById('bp-systolic').value);
+  const dia=parseInt(document.getElementById('bp-diastolic').value);
+  if(!sys||!dia||sys<60||sys>250||dia<40||dia>150){
+    document.getElementById('bp-feedback').innerHTML='<div class="msg-box error" style="display:block">Please enter valid blood pressure values.</div>';
+    return;
+  }
+  const btn=document.getElementById('log-bp-btn');btn.disabled=true;btn.textContent='Analyzing...';
+  const now=new Date();
+  const reading={systolic:sys,diastolic:dia,date:TODAY,time:now.getHours()+':'+String(now.getMinutes()).padStart(2,'0'),ts:Date.now()};
+  cache.vitals.bp.push(reading);
+  await fbSet('vitals','bp',{readings:cache.vitals.bp});
+  // AI feedback
+  try{
+    const cat=bpCategory(sys,dia);
+    const res=await callAI(
+      'My blood pressure reading: '+sys+'/'+dia+' mmHg. Category: '+cat.label+'.',
+      'You are a health coach. '+buildUserContext()+'. Give 2-3 sentences of warm, specific feedback on this blood pressure reading. If elevated or high, give 2-3 practical tips to help. If normal, give encouragement. Be reassuring, not alarming. Under 100 words.'
+    );
+    const cat2=bpCategory(sys,dia);
+    document.getElementById('bp-feedback').innerHTML='<div class="ai-feedback" style="background:'+cat2.bg+';border-color:'+cat2.color.replace('var(--','rgba(').replace(')',',0.3)')+'">'+
+      '<div style="font-size:12px;font-weight:600;color:'+cat2.color+';margin-bottom:6px">'+cat2.label+'</div>'+
+      escHtml(res.replace(/```/g,''))+'</div>';
+  }catch(e){
+    document.getElementById('bp-feedback').innerHTML='<div class="ai-feedback">Reading logged!</div>';
+  }
+  document.getElementById('bp-systolic').value='';
+  document.getElementById('bp-diastolic').value='';
+  btn.disabled=false;btn.textContent='Log blood pressure';
+  renderBPHistory();
+  renderDashboardVitals();
+}
+
+async function logBloodSugar(){
+  const val=parseInt(document.getElementById('bs-value').value);
+  if(!val||val<30||val>600){
+    document.getElementById('bs-feedback').innerHTML='<div class="msg-box error" style="display:block">Please enter a valid blood sugar value.</div>';
+    return;
+  }
+  const btn=document.getElementById('log-bs-btn');btn.disabled=true;btn.textContent='Analyzing...';
+  const reading={value:val,context:selectedBsContext,date:TODAY,ts:Date.now()};
+  cache.vitals.bs.push(reading);
+  await fbSet('vitals','bs',{readings:cache.vitals.bs});
+  const ctxLabels={fasting:'while fasting',before_meal:'before a meal',after_breakfast:'after breakfast',after_lunch:'after lunch',after_dinner:'after dinner',after_snack:'after a snack',random:'',null:''};
+  try{
+    const cat=bsCategory(val,selectedBsContext);
+    const ctx=ctxLabels[selectedBsContext]||'';
+    const res=await callAI(
+      'My blood sugar is '+val+' mg/dL'+(ctx?' '+ctx:'')+'. Category: '+cat.label+'.',
+      'You are a health coach who specializes in diabetes management. '+buildUserContext()+'. Give 2-3 sentences of warm, specific feedback. If the reading is high, give practical tips (what to do, foods to avoid, movement suggestions). If low, give advice on how to bring it up safely. If normal, give encouragement. Be reassuring, specific, and diabetes-aware. Under 120 words.'
+    );
+    const cat2=bsCategory(val,selectedBsContext);
+    document.getElementById('bs-feedback').innerHTML='<div class="ai-feedback" style="background:'+cat2.bg+';border-color:'+cat2.color.replace('var(--','rgba(').replace(')',',0.3)')+'">'+
+      '<div style="font-size:12px;font-weight:600;color:'+cat2.color+';margin-bottom:6px">'+cat2.label+(ctx?' · '+ctx:'')+'</div>'+
+      escHtml(res.replace(/```/g,''))+'</div>';
+  }catch(e){
+    document.getElementById('bs-feedback').innerHTML='<div class="ai-feedback">Reading logged!</div>';
+  }
+  document.getElementById('bs-value').value='';
+  document.querySelectorAll('.bs-ctx-btn').forEach(b=>b.classList.remove('selected'));
+  selectedBsContext=null;
+  btn.disabled=false;btn.textContent='Log blood sugar';
+  renderBSHistory();
+  renderDashboardVitals();
+}
+
+function renderDashboardVitals(){
+  const s=cache.vitalSettings||{};
+  if(!s.trackBP&&!s.trackBS)return;
+  const card=document.getElementById('dashboard-vitals-card');
+  if(!card)return;
+  card.style.display='block';
+  const inner=document.getElementById('dashboard-vitals-content');
+  let html='';
+  if(s.trackBP){
+    const last=(cache.vitals.bp||[]).slice(-1)[0];
+    if(last){
+      const cat=bpCategory(last.systolic,last.diastolic);
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1"><div style="font-size:12px;color:var(--muted)">&#10084;&#65039; Blood pressure</div>'
+        +'<div style="font-size:18px;font-weight:600;color:var(--text)">'+last.systolic+'/'+last.diastolic+' <span style="font-size:12px;color:var(--muted)">mmHg</span></div></div>'
+        +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>'
+        +'<div style="font-size:11px;color:var(--muted)">'+last.date+'</div></div>';
+    }else{html+='<div style="font-size:13px;color:var(--muted);padding:8px 0">&#10084;&#65039; No blood pressure readings yet.</div>';}
+  }
+  if(s.trackBS){
+    const last=(cache.vitals.bs||[]).slice(-1)[0];
+    if(last){
+      const cat=bsCategory(last.value,last.context);
+      html+='<div style="display:flex;align-items:center;gap:10px;padding:8px 0">'
+        +'<div style="flex:1"><div style="font-size:12px;color:var(--muted)">&#129482; Blood sugar</div>'
+        +'<div style="font-size:18px;font-weight:600;color:var(--text)">'+last.value+' <span style="font-size:12px;color:var(--muted)">mg/dL</span></div></div>'
+        +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+'">'+cat.label+'</span>'
+        +'<div style="font-size:11px;color:var(--muted)">'+last.date+'</div></div>';
+    }else{html+='<div style="font-size:13px;color:var(--muted);padding:8px 0">&#129482; No blood sugar readings yet.</div>';}
+  }
+  document.getElementById('dashboard-vitals-content').innerHTML=html;
 }
 
 // ── CHAT WITH PERSISTENT SESSIONS ─────────────────────────────
