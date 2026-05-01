@@ -489,14 +489,27 @@ textarea{min-height:80px;}
         <div class="card-title">Log a meal or snack</div>
         <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
           <select id="meal-time" style="max-width:150px"><option value="Morning">Morning</option><option value="Mid-morning">Mid-morning</option><option value="Lunch" selected>Lunch</option><option value="Afternoon">Afternoon</option><option value="Dinner">Dinner</option><option value="Late night">Late night</option></select>
-          <input type="number" id="water-log" placeholder="Water oz (optional)" style="max-width:180px" min="0" step="1"/>
         </div>
-        <textarea id="food-input" placeholder="Describe what you ate..."></textarea>
+        <textarea id="food-input" placeholder="Describe what you ate... separate items with commas"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="logFood()" id="log-food-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Log &amp; Analyze</button>
-          <button class="btn btn-ghost btn-sm" onclick="analyzeDayFood()" id="analyze-day-btn">Analyze my whole day</button>
         </div>
         <div id="food-feedback"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">&#128167; Log water</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input type="number" id="water-log" placeholder="Ounces" style="max-width:130px" min="0" step="1" onkeydown="if(event.key==='Enter')logWaterOnly()"/>
+          <button class="btn btn-primary btn-sm" onclick="logWaterOnly()">Log water</button>
+          <span style="font-size:13px;color:var(--muted)" id="water-quick-label"></span>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn btn-ghost btn-sm" onclick="logWaterQuick(8)">+8 oz</button>
+          <button class="btn btn-ghost btn-sm" onclick="logWaterQuick(16)">+16 oz</button>
+          <button class="btn btn-ghost btn-sm" onclick="logWaterQuick(20)">+20 oz</button>
+          <button class="btn btn-ghost btn-sm" onclick="logWaterQuick(32)">+32 oz</button>
+          <button class="btn btn-ghost btn-sm" onclick="logWaterQuick(40)">+40 oz</button>
+        </div>
       </div>
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
@@ -533,6 +546,13 @@ textarea{min-height:80px;}
         <div id="food-entries"><div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet today.</div></div>
         <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="clearTodayFood()">Clear today's log</button>
       </div>
+      <div class="card" id="daily-analysis-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <div class="card-title" style="margin:0">&#128203; Daily Analysis</div>
+          <span id="daily-analysis-date" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div id="daily-analysis-text" style="font-size:13.5px;color:var(--text);line-height:1.7;white-space:pre-wrap"></div>
+      </div>
     </section>
 
     <!-- FITNESS -->
@@ -543,9 +563,11 @@ textarea{min-height:80px;}
         <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
         <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
       </div>
-      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-        <button class="btn btn-ghost btn-sm" onclick="regenerateWorkout()" id="regen-btn" style="margin-bottom:12px">&#128260; Update plan</button>
+
+      <div style="margin-bottom:12px">
+        <button class="btn btn-ghost btn-sm" onclick="toggleWeeklyView()" id="weekly-view-btn">&#128197; View full week</button>
       </div>
+      <div id="fitness-weekly-view" style="display:none"></div>
       <div id="fitness-day-content"></div>
     </section>
 
@@ -1141,6 +1163,9 @@ window.appInit=async function(){
   initChat();
   await checkAndAwardBadges();
   renderBadges();
+  await checkMidnightAnalysis();
+  await checkFirstLoginOfDay();
+  scheduleMidnightAnalysis();
 };
 
 // ── AVATAR ──────────────────────────────────────────────────
@@ -1221,7 +1246,7 @@ function renderWeightChart(){
   let weights=cache.weights;
   if(chartRange==='7d')weights=weights.filter(w=>{const d=new Date(w.date+'T12:00:00');const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);return d>=cutoff;});
   else if(chartRange==='30d')weights=weights.filter(w=>{const d=new Date(w.date+'T12:00:00');const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);return d>=cutoff;});
-  if(weights.length<2){ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText(weights.length===0?'No weight entries in this range':'Log at least 2 weight entries to see your trend',300,80);return;}
+  if(weights.length<2){ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText(weights.length===0?'No weight entries in this range.':'Log at least 2 weight entries to see your trend.',450,80);return;}
   weightChart=new Chart(ctx,{type:'line',data:{labels:weights.map(w=>w.date.slice(5)),datasets:[{label:'Weight',data:weights.map(w=>w.val),borderColor:'#7eb8a4',backgroundColor:'rgba(126,184,164,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#7eb8a4',pointRadius:4},{label:'Goal',data:weights.map(()=>gw),borderColor:'rgba(201,169,110,0.5)',borderDash:[6,4],fill:false,pointRadius:0}]},options:co()});
 }
 // ── DATE PICKER ──────────────────────────────────────────────
@@ -1361,11 +1386,10 @@ function buildUserContext(){
 // ── FOOD DIARY ──────────────────────────────────────────────
 async function logFood(){
   const rawText=document.getElementById('food-input').value.trim();
-  const woz=parseFloat(document.getElementById('water-log').value)||0;
+  const woz=0;// water now logged separately
   const mt=document.getElementById('meal-time').value;
-  if(!rawText&&woz===0){alert('Please describe what you ate or enter water oz.');return;}
-  const items=rawText?rawText.split(',').map(s=>s.trim()).filter(Boolean):[];
-  if(items.length===0&&woz>0)items.push('');
+  if(!rawText){alert('Please describe what you ate.');return;}
+  const items=rawText.split(',').map(s=>s.trim()).filter(Boolean);
   const btn=document.getElementById('log-food-btn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing...';
   document.getElementById('food-feedback').innerHTML='';
   if(!cache.food[TODAY])cache.food[TODAY]=[];
@@ -1385,7 +1409,7 @@ async function logFood(){
     });
     await fbSet('food',TODAY,{entries:cache.food[TODAY],date:TODAY});
     document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">&#127807; '+escHtml(displayText)+'</div>';
-    document.getElementById('food-input').value='';document.getElementById('water-log').value='';
+    document.getElementById('food-input').value='';
     renderFoodEntries();
   }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
@@ -1451,18 +1475,79 @@ function renderFavorites(){
   }).join('');
 }
 
-async function analyzeDayFood(){
-  const entries=cache.food[TODAY]||[];if(!entries.length){alert('Log some food first!');return;}
-  const btn=document.getElementById('analyze-day-btn');btn.disabled=true;btn.textContent='Analyzing...';
+async function runDailyAnalysis(date){
+  const analysisDate=date||TODAY;
+  const entries=cache.food[analysisDate]||[];
+  if(!entries.filter(e=>e.text&&e.text!=='Water').length)return null;
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   try{
     const res=await callAI(
-      'Full day:\n'+entries.map(e=>e.time+': '+e.text+' (~'+e.protein+'g protein, '+e.carbs+'g carbs)').join('\n')+'\n\nTotals: '+Math.round(tp)+'g protein, '+Math.round(tc)+'g carbs, '+Math.round(tw)+'oz water. Overall feedback and one tip for tomorrow.',
-      'You are a nutrition coach. '+buildUserContext()+'. Warm and specific. Under 120 words.'
+      'Full day for '+analysisDate+':\n'+entries.map(e=>e.time+': '+e.text+' (~'+Math.round(e.protein||0)+'g protein, '+Math.round(e.carbs||0)+'g carbs)').join('\n')+'\n\nTotals: '+Math.round(tp)+'g protein, '+Math.round(tc)+'g carbs, '+Math.round(tw)+'oz water.\nGive warm, specific overall feedback and one actionable tip for tomorrow.',
+      'You are a nutrition coach. '+buildUserContext()+'. Warm and specific. Under 130 words.'
     );
-    document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">&#128203; <strong>Today\'s analysis:</strong><br><br>'+escHtml(res.replace(/```/g,''))+'</div>';
-  }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error. Please try again.</div>';}
-  btn.disabled=false;btn.textContent='Analyze my whole day';
+    const analysis=res.replace(/```/g,'').trim();
+    const record={analysis,date:analysisDate,generatedAt:Date.now()};
+    const existing=await fbGet('food',analysisDate);
+    await fbSet('food',analysisDate,{entries:cache.food[analysisDate]||[],date:analysisDate,dailyAnalysis:record});
+    return analysis;
+  }catch(e){return null;}
+}
+
+function renderDailyAnalysis(){
+  const card=document.getElementById('daily-analysis-card');
+  const textEl=document.getElementById('daily-analysis-text');
+  const dateEl=document.getElementById('daily-analysis-date');
+  if(!card)return;
+  fbGet('food',viewDate).then(d=>{
+    const da=d&&d.dailyAnalysis;
+    if(da&&da.analysis){
+      card.style.display='block';
+      if(textEl)textEl.textContent=da.analysis;
+      if(dateEl)dateEl.textContent='Generated '+new Date(da.generatedAt).toLocaleDateString();
+    }else{card.style.display='none';}
+  });
+}
+
+async function checkMidnightAnalysis(){
+  const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
+  const yd=yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
+  const existing=await fbGet('food',yd);
+  if(existing&&existing.dailyAnalysis)return;
+  if(!cache.food[yd])cache.food[yd]=(existing&&existing.entries)||[];
+  if(cache.food[yd].length>0)await runDailyAnalysis(yd);
+}
+
+async function checkFirstLoginOfDay(){
+  const lastLoginKey='wellpath_last_login_'+window._uid;
+  const lastLogin=localStorage.getItem(lastLoginKey);
+  if(lastLogin===TODAY)return;
+  localStorage.setItem(lastLoginKey,TODAY);
+  const yesterday=new Date();yesterday.setDate(yesterday.getDate()-1);
+  const yd=yesterday.getFullYear()+'-'+String(yesterday.getMonth()+1).padStart(2,'0')+'-'+String(yesterday.getDate()).padStart(2,'0');
+  const data=await fbGet('food',yd);
+  if(!data||!data.dailyAnalysis)return;
+  const da=data.dailyAnalysis;
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML=[
+    '<div class="date-picker-card" style="max-width:420px">',
+    '<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:6px">&#128203; Yesterday&#8217;s nutrition summary</div>',
+    '<div style="font-family:var(--font-display);font-size:20px;color:var(--text);margin-bottom:14px">'+yd.slice(5)+'</div>',
+    '<div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:18px">'+escHtml(da.analysis)+'</div>',
+    '<button class="btn btn-primary" style="width:100%" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Got it &#8212; let&#8217;s go!</button>',
+    '</div>'
+  ].join('');
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+function scheduleMidnightAnalysis(){
+  const now=new Date();
+  const midnight=new Date(now);
+  midnight.setDate(midnight.getDate()+1);
+  midnight.setHours(0,1,0,0);
+  const ms=midnight-now;
+  setTimeout(async()=>{await runDailyAnalysis(TODAY);scheduleMidnightAnalysis();},ms);
 }
 
 function renderFoodEntries(){
@@ -1486,6 +1571,7 @@ function renderFoodEntries(){
   // Update log title to reflect date
   const logTitle=document.getElementById('food-log-title');
   if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
+  renderDailyAnalysis();
   const el=document.getElementById('food-entries');
   const isPast=viewDate!==TODAY;
   if(!entries.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">'+(isPast?'No food logged on this day.':'Nothing logged yet today.')+'</div>';return;}
@@ -1497,6 +1583,27 @@ function renderFoodEntries(){
   }).join('');
 }
 async function deleteEntry(i){if(!cache.food[viewDate])return;cache.food[viewDate].splice(i,1);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
+async function logWaterOnly(){
+  const woz=parseFloat(document.getElementById('water-log').value)||0;
+  if(!woz||woz<=0){alert('Please enter an amount.');return;}
+  if(!cache.food[TODAY])cache.food[TODAY]=[];
+  cache.food[TODAY].push({time:'Water',text:'Water',protein:0,carbs:0,calories:0,water:woz,ts:Date.now()});
+  await fbSet('food',TODAY,{entries:cache.food[TODAY],date:TODAY});
+  document.getElementById('water-log').value='';
+  const lbl=document.getElementById('water-quick-label');
+  if(lbl){lbl.textContent='+ '+woz+' oz logged!';setTimeout(()=>lbl.textContent='',2500);}
+  renderFoodEntries();renderFavorites();refreshDashboard();
+}
+
+async function logWaterQuick(oz){
+  if(!cache.food[TODAY])cache.food[TODAY]=[];
+  cache.food[TODAY].push({time:'Water',text:'Water',protein:0,carbs:0,calories:0,water:oz,ts:Date.now()});
+  await fbSet('food',TODAY,{entries:cache.food[TODAY],date:TODAY});
+  const lbl=document.getElementById('water-quick-label');
+  if(lbl){lbl.textContent='+ '+oz+' oz logged!';setTimeout(()=>lbl.textContent='',2500);}
+  renderFoodEntries();renderFavorites();refreshDashboard();
+}
+
 async function clearTodayFood(){if(!confirm('Clear all food entries for this day?'))return;cache.food[viewDate]=[];await fbSet('food',viewDate,{entries:[],date:viewDate});renderFoodEntries();document.getElementById('food-feedback').innerHTML='';}
 
 // ── FITNESS ──────────────────────────────────────────────────
@@ -1508,6 +1615,51 @@ function renderFitness(){
   const _vdt=new Date(viewDate+'T12:00:00');
   selectedFitnessDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_vdt.getDay()];
   renderFitnessDay();
+}
+
+let weeklyViewOpen=false;
+function toggleWeeklyView(){
+  weeklyViewOpen=!weeklyViewOpen;
+  const btn=document.getElementById('weekly-view-btn');
+  const container=document.getElementById('fitness-weekly-view');
+  if(!weeklyViewOpen){
+    container.style.display='none';
+    if(btn)btn.textContent='&#128197; View full week';
+    return;
+  }
+  if(btn)btn.textContent='&#215; Hide full week';
+  container.style.display='block';
+  const plan=(window._profile&&window._profile.workoutPlan)||[];
+  const colors=['#556b2f','#7a9a3a','#8a6a1a','#2a5a8a','#5a3a8a','#8a3a3a','#3a6a5a'];
+  let html='<div class="card" style="margin-bottom:16px"><div class="card-title" style="margin-bottom:16px">&#128197; This week&#8217;s plan</div>';
+  plan.forEach((day,di)=>{
+    const color=colors[di%colors.length];
+    html+=`<div style="margin-bottom:${di<plan.length-1?'18px':'0'}">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div style="width:3px;height:20px;background:${color};border-radius:2px;flex-shrink:0"></div>
+        <div style="font-weight:600;color:var(--text);font-size:15px">${day.day}</div>
+        <span class="pill pill-green" style="font-size:11px">${day.focus}</span>
+        ${day.rest?'<span class="pill" style="background:rgba(138,106,26,0.12);color:var(--amber);font-size:11px">Rest</span>':''}
+      </div>`;
+    if(!day.rest&&day.exercises&&day.exercises.length){
+      html+=`<div style="padding-left:13px;border-left:2px solid rgba(85,107,47,0.15)">`;
+      day.exercises.forEach(ex=>{
+        const ytUrl='https://www.youtube.com/results?search_query='+encodeURIComponent(ex.yt||ex.name+' exercise form');
+        html+=`<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border)">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500;color:var(--text)">${ex.name}</div>
+            <div style="font-size:12px;color:var(--muted)">${ex.detail}</div>
+          </div>
+          <a href="${ytUrl}" target="_blank" class="ex-link" style="flex-shrink:0"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M23 7s-.3-2-1.2-2.8c-1.1-1.2-2.4-1.2-3-1.3C16.1 2.8 12 2.8 12 2.8s-4.1 0-6.8.1c-.6.1-1.9.1-3 1.3C1.3 5 1 7 1 7S.7 9.1.7 11.2v2c0 2.1.3 4.2.3 4.2s.3 2 1.2 2.8c1.1 1.2 2.6 1.1 3.3 1.2C7.5 21.5 12 21.5 12 21.5s4.1 0 6.8-.2c.6-.1 1.9-.1 3-1.3.9-.8 1.2-2.8 1.2-2.8s.3-2.1.3-4.2v-2C23.3 9.1 23 7 23 7zM9.7 15.5v-7.3l8.1 3.7-8.1 3.6z"/></svg> How to</a>
+        </div>`;
+      });
+      html+='</div>';
+    }
+    html+='</div>';
+    if(di<plan.length-1)html+='<hr style="border:none;border-top:1px solid var(--border);margin:10px 0"/>';
+  });
+  html+='</div>';
+  container.innerHTML=html;
 }
 function selectFitnessDay(d){selectedFitnessDay=d;renderFitness();}
 function renderFitnessDay(){
