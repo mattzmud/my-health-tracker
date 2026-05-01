@@ -286,19 +286,16 @@ textarea{min-height:80px;}
       </div>
       <div class="welcome-card">
         <div style="display:flex;align-items:center;gap:18px;flex-wrap:wrap">
-          <div style="position:relative;flex-shrink:0">
-            <div id="avatar-circle" onclick="document.getElementById('avatar-input').click()" style="width:72px;height:72px;border-radius:50%;background:var(--surface2);border:2px solid rgba(126,184,164,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;" title="Tap to change photo">
+          <div style="flex-shrink:0">
+            <div id="avatar-circle" style="width:72px;height:72px;border-radius:50%;background:var(--surface2);border:2px solid rgba(126,184,164,0.4);display:flex;align-items:center;justify-content:center;overflow:hidden;">
               <img id="avatar-img" src="" style="width:100%;height:100%;object-fit:cover;display:none;"/>
               <span id="avatar-placeholder" style="font-size:28px">&#128100;</span>
             </div>
-            <div onclick="document.getElementById('avatar-input').click()" style="position:absolute;bottom:0;right:0;width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;">
-              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0f1117" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </div>
-            <input type="file" id="avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(event)"/>
           </div>
           <div style="flex:1;min-width:180px">
-            <div class="welcome-title" id="welcome-title">Your Journey &#128170;</div>
+            <div class="welcome-title" id="welcome-title">Your Health Journey</div>
             <div class="welcome-sub" id="welcome-sub">Loading your personalized plan...</div>
+            <div id="quote-of-day" style="font-size:12px;color:var(--accent);margin-top:8px;font-style:italic;line-height:1.5"></div>
           </div>
         </div>
       </div>
@@ -397,10 +394,12 @@ textarea{min-height:80px;}
       <!-- Change password -->
       <div class="card">
         <div class="card-title">&#128272; Change password</div>
-        <label class="form-label" style="margin-top:0">New password</label>
-        <input type="password" id="new-password" placeholder="Enter new password (min 6 characters)" style="margin-bottom:10px"/>
+        <label class="form-label" style="margin-top:0">Current password</label>
+        <input type="password" id="current-password" placeholder="Enter your current password" style="margin-bottom:10px" autocomplete="current-password"/>
+        <label class="form-label">New password</label>
+        <input type="password" id="new-password" placeholder="Enter new password (min 6 characters)" style="margin-bottom:10px" autocomplete="new-password"/>
         <label class="form-label">Confirm new password</label>
-        <input type="password" id="new-password2" placeholder="Confirm new password" style="margin-bottom:12px"/>
+        <input type="password" id="new-password2" placeholder="Confirm new password" style="margin-bottom:12px" autocomplete="new-password"/>
         <button class="btn btn-primary btn-sm" onclick="changePassword()">Update password</button>
         <div class="msg-box" id="password-msg" style="margin-top:10px"></div>
       </div>
@@ -991,13 +990,51 @@ let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocer
 window.appInit=async function(){
   const p=window._profile;
   const hr=new Date().getHours();
-  const greeting=hr<12?'Good morning':hr<17?'Good afternoon':'Good evening';
+  // Rotating greetings by time of day
+  const morningGreetings=['Good morning','Top of the morning to you','Rise and shine','Morning, sunshine','Wakey wakey'];
+  const afternoonGreetings=['Good afternoon','Hope your afternoon is going well','Afternoon check-in','Hey there, afternoon warrior','Halfway through the day'];
+  const eveningGreetings=['Good evening','Evening vibes','Winding down?','Hope your evening is great','Looking good this evening'];
+  const greetingPool=hr<12?morningGreetings:hr<17?afternoonGreetings:eveningGreetings;
+  const greeting=greetingPool[Math.floor(Math.random()*greetingPool.length)]+', '+p.name+'!';
   document.getElementById('dash-greeting').textContent=greeting;
   document.getElementById('dash-date').textContent=formatDate(TODAY);
   document.getElementById('meds-date-label').textContent=formatDate(TODAY);
-  document.getElementById('welcome-title').textContent='Your Journey, '+p.name+'!';
-  document.getElementById('welcome-sub').textContent='Every step counts. You\'re working toward '+p.goalWeight+' lbs and a healthier, more energized life.';
+
+  // Rotating motivational sub-messages
+  const lostSoFar=p.currentWeight&&cache.weights.length>0?+(p.currentWeight-cache.weights[cache.weights.length-1].val).toFixed(1):0;
+  const toGo=p.goalWeight&&cache.weights.length>0?+(cache.weights[cache.weights.length-1].val-p.goalWeight).toFixed(1):+(p.currentWeight-p.goalWeight).toFixed(1);
+  const subMessages=[
+    'Every step counts. You\'re working toward '+p.goalWeight+' lbs and a healthier, more energized life.',
+    lostSoFar>0?'You\'ve already lost '+lostSoFar+' lbs. Keep that momentum going!':'Your journey of a thousand miles starts with a single step. Let\'s go!',
+    toGo>0?'Just '+toGo+' lbs to your goal. You\'ve got this!':'You\'re making incredible progress every single day.',
+    'Small consistent actions beat big sporadic ones every time. Log today!',
+    'Your future self is cheering you on. Make them proud today.',
+    'Health is built one good decision at a time. You\'re here — that counts.',
+    'Progress, not perfection. Every logged meal and workout adds up.',
+  ];
+  document.getElementById('welcome-title').textContent='Your Health Journey';
+  document.getElementById('welcome-sub').textContent=subMessages[new Date().getDate()%subMessages.length];
   document.getElementById('chat-welcome').textContent='Hey '+p.name+'! I\'m your personal health coach. I know your goals, your plan, and your preferences. Ask me anything — recipes, exercise form, grocery help, or to update your workout plan!';
+
+  // Quote of the day (rotates daily)
+  const quotes=[
+    '"Take care of your body. It\'s the only place you have to live." — Jim Rohn',
+    '"The groundwork for all happiness is good health." — Leigh Hunt',
+    '"It is health that is real wealth." — Mahatma Gandhi',
+    '"To keep the body in good health is a duty." — Buddha',
+    '"Your body hears everything your mind says." — Naomi Judd',
+    '"Movement is medicine." — Unknown',
+    '"Invest in yourself. Your health is your greatest asset." — Unknown',
+    '"Small daily improvements are the key to staggering long-term results." — Unknown',
+    '"You don\'t have to be great to start, but you have to start to be great." — Zig Ziglar',
+    '"The secret to getting ahead is getting started." — Mark Twain',
+    '"Push yourself because no one else is going to do it for you." — Unknown',
+    '"Don\'t wish for a good body, work for it." — Unknown',
+    '"Believe you can and you\'re halfway there." — Theodore Roosevelt',
+    '"A year from now, you will wish you had started today." — Karen Lamb',
+  ];
+  const quoteEl=document.getElementById('quote-of-day');
+  if(quoteEl)quoteEl.textContent=quotes[new Date().getDate()%quotes.length];
   setSyncStatus('syncing');
   const wCol=await fbGetCol('weights');
   cache.weights=Object.entries(wCol).map(([id,d])=>({date:id,val:d.val})).sort((a,b)=>a.date.localeCompare(b.date));
@@ -1866,21 +1903,34 @@ async function syncProfileAvatar(event){
 }
 
 async function changePassword(){
+  const currentPw=document.getElementById('current-password').value;
   const pw=document.getElementById('new-password').value;
   const pw2=document.getElementById('new-password2').value;
-  if(pw.length<6){showMsg('password-msg','Password must be at least 6 characters.','error');return;}
-  if(pw!==pw2){showMsg('password-msg','Passwords do not match.','error');return;}
+  if(!currentPw){showMsg('password-msg','Please enter your current password.','error');return;}
+  if(pw.length<6){showMsg('password-msg','New password must be at least 6 characters.','error');return;}
+  if(pw!==pw2){showMsg('password-msg','New passwords do not match.','error');return;}
+  if(currentPw===pw){showMsg('password-msg','New password must be different from your current password.','error');return;}
+  const btn=document.querySelector('[onclick="changePassword()"]');
+  if(btn){btn.disabled=true;btn.textContent='Updating...';}
   try{
-    const {updatePassword}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-    await updatePassword(window._authUser,pw);
+    const {updatePassword, reauthenticateWithCredential, EmailAuthProvider}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    // Reauthenticate with current password first
+    const credential=EmailAuthProvider.credential(window._authUser.email, currentPw);
+    await reauthenticateWithCredential(window._authUser, credential);
+    // Now update to new password
+    await updatePassword(window._authUser, pw);
+    document.getElementById('current-password').value='';
     document.getElementById('new-password').value='';
     document.getElementById('new-password2').value='';
-    showMsg('password-msg','Password updated successfully!','success');
+    showMsg('password-msg','&#10003; Password updated successfully!','success');
   }catch(e){
-    let m='Could not update password. You may need to sign out and sign back in first.';
-    if(e.code==='auth/requires-recent-login')m='For security, please sign out and sign back in before changing your password.';
+    let m='Could not update password. Please try again.';
+    if(e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')m='Current password is incorrect. Please try again.';
+    if(e.code==='auth/too-many-requests')m='Too many attempts. Please wait a moment and try again.';
+    if(e.code==='auth/network-request-failed')m='Network error. Check your connection.';
     showMsg('password-msg',m,'error');
   }
+  if(btn){btn.disabled=false;btn.textContent='Update password';}
 }
 
 // ── CHAT WITH PERSISTENT SESSIONS ─────────────────────────────
