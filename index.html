@@ -2721,14 +2721,14 @@ function renderBPHistory(){
     title='Range: '+vitalsRangeStart.slice(5)+' – '+vitalsRangeEnd.slice(5)+' ('+readings.length+' readings)';
   } else {
     readings=getVitalsForDate('bp',viewDate);
-    title=readings.length>1?'All readings ('+readings.length+')':'';
+    title=readings.length>0?'All readings ('+readings.length+')':'';
   }
   if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No blood pressure readings for this '+(vitalsRangeMode?'range':'day')+'.</div>';return;}
   const avg=bpAvg(readings);
   const avgCat=bpCategory(avg.systolic,avg.diastolic);
   const avgLabel=(vitalsRangeMode?'Range average':'Daily average');
   let html=renderAvgRow(avgLabel,avg.systolic+'/'+avg.diastolic+' <span style="font-size:13px;color:var(--muted)">mmHg</span>',avgCat);
-  if(readings.length>1||vitalsRangeMode){
+  if(readings.length>0){
     if(title)html+='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px">'+title+'</div>';
     html+=readings.slice().reverse().map(r=>renderBPReadingRow(r,vitalsRangeMode)).join('');
   }
@@ -2744,14 +2744,14 @@ function renderBSHistory(){
     title='Range: '+vitalsRangeStart.slice(5)+' – '+vitalsRangeEnd.slice(5)+' ('+readings.length+' readings)';
   } else {
     readings=getVitalsForDate('bs',viewDate);
-    title=readings.length>1?'All readings ('+readings.length+')':'';
+    title=readings.length>0?'All readings ('+readings.length+')':'';
   }
   if(!readings.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No blood sugar readings for this '+(vitalsRangeMode?'range':'day')+'.</div>';return;}
   const avg=bsAvg(readings);
   const avgCat=bsCategory(avg,null);
   const avgLabel=(vitalsRangeMode?'Range average':'Daily average');
   let html=renderAvgRow(avgLabel,avg+' <span style="font-size:13px;color:var(--muted)">mg/dL</span>',avgCat);
-  if(readings.length>1||vitalsRangeMode){
+  if(readings.length>0){
     if(title)html+='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:6px">'+title+'</div>';
     html+=readings.slice().reverse().map(r=>renderBSReadingRow(r,vitalsRangeMode)).join('');
   }
