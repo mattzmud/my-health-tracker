@@ -164,6 +164,11 @@ textarea{min-height:80px;}
 .grocery-del{color:var(--muted);cursor:pointer;font-size:14px;padding:0 4px;}
 .grocery-del:hover{color:var(--red);}
 @keyframes spin{to{transform:rotate(360deg)}}
+.range-btn{padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all 0.18s;}
+.range-btn:hover{color:var(--text);border-color:var(--accent);}
+.range-btn.active{background:var(--surface2);color:var(--accent);border-color:var(--accent);}
+.date-picker-modal{position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;}
+.date-picker-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:28px;max-width:340px;width:100%;animation:fadeUp 0.2s ease;}
 @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
 ::-webkit-scrollbar{width:5px;height:5px;}
 ::-webkit-scrollbar-track{background:transparent;}
@@ -249,7 +254,7 @@ textarea{min-height:80px;}
       <div class="sec-header"><div class="sec-title" id="dash-greeting">Hello</div><div class="sec-sub" id="dash-date"></div></div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
         <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
         <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
       </div>
       <div class="welcome-card">
@@ -290,10 +295,36 @@ textarea{min-height:80px;}
           <div id="weight-history" style="font-size:13px;color:var(--muted)">Loading...</div>
         </div>
       </div>
-      <div class="card"><div class="card-title">Weight progress</div><canvas id="weight-chart" height="160"></canvas></div>
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:10px">
+          <div class="card-title" style="margin:0">Weight progress</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+            <button class="range-btn active" onclick="setChartRange('7d',this)">7d</button>
+            <button class="range-btn" onclick="setChartRange('30d',this)">30d</button>
+            <button class="range-btn" onclick="setChartRange('all',this)">All</button>
+          </div>
+        </div>
+        <canvas id="weight-chart" height="160"></canvas>
+      </div>
       <div class="grid2">
-        <div class="card"><div class="card-title">7-day protein</div><canvas id="protein-chart" height="160"></canvas></div>
-        <div class="card"><div class="card-title">7-day water</div><canvas id="water-chart" height="160"></canvas></div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div class="card-title" style="margin:0" id="protein-chart-title">7-day protein</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap">
+              <button class="range-btn active" onclick="setNutritionRange('7d',this)">7d</button>
+              <button class="range-btn" onclick="setNutritionRange('14d',this)">14d</button>
+              <button class="range-btn" onclick="setNutritionRange('30d',this)">30d</button>
+              <button class="range-btn" onclick="openCustomRange()">Custom</button>
+            </div>
+          </div>
+          <canvas id="protein-chart" height="160"></canvas>
+        </div>
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+            <div class="card-title" style="margin:0" id="water-chart-title">7-day water</div>
+          </div>
+          <canvas id="water-chart" height="160"></canvas>
+        </div>
       </div>
     </section>
 
@@ -302,7 +333,7 @@ textarea{min-height:80px;}
       <div class="sec-header"><div class="sec-title">Food Diary</div><div class="sec-sub">Log meals — AI analyzes macros and gives personalized feedback.</div></div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
         <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
         <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
       </div>
       <div class="card">
@@ -360,7 +391,7 @@ textarea{min-height:80px;}
       <div class="sec-header"><div class="sec-title">Fitness Plan</div><div class="sec-sub">Your personalized weekly workout. Tap "How to" for YouTube form videos.</div></div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
         <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
         <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
       </div>
       <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
@@ -374,7 +405,7 @@ textarea{min-height:80px;}
       <div class="sec-header"><div class="sec-title">Medication Tracker</div><div class="sec-sub">Check off each medication as you take it.</div></div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px 14px;">
         <button onclick="changeDateAsync(-1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;">&#8592;</button>
-        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
+        <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text);cursor:pointer" onclick="openDatePicker(this)" title="Tap to pick a date">Today &#128197;</div>
         <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
       </div>
       <div class="today-banner"><strong id="meds-date-label">Today</strong> — tap each medication to mark it as taken.</div>
@@ -844,8 +875,17 @@ function refreshDashboard(){
   document.getElementById('prog-ex').style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
   document.getElementById('prog-ex-label').textContent=exDone+' / '+todayPlan.exercises.length+' done';
   const ms=cache.meds[viewDate]||{};
+  // Count each med once (exclude weekly 'wk' and as-needed 'prn')
+  // A med is "done" if ALL its daily time slots are checked
+  const dailyTimes=['am','af','pm'];
   let totalMedChecks=0,doneMedChecks=0;
-  Object.values(cache.medsList||{}).forEach(med=>{(med.times||['am']).forEach(t=>{totalMedChecks++;if(ms[t+'-'+(med.id||med.name)])doneMedChecks++;});});
+  Object.values(cache.medsList||{}).forEach(med=>{
+    const dailySlots=(med.times||['am']).filter(t=>dailyTimes.includes(t));
+    if(dailySlots.length===0)return;// skip weekly/prn
+    totalMedChecks++;
+    const allDone=dailySlots.every(t=>ms[t+'-'+(med.id||med.name)]);
+    if(allDone)doneMedChecks++;
+  });
   document.getElementById('prog-meds').style.width=totalMedChecks?(doneMedChecks/totalMedChecks)*100+'%':'0%';
   document.getElementById('prog-meds-label').textContent=doneMedChecks+' / '+totalMedChecks+' taken';
   const wh=document.getElementById('weight-history');
@@ -867,27 +907,132 @@ function co(){return{responsive:true,plugins:{legend:{display:false}},scales:{x:
 function renderWeightChart(){
   const ctx=document.getElementById('weight-chart').getContext('2d');if(weightChart)weightChart.destroy();
   const gw=(window._profile||{}).goalWeight||130;
-  if(cache.weights.length<2){ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText('Log at least 2 weight entries to see your trend',300,80);return;}
-  weightChart=new Chart(ctx,{type:'line',data:{labels:cache.weights.map(w=>w.date.slice(5)),datasets:[{label:'Weight',data:cache.weights.map(w=>w.val),borderColor:'#7eb8a4',backgroundColor:'rgba(126,184,164,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#7eb8a4',pointRadius:4},{label:'Goal',data:cache.weights.map(()=>gw),borderColor:'rgba(201,169,110,0.5)',borderDash:[6,4],fill:false,pointRadius:0}]},options:co()});
+  let weights=cache.weights;
+  if(chartRange==='7d')weights=weights.filter(w=>{const d=new Date(w.date+'T12:00:00');const cutoff=new Date();cutoff.setDate(cutoff.getDate()-7);return d>=cutoff;});
+  else if(chartRange==='30d')weights=weights.filter(w=>{const d=new Date(w.date+'T12:00:00');const cutoff=new Date();cutoff.setDate(cutoff.getDate()-30);return d>=cutoff;});
+  if(weights.length<2){ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText(weights.length===0?'No weight entries in this range':'Log at least 2 weight entries to see your trend',300,80);return;}
+  weightChart=new Chart(ctx,{type:'line',data:{labels:weights.map(w=>w.date.slice(5)),datasets:[{label:'Weight',data:weights.map(w=>w.val),borderColor:'#7eb8a4',backgroundColor:'rgba(126,184,164,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#7eb8a4',pointRadius:4},{label:'Goal',data:weights.map(()=>gw),borderColor:'rgba(201,169,110,0.5)',borderDash:[6,4],fill:false,pointRadius:0}]},options:co()});
 }
-function get14Days(){
-  // Build 14-day window centered around viewDate if not today, else last 7
+// ── DATE PICKER ──────────────────────────────────────────────
+function openDatePicker(labelEl){
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML=`<div class="date-picker-card">
+    <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:16px">&#128197; Jump to date</div>
+    <input type="date" id="date-pick-input" style="margin-bottom:18px" max="${TODAY}" value="${viewDate}"/>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpToDate('${TODAY}');this.closest('.date-picker-modal').remove()">Today</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpRelative(-7);this.closest('.date-picker-modal').remove()">-7 days</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpRelative(-30);this.closest('.date-picker-modal').remove()">-30 days</button>
+    </div>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.date-picker-modal').remove()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2" onclick="jumpToDate(document.getElementById('date-pick-input').value);this.closest('.date-picker-modal').remove()">Go</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+async function jumpToDate(date){
+  if(!date||date>TODAY)return;
+  viewDate=date;
+  await ensureDateLoaded(viewDate);
+  const surrounding=getNutritionDays();
+  await Promise.all(surrounding.map(d=>ensureDateLoaded(d)));
+  updateDateNav();
+  renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
+}
+
+function jumpRelative(days){
+  const d=new Date(TODAY+'T12:00:00');d.setDate(d.getDate()+days);
+  const nd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  jumpToDate(nd);
+}
+
+let chartRange='7d';
+let customRangeStart=null,customRangeEnd=null;
+let nutritionRange='7d';
+
+function getChartDays(n){
   const days=[];
   const anchor=new Date(viewDate+'T12:00:00');
-  for(let i=13;i>=0;i--){const d=new Date(anchor);d.setDate(d.getDate()-i);const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(ds<=TODAY)days.push(ds);}
-  return days.slice(-7);
+  for(let i=n-1;i>=0;i--){const d=new Date(anchor);d.setDate(d.getDate()-i);const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');if(ds<=TODAY)days.push(ds);}
+  return days;
 }
+
+function getNutritionDays(){
+  if(nutritionRange==='custom'&&customRangeStart&&customRangeEnd){
+    const days=[];let d=new Date(customRangeStart+'T12:00:00');const end=new Date(customRangeEnd+'T12:00:00');
+    while(d<=end){const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');days.push(ds);d.setDate(d.getDate()+1);}
+    return days;
+  }
+  const n=nutritionRange==='30d'?30:nutritionRange==='14d'?14:7;
+  return getChartDays(n);
+}
+
+function setChartRange(range,btn){
+  chartRange=range;
+  document.querySelectorAll('.range-btn').forEach(b=>{if(b.closest('#weight-chart')?.parentElement||b.onclick?.toString().includes('setChartRange'))b.classList.remove('active');});
+  btn.classList.add('active');
+  renderWeightChart();
+}
+
+function setNutritionRange(range,btn){
+  nutritionRange=range;
+  document.querySelectorAll('.range-btn').forEach(b=>{if(b.onclick?.toString().includes('setNutritionRange'))b.classList.remove('active');});
+  if(btn)btn.classList.add('active');
+  const label=range==='30d'?'30-day':range==='14d'?'14-day':range==='custom'?'Custom':'7-day';
+  const pt=document.getElementById('protein-chart-title');if(pt)pt.textContent=label+' protein';
+  const wt=document.getElementById('water-chart-title');if(wt)wt.textContent=label+' water';
+  // Preload any missing days
+  const days=getNutritionDays();
+  Promise.all(days.map(d=>cache.food[d]?Promise.resolve():fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[];})))
+    .then(()=>{renderProteinChart();renderWaterChart();});
+}
+
+function openCustomRange(){
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML=`<div class="date-picker-card">
+    <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:16px">Custom date range</div>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Start date</label>
+    <input type="date" id="custom-start" style="margin-bottom:12px" max="${TODAY}" value="${customRangeStart||getChartDays(30)[0]}"/>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">End date</label>
+    <input type="date" id="custom-end" style="margin-bottom:18px" max="${TODAY}" value="${customRangeEnd||TODAY}"/>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.date-picker-modal').remove()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2" onclick="applyCustomRange();this.closest('.date-picker-modal').remove()">Apply</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+function applyCustomRange(){
+  customRangeStart=document.getElementById('custom-start')?.value;
+  customRangeEnd=document.getElementById('custom-end')?.value;
+  if(!customRangeStart||!customRangeEnd)return;
+  if(customRangeStart>customRangeEnd){alert('Start date must be before end date.');return;}
+  nutritionRange='custom';
+  document.getElementById('protein-chart-title').textContent='Custom protein';
+  document.getElementById('water-chart-title').textContent='Custom water';
+  setNutritionRange('custom',null);
+}
+
 function renderProteinChart(){
-  const days=get14Days(),goal=(window._profile||{}).proteinGoal||120;
+  const days=getNutritionDays(),goal=(window._profile||{}).proteinGoal||120;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0)));
   const ctx=document.getElementById('protein-chart').getContext('2d');if(proteinChart)proteinChart.destroy();
-  proteinChart=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');const label=DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;}),datasets:[{label:'Protein',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.9)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(140,164,232,0.5)'),borderRadius:6},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');const label=days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;});
+  proteinChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Protein',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.9)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(140,164,232,0.5)'),borderRadius:4},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
 }
 function renderWaterChart(){
-  const days=get14Days(),goal=(window._profile||{}).waterGoal||80;
+  const days=getNutritionDays(),goal=(window._profile||{}).waterGoal||80;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0)));
   const ctx=document.getElementById('water-chart').getContext('2d');if(waterChart)waterChart.destroy();
-  waterChart=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>{const dt=new Date(d+'T12:00:00');const label=DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;}),datasets:[{label:'Water',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.7)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(126,184,164,0.3)'),borderRadius:6},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');const label=days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;});
+  waterChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Water',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.7)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(126,184,164,0.3)'),borderRadius:4},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
 }
 
 // ── AI HELPER ──────────────────────────────────────────────
