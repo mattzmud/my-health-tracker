@@ -987,10 +987,18 @@ function changeDate(delta){
   if(document.getElementById('sec-vitals').classList.contains('active'))renderVitals();
 }
 
+const _loadedDates=new Set();
 async function ensureDateLoaded(date){
-  if(!cache.food[date]){const fd=await fbGet('food',date);cache.food[date]=fd?(fd.entries||[]):[]; }
-  if(!cache.fitness[date]){const fi=await fbGet('fitness',date);cache.fitness[date]=fi?(fi.done||{}):{};} 
-  if(!cache.meds[date]){const m=await fbGet('meds',date);cache.meds[date]=m?(m.taken||{}):{};} 
+  if(_loadedDates.has(date))return;
+  _loadedDates.add(date);
+  const [fd,fi,fm]=await Promise.all([
+    fbGet('food',date),
+    fbGet('fitness',date),
+    fbGet('meds',date),
+  ]);
+  cache.food[date]=fd?(fd.entries||[]):[];
+  cache.fitness[date]=fi?(fi.done||{}):{};
+  cache.meds[date]=fm?(fm.taken||{}):{};
 }
 
 // ── PAGE-LEVEL DATE PICKERS ──────────────────────────────────
@@ -1478,9 +1486,12 @@ window.appInit=async function(){
   else{cache.vitals.bp[TODAY]=[];cache.vitals.bs[TODAY]=[];}
   renderBadges();
   // Load last 7 days food + all journal in background — don't block UI
+  // Mark today as loaded (already fetched above)
+  _loadedDates.add(TODAY);
+  // Background: load last 6 days + journal without blocking UI
   const _last7=getLast7Days().filter(d=>d!==TODAY);
   Promise.all([
-    ..._last7.map(d=>fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[]; })),
+    ..._last7.map(d=>ensureDateLoaded(d)),
     fbGetCol('journal').then(jc=>Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;})),
   ]).then(()=>{renderProteinChart();renderWaterChart();});
   setSyncStatus('synced');
