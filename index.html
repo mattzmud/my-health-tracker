@@ -1455,17 +1455,18 @@ window.appInit=async function(){
   if(quoteEl)quoteEl.textContent=quotes[new Date().getDate()%quotes.length];
   setSyncStatus('syncing');
   // Load all critical data in parallel
+  const safe=fn=>fn.catch(()=>null);
   const [wCol,tf,tfi,tm,ml,fv,gr,bc,vs,bpd]=await Promise.all([
-    fbGetCol('weights'),
-    fbGet('food',TODAY),
-    fbGet('fitness',TODAY),
-    fbGet('meds',TODAY),
-    fbGet('medications','list'),
-    fbGet('favorites','list'),
-    fbGet('grocery','list'),
-    fbGet('badges','earned'),
-    fbGet('vitals','settings'),
-    fbGet('vitals',TODAY),
+    safe(fbGetCol('weights')),
+    safe(fbGet('food',TODAY)),
+    safe(fbGet('fitness',TODAY)),
+    safe(fbGet('meds',TODAY)),
+    safe(fbGet('medications','list')),
+    safe(fbGet('favorites','list')),
+    safe(fbGet('grocery','list')),
+    safe(fbGet('badges','earned')),
+    safe(fbGet('vitals','settings')),
+    safe(fbGet('vitals',TODAY)),
   ]);
   cache.weights=Object.entries(wCol).map(([id,d])=>({date:id,val:d.val})).sort((a,b)=>a.date.localeCompare(b.date));
   cache.food[TODAY]=tf?(tf.entries||[]):[];
