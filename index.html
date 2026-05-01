@@ -1357,12 +1357,28 @@ async function generatePlan(){
   window._profile=profile;
   // Now try AI workout generation with a 20-second timeout
   try{
+    // Run workout plan + nutrition goals in parallel
+    const nutritionPromise=callAI(
+      'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nReturn ONLY valid JSON with no explanation: {"proteinGoal":150,"waterGoal":96,"carbGoal":80}\nProtein in grams, water in oz, net carbs in grams. Be specific to this person.',
+      'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
+    );
     const aiPromise=callAI('You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.');
     const timeoutPromise=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),20000));
     const res=await Promise.race([aiPromise,timeoutPromise]);
     const parsed=JSON.parse(res.replace(/```json|```/g,'').trim());
     if(parsed.plan&&parsed.plan.length>0){
       window._profile.workoutPlan=parsed.plan;
+      // Also resolve nutrition goals
+      try{
+        const nutritionRes=await nutritionPromise;
+        const nm=nutritionRes.match(/\{[^}]+\}/);
+        if(nm){
+          const ng=JSON.parse(nm[0]);
+          if(ng.proteinGoal)window._profile.proteinGoal=Math.round(ng.proteinGoal);
+          if(ng.waterGoal)window._profile.waterGoal=Math.round(ng.waterGoal);
+          if(ng.carbGoal)window._profile.carbGoal=Math.round(ng.carbGoal);
+        }
+      }catch(e){}
       await fbSet('profile','survey',window._profile);
     }
   }catch(e){
@@ -3020,7 +3036,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nIf the user asks about their recommended daily nutrition goals (protein, water, carbs), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":140,"waterGoal":96,"carbGoal":80}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
@@ -3028,28 +3044,59 @@ async function sendChat(){
     }
     let ingredients=null;
     if(reply.includes('RECIPE_INGREDIENTS:')){try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}}
+    let suggestedGoals=null;
+    if(reply.includes('GOALS_SUGGESTION:')){try{const m=reply.match(/GOALS_SUGGESTION:(\{[^}]+\})/);if(m)suggestedGoals=JSON.parse(m[1]);}catch(e){}}
     chatHistory.push({role:'assistant',content:reply});
     await saveMessageToSession('assistant',reply);
     document.getElementById(tid)?.remove();
-    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').trim();
-    addChatMsgDOM('ai',cleanReply,ingredients);
+    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').trim();
+    addChatMsgDOM('ai',cleanReply,ingredients,suggestedGoals);
   }catch(e){document.getElementById(tid)?.remove();addChatMsgDOM('ai','Sorry, connection issue. Please try again!');}
   btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 }
 
-function addChatMsgDOM(role,text,ingredients=null){
+function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null){
   const ca=document.getElementById('chat-area');
   let extra='';
   if(role==='ai'&&ingredients&&ingredients.length){
-    const safe=JSON.stringify(ingredients).replace(/'/g,'\\u0027');
-    extra='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)"><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">'+ingredients.length+' ingredients in this recipe</div><button onclick=\'addRecipeToGrocery('+safe+')\' style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(126,184,164,0.2);color:var(--accent);border:1px solid rgba(126,184,164,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10133; Add ingredients to grocery list</button></div>';
+    const safe=JSON.stringify(ingredients).replace(/'/g,'\u0027');
+    extra+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)"><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">'+ingredients.length+' ingredients in this recipe</div><button onclick="addRecipeToGrocery('+safe+')" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(126,184,164,0.2);color:var(--accent);border:1px solid rgba(126,184,164,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10133; Add ingredients to grocery list</button></div>';
+  }
+  if(role==='ai'&&suggestedGoals){
+    const p=suggestedGoals.proteinGoal,w=suggestedGoals.waterGoal,c=suggestedGoals.carbGoal;
+    const sg=encodeURIComponent(JSON.stringify(suggestedGoals));
+    extra+='<div id="goal-suggestion-card" style="margin-top:12px;padding:12px;background:rgba(85,107,47,0.15);border:1px solid rgba(85,107,47,0.3);border-radius:8px">'
+      +'<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:8px">&#127919; Suggested daily goals:</div>'
+      +'<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px">'
+      +(p?'<div style="font-size:13px;color:#fff"><strong>'+p+'g</strong> protein</div>':'')
+      +(w?'<div style="font-size:13px;color:#fff"><strong>'+w+' oz</strong> water</div>':'')
+      +(c?'<div style="font-size:13px;color:#fff"><strong>'+c+'g</strong> net carbs</div>':'')
+      +'</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button onclick="applyGoalSuggestion(\''+sg+'\')" style="flex:1;padding:7px;background:rgba(85,107,47,0.6);color:#fff;border:1px solid rgba(85,107,47,0.8);border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10003; Yes, update my goals</button>'
+      +'<button onclick="document.getElementById(\'goal-suggestion-card\').remove()" style="flex:1;padding:7px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--font-body)">No thanks</button>'
+      +'</div></div>';
   }
   ca.innerHTML+='<div class="msg '+role+'"><div class="msg-avatar">'+(role==='ai'?'&#127807;':'&#128100;')+'</div><div class="msg-bubble">'+escHtml(text)+extra+'</div></div>';
   ca.scrollTop=ca.scrollHeight;
 }
-function addChatMsg(role,text,ingredients=null){addChatMsgDOM(role,text,ingredients);}
+
+function addChatMsg(role,text,ingredients=null,goals=null){addChatMsgDOM(role,text,ingredients,goals);}
 function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
 function quickPrompt(t){document.getElementById('chat-input').value=t;sendChat();showSection('chat');}
+
+async function applyGoalSuggestion(encoded){
+  if(!window._profile)return;
+  let goals;
+  try{goals=JSON.parse(decodeURIComponent(encoded));}catch(e){return;}
+  if(goals.proteinGoal)window._profile.proteinGoal=Math.round(goals.proteinGoal);
+  if(goals.waterGoal)window._profile.waterGoal=Math.round(goals.waterGoal);
+  if(goals.carbGoal)window._profile.carbGoal=Math.round(goals.carbGoal);
+  await fbSet('profile','survey',window._profile);
+  const card=document.getElementById('goal-suggestion-card');
+  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);text-align:center;padding:4px">&#10003; Goals updated — Protein: '+window._profile.proteinGoal+'g · Water: '+window._profile.waterGoal+' oz · Carbs: '+window._profile.carbGoal+'g</div>';
+  refreshDashboard();
+}
 </script>
 </body>
 </html>
