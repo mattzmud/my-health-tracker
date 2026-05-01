@@ -269,6 +269,9 @@ textarea{min-height:80px;}
     <button class="nav-btn" onclick="showSection('chat')" id="nav-chat">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span>Coach</span>
     </button>
+    <button class="nav-btn" onclick="showSection('profile')" id="nav-profile">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span>
+    </button>
     <button class="signout-btn" onclick="doSignOut()">Sign out</button>
   </nav>
 
@@ -349,6 +352,62 @@ textarea{min-height:80px;}
           </div>
           <canvas id="water-chart" height="160"></canvas>
         </div>
+      </div>
+      <!-- BADGES -->
+      <div class="card" id="badges-card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin:0">&#127942; Badges earned</div>
+          <span id="badge-count" style="font-size:13px;color:var(--muted)">Loading...</span>
+        </div>
+        <div id="badges-display"><div style="font-size:13px;color:var(--muted)">Keep logging to earn your first badge!</div></div>
+      </div>
+    </section>
+
+    <!-- PROFILE -->
+    <section id="sec-profile" class="section">
+      <div class="sec-header"><div class="sec-title">My Profile</div><div class="sec-sub">Your account info, badges, and settings.</div></div>
+
+      <!-- Avatar + info -->
+      <div class="card">
+        <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+          <div style="position:relative;flex-shrink:0">
+            <div onclick="document.getElementById('profile-avatar-input').click()" style="width:80px;height:80px;border-radius:50%;background:var(--surface2);border:2px solid rgba(126,184,164,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;">
+              <img id="profile-avatar-img" src="" style="width:100%;height:100%;object-fit:cover;display:none;"/>
+              <span id="profile-avatar-placeholder" style="font-size:32px">&#128100;</span>
+            </div>
+            <div onclick="document.getElementById('profile-avatar-input').click()" style="position:absolute;bottom:0;right:0;width:22px;height:22px;background:var(--accent);border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0f1117" stroke-width="2.5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </div>
+            <input type="file" id="profile-avatar-input" accept="image/*" style="display:none" onchange="uploadAvatar(event);syncProfileAvatar(event)"/>
+          </div>
+          <div style="flex:1">
+            <div style="font-family:var(--font-display);font-size:22px;color:var(--text)" id="profile-name">—</div>
+            <div style="font-size:14px;color:var(--muted);margin-top:4px" id="profile-email">—</div>
+            <div style="font-size:13px;color:var(--muted);margin-top:2px" id="profile-age-weight">—</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Badges -->
+      <div class="card">
+        <div class="card-title">&#127942; My badges</div>
+        <div id="profile-badges-display"><div style="font-size:13px;color:var(--muted)">No badges yet — keep going!</div></div>
+      </div>
+
+      <!-- Change password -->
+      <div class="card">
+        <div class="card-title">&#128272; Change password</div>
+        <label class="form-label" style="margin-top:0">New password</label>
+        <input type="password" id="new-password" placeholder="Enter new password (min 6 characters)" style="margin-bottom:10px"/>
+        <label class="form-label">Confirm new password</label>
+        <input type="password" id="new-password2" placeholder="Confirm new password" style="margin-bottom:12px"/>
+        <button class="btn btn-primary btn-sm" onclick="changePassword()">Update password</button>
+        <div class="msg-box" id="password-msg" style="margin-top:10px"></div>
+      </div>
+
+      <!-- Sign out -->
+      <div class="card" style="text-align:center">
+        <button class="btn btn-ghost" onclick="doSignOut()" style="color:var(--red);border-color:rgba(232,140,140,0.3)">&#128682; Sign out</button>
       </div>
     </section>
 
@@ -560,6 +619,7 @@ const auth = getAuth(fbApp);
 onAuthStateChanged(auth, async user => {
   if (user) {
     window._uid = user.uid;
+    window._authUser = user;
     document.getElementById('login-screen').style.display = 'none';
     const profile = await window.fbGet('profile','survey');
     if (!profile || !profile.completed) { showOnboarding(); }
@@ -746,6 +806,7 @@ function showSection(name){
   if(name==='food'){renderFoodEntries();renderFavorites();}
   if(name==='grocery')renderGroceryList();
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
+  if(name==='profile')renderProfile();
 }
 
 // ── ONBOARDING ──────────────────────────────────────────────
@@ -925,7 +986,7 @@ function getDefaultWorkoutPlan(){
 function showApp(){document.getElementById('app-screen').style.display='block';}
 
 // ── CACHE ──────────────────────────────────────────────────
-let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{}};
+let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[]};
 
 window.appInit=async function(){
   const p=window._profile;
@@ -949,11 +1010,14 @@ window.appInit=async function(){
   for(const d of getLast7Days()){if(!cache.food[d]){const fd=await fbGet('food',d);cache.food[d]=fd?(fd.entries||[]):[];}}
   // Load journal entries
   const jc=await fbGetCol('journal');Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;});
+  const bc=await fbGet('badges','earned');cache.badges=bc?(bc.list||[]):[];
   setSyncStatus('synced');
   refreshDashboard();renderFoodEntries();renderFavorites();
   selectedFitnessDay=getActiveFitnessDay();
   renderFitness();renderMeds();renderGroceryList();loadAvatar();
   initChat();
+  await checkAndAwardBadges();
+  renderBadges();
 };
 
 // ── AVATAR ──────────────────────────────────────────────────
@@ -1595,6 +1659,230 @@ async function addRecipeToGrocery(ingredients){
 }
 
 // ── CHATBOT ──────────────────────────────────────────────────
+// ── BADGES ───────────────────────────────────────────────────
+const BADGE_DEFS = [
+  // Hydration
+  {id:'hydro_1',name:'Hydration Hero',desc:'Hit your water goal for the first time',icon:'💧',color:'#8ca4e8'},
+  {id:'hydro_3',name:'Waterfall',desc:'Hit your water goal 3 days in a row',icon:'🌊',color:'#8ca4e8'},
+  {id:'hydro_7',name:'Flood Gate',desc:'Hit your water goal 7 days in a row',icon:'🏊',color:'#8ca4e8'},
+  // Protein
+  {id:'protein_1',name:'Protein Rookie',desc:'Hit your protein goal for the first time',icon:'💪',color:'#7eb8a4'},
+  {id:'protein_3',name:'Muscle Builder',desc:'Hit your protein goal 3 days in a row',icon:'🥩',color:'#7eb8a4'},
+  {id:'protein_7',name:'Iron Chef',desc:'Hit your protein goal 7 days in a row',icon:'🏆',color:'#7eb8a4'},
+  // Fitness
+  {id:'fit_1',name:'First Step',desc:'Completed your first workout',icon:'👟',color:'#c9a96e'},
+  {id:'fit_3',name:'On a Roll',desc:'Worked out 3 days in a row',icon:'🔥',color:'#c9a96e'},
+  {id:'fit_5',name:'Sweat Streak',desc:'Worked out 5 days in a row',icon:'⚡',color:'#c9a96e'},
+  {id:'fit_7',name:'Week Warrior',desc:'Worked out every day for a week',icon:'🦁',color:'#c9a96e'},
+  // Meds
+  {id:'meds_1',name:'Pill Pal',desc:'Took all medications on time for the first time',icon:'💊',color:'#b08ce8'},
+  {id:'meds_7',name:'Consistent Care',desc:'Took all medications for 7 days straight',icon:'🩺',color:'#b08ce8'},
+  {id:'meds_30',name:'Medication Master',desc:'30 days of perfect medication adherence',icon:'🏅',color:'#b08ce8'},
+  // Food logging
+  {id:'log_1',name:'Food Journalist',desc:'Logged your first meal',icon:'📝',color:'#7eb8a4'},
+  {id:'log_7',name:'Dedicated Logger',desc:'Logged food for 7 days',icon:'📅',color:'#7eb8a4'},
+  // Weight loss
+  {id:'weight_5',name:'Five Down',desc:'Lost your first 5 lbs',icon:'⬇️',color:'#e88c8c'},
+  {id:'weight_10',name:'Ten Strong',desc:'Lost 10 lbs from starting weight',icon:'🎯',color:'#e88c8c'},
+  {id:'weight_25',name:'Quarter Century',desc:'Lost 25 lbs — incredible!',icon:'🌟',color:'#e88c8c'},
+  // Journal
+  {id:'journal_1',name:'Soul Writer',desc:'Wrote your first workout journal entry',icon:'✍️',color:'#8ca4e8'},
+  {id:'journal_7',name:'Story Teller',desc:'Journaled 7 workouts',icon:'📖',color:'#8ca4e8'},
+  // Special
+  {id:'early_bird',name:'Early Bird',desc:'Logged breakfast before 9am',icon:'🌅',color:'#c9a96e'},
+  {id:'night_owl',name:'Night Owl',desc:'Logged a late night healthy snack',icon:'🦉',color:'#7eb8a4'},
+  {id:'clean_sweep',name:'Clean Sweep',desc:'Hit protein, water, and fitness goals on the same day',icon:'✨',color:'#7eb8a4'},
+  {id:'streak_14',name:'Two Week Titan',desc:'Logged something every day for 14 days',icon:'👑',color:'#c9a96e'},
+];
+
+function hasBadge(id){ return cache.badges.some(b=>b.id===id); }
+
+async function awardBadge(id){
+  if(hasBadge(id))return false;
+  const def=BADGE_DEFS.find(b=>b.id===id);if(!def)return false;
+  cache.badges.push({id,name:def.name,desc:def.desc,icon:def.icon,color:def.color,earnedOn:TODAY,ts:Date.now()});
+  await fbSet('badges','earned',{list:cache.badges});
+  showBadgeToast(def);
+  return true;
+}
+
+function showBadgeToast(def){
+  const toast=document.createElement('div');
+  toast.style.cssText='position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid '+def.color+';border-radius:var(--radius);padding:14px 20px;display:flex;align-items:center;gap:12px;z-index:9999;animation:fadeUp 0.3s ease;box-shadow:0 8px 32px rgba(0,0,0,0.4);min-width:280px;max-width:360px;';
+  toast.innerHTML='<div style="font-size:32px">'+def.icon+'</div><div><div style="font-size:13px;color:'+def.color+';font-weight:600;margin-bottom:2px">&#127942; Badge earned!</div><div style="font-size:15px;font-weight:600;color:var(--text)">'+def.name+'</div><div style="font-size:12px;color:var(--muted)">'+def.desc+'</div></div>';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(),4000);
+}
+
+async function checkAndAwardBadges(){
+  const p=window._profile||{};
+  const pg=p.proteinGoal||120, wg=p.waterGoal||80;
+  const days=Object.keys(cache.food).filter(d=>d<=TODAY).sort();
+
+  // Helper: get last N days ending on TODAY
+  function lastNDays(n){const arr=[];for(let i=n-1;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);arr.push(d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'));}return arr;}
+
+  // Food logging streak
+  const loggedDays=days.filter(d=>(cache.food[d]||[]).length>0);
+  if(loggedDays.length>=1)await awardBadge('log_1');
+  if(loggedDays.length>=7)await awardBadge('log_7');
+
+  // Protein streaks
+  const proteinDays=days.filter(d=>{const tp=(cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0);return tp>=pg;});
+  if(proteinDays.length>=1)await awardBadge('protein_1');
+  // Check 3 in a row
+  let pStreak=0,maxPStreak=0;
+  lastNDays(30).forEach(d=>{const tp=(cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0);if(tp>=pg){pStreak++;maxPStreak=Math.max(maxPStreak,pStreak);}else pStreak=0;});
+  if(maxPStreak>=3)await awardBadge('protein_3');
+  if(maxPStreak>=7)await awardBadge('protein_7');
+
+  // Water streaks
+  const waterDays=days.filter(d=>{const tw=(cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0);return tw>=wg;});
+  if(waterDays.length>=1)await awardBadge('hydro_1');
+  let wStreak=0,maxWStreak=0;
+  lastNDays(30).forEach(d=>{const tw=(cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0);if(tw>=wg){wStreak++;maxWStreak=Math.max(maxWStreak,wStreak);}else wStreak=0;});
+  if(maxWStreak>=3)await awardBadge('hydro_3');
+  if(maxWStreak>=7)await awardBadge('hydro_7');
+
+  // Fitness streaks
+  const fitDays=days.filter(d=>Object.values(cache.fitness[d]||{}).some(v=>v));
+  if(fitDays.length>=1)await awardBadge('fit_1');
+  let fStreak=0,maxFStreak=0;
+  lastNDays(30).forEach(d=>{if(Object.values(cache.fitness[d]||{}).some(v=>v)){fStreak++;maxFStreak=Math.max(maxFStreak,fStreak);}else fStreak=0;});
+  if(maxFStreak>=3)await awardBadge('fit_3');
+  if(maxFStreak>=5)await awardBadge('fit_5');
+  if(maxFStreak>=7)await awardBadge('fit_7');
+
+  // Medication adherence
+  const dailyTimes=['am','af','pm'];
+  function medsComplete(date){
+    const ms=cache.meds[date]||{};
+    const meds=Object.values(cache.medsList||{});
+    return meds.every(med=>{
+      const slots=(med.times||['am']).filter(t=>dailyTimes.includes(t));
+      return slots.length===0||slots.every(t=>ms[t+'-'+(med.id||med.name)]);
+    });
+  }
+  if(medsComplete(TODAY))await awardBadge('meds_1');
+  let mStreak=0,maxMStreak=0;
+  lastNDays(30).forEach(d=>{if(medsComplete(d)){mStreak++;maxMStreak=Math.max(maxMStreak,mStreak);}else mStreak=0;});
+  if(maxMStreak>=7)await awardBadge('meds_7');
+  if(maxMStreak>=30)await awardBadge('meds_30');
+
+  // Weight loss
+  const startW=p.currentWeight||240;
+  if(cache.weights.length>0){
+    const curW=cache.weights[cache.weights.length-1].val;
+    const lost=startW-curW;
+    if(lost>=5)await awardBadge('weight_5');
+    if(lost>=10)await awardBadge('weight_10');
+    if(lost>=25)await awardBadge('weight_25');
+  }
+
+  // Journal
+  const journalDays=Object.values(cache.journal).filter(j=>j&&j.text);
+  if(journalDays.length>=1)await awardBadge('journal_1');
+  if(journalDays.length>=7)await awardBadge('journal_7');
+
+  // Early bird — breakfast before 9am today
+  const breakfastToday=(cache.food[TODAY]||[]).find(e=>e.time==='Morning');
+  if(breakfastToday){const h=new Date(breakfastToday.ts).getHours();if(h<9)await awardBadge('early_bird');}
+
+  // Night owl — late night entry today
+  if((cache.food[TODAY]||[]).some(e=>e.time==='Late night'))await awardBadge('night_owl');
+
+  // Clean sweep — hit all three goals today
+  const todayEntries=cache.food[TODAY]||[];
+  const todayP=todayEntries.reduce((a,e)=>a+(e.protein||0),0);
+  const todayW=todayEntries.reduce((a,e)=>a+(e.water||0),0);
+  const todayFit=Object.values(cache.fitness[TODAY]||{}).some(v=>v);
+  if(todayP>=pg&&todayW>=wg&&todayFit)await awardBadge('clean_sweep');
+
+  // 14-day logging streak
+  let logStreak=0;
+  lastNDays(14).forEach(d=>{if((cache.food[d]||[]).length>0||(Object.values(cache.fitness[d]||{}).some(v=>v)))logStreak++;});
+  if(logStreak>=14)await awardBadge('streak_14');
+}
+
+function renderBadges(){
+  const earned=cache.badges||[];
+  const badgesEl=document.getElementById('badges-display');
+  const profileEl=document.getElementById('profile-badges-display');
+  const countEl=document.getElementById('badge-count');
+  if(countEl)countEl.textContent=earned.length+' earned';
+
+  if(earned.length===0){
+    if(badgesEl)badgesEl.innerHTML='<div style="font-size:13px;color:var(--muted)">Keep logging to earn your first badge!</div>';
+    if(profileEl)profileEl.innerHTML='<div style="font-size:13px;color:var(--muted)">No badges yet — keep going!</div>';
+    return;
+  }
+
+  const sorted=[...earned].sort((a,b)=>b.ts-a.ts);
+  const html=sorted.map(b=>`<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+    <div style="width:42px;height:42px;border-radius:50%;background:rgba(${hexToRgbStr(b.color)},0.15);border:1.5px solid ${b.color};display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0">${b.icon}</div>
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:600;color:var(--text)">${b.name}</div>
+      <div style="font-size:12px;color:var(--muted)">${b.desc}</div>
+    </div>
+    <div style="font-size:11px;color:var(--muted);text-align:right;flex-shrink:0">${(b.earnedOn||'').slice(5)}</div>
+  </div>`).join('');
+
+  if(badgesEl)badgesEl.innerHTML=html;
+  if(profileEl)profileEl.innerHTML=html;
+}
+
+function hexToRgbStr(hex){
+  if(!hex||hex[0]!=='#')return'126,184,164';
+  const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+  return r+','+g+','+b;
+}
+
+function renderProfile(){
+  const p=window._profile||{};
+  const auth_user=window._authUser||{};
+  document.getElementById('profile-name').textContent=p.name||'—';
+  document.getElementById('profile-email').textContent=auth_user.email||'—';
+  document.getElementById('profile-age-weight').textContent='Age '+p.age+' · '+p.currentWeight+' lbs starting · Goal: '+p.goalWeight+' lbs';
+  // Sync avatar
+  const img=document.getElementById('avatar-img');
+  const profImg=document.getElementById('profile-avatar-img');
+  const profPlaceholder=document.getElementById('profile-avatar-placeholder');
+  if(img&&img.src&&img.style.display!=='none'&&profImg){
+    profImg.src=img.src;profImg.style.display='block';if(profPlaceholder)profPlaceholder.style.display='none';
+  }
+  renderBadges();
+}
+
+async function syncProfileAvatar(event){
+  // Mirror avatar upload to profile page preview
+  const img=document.getElementById('avatar-img');
+  const profImg=document.getElementById('profile-avatar-img');
+  const profPlaceholder=document.getElementById('profile-avatar-placeholder');
+  setTimeout(()=>{
+    if(img&&img.src&&img.style.display!=='none'&&profImg){
+      profImg.src=img.src;profImg.style.display='block';if(profPlaceholder)profPlaceholder.style.display='none';
+    }
+  },500);
+}
+
+async function changePassword(){
+  const pw=document.getElementById('new-password').value;
+  const pw2=document.getElementById('new-password2').value;
+  if(pw.length<6){showMsg('password-msg','Password must be at least 6 characters.','error');return;}
+  if(pw!==pw2){showMsg('password-msg','Passwords do not match.','error');return;}
+  try{
+    const {updatePassword}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    await updatePassword(window._authUser,pw);
+    document.getElementById('new-password').value='';
+    document.getElementById('new-password2').value='';
+    showMsg('password-msg','Password updated successfully!','success');
+  }catch(e){
+    let m='Could not update password. You may need to sign out and sign back in first.';
+    if(e.code==='auth/requires-recent-login')m='For security, please sign out and sign back in before changing your password.';
+    showMsg('password-msg',m,'error');
+  }
+}
+
 // ── CHAT WITH PERSISTENT SESSIONS ─────────────────────────────
 let chatHistory=[];
 let currentSessionId=null;
