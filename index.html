@@ -1454,33 +1454,43 @@ window.appInit=async function(){
   const quoteEl=document.getElementById('quote-of-day');
   if(quoteEl)quoteEl.textContent=quotes[new Date().getDate()%quotes.length];
   setSyncStatus('syncing');
-  const wCol=await fbGetCol('weights');
+  // Load all critical data in parallel
+  const [wCol,tf,tfi,tm,ml,fv,gr,bc,vs,bpd]=await Promise.all([
+    fbGetCol('weights'),
+    fbGet('food',TODAY),
+    fbGet('fitness',TODAY),
+    fbGet('meds',TODAY),
+    fbGet('medications','list'),
+    fbGet('favorites','list'),
+    fbGet('grocery','list'),
+    fbGet('badges','earned'),
+    fbGet('vitals','settings'),
+    fbGet('vitals',TODAY),
+  ]);
   cache.weights=Object.entries(wCol).map(([id,d])=>({date:id,val:d.val})).sort((a,b)=>a.date.localeCompare(b.date));
-  const tf=await fbGet('food',TODAY);cache.food[TODAY]=tf?(tf.entries||[]):[];
-  const tfi=await fbGet('fitness',TODAY);cache.fitness[TODAY]=tfi?(tfi.done||{}):{}; 
-  const tm=await fbGet('meds',TODAY);cache.meds[TODAY]=tm?(tm.taken||{}):{}; 
-  const ml=await fbGet('medications','list');cache.medsList=ml?(ml.meds||{}):{};
-  const fv=await fbGet('favorites','list');cache.favorites=fv?(fv.items||[]):[];
-  const gr=await fbGet('grocery','list');cache.grocery=gr?(gr.items||[]):[];
-  for(const d of getLast7Days()){if(!cache.food[d]){const fd=await fbGet('food',d);cache.food[d]=fd?(fd.entries||[]):[];}}
-  // Load journal entries
-  const jc=await fbGetCol('journal');Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;});
-  const bc=await fbGet('badges','earned');cache.badges=bc?(bc.list||[]):[];
-  renderBadges();// show existing badges immediately while checking for new ones
-  const vs=await fbGet('vitals','settings');
+  cache.food[TODAY]=tf?(tf.entries||[]):[];
+  cache.fitness[TODAY]=tfi?(tfi.done||{}):{};;
+  cache.meds[TODAY]=tm?(tm.taken||{}):{};;
+  cache.medsList=ml?(ml.meds||{}):{};;
+  cache.favorites=fv?(fv.items||[]):[];
+  cache.grocery=gr?(gr.items||[]):[];
+  cache.badges=bc?(bc.list||[]):[];
   cache.vitalSettings=vs||{trackBP:false,trackBS:false};
-  if(cache.vitalSettings.trackBP||cache.vitalSettings.trackBS){
-    // Load today's vitals by date key
-    const bpd=await fbGet('vitals',viewDate);
-    if(bpd){cache.vitals.bp[viewDate]=bpd.bp||[];cache.vitals.bs[viewDate]=bpd.bs||[];}
-    else{cache.vitals.bp[viewDate]=[];cache.vitals.bs[viewDate]=[];}
-  }
+  if(bpd){cache.vitals.bp[TODAY]=bpd.bp||[];cache.vitals.bs[TODAY]=bpd.bs||[];}
+  else{cache.vitals.bp[TODAY]=[];cache.vitals.bs[TODAY]=[];}
+  renderBadges();
+  // Load last 7 days food + all journal in background — don't block UI
+  const _last7=getLast7Days().filter(d=>d!==TODAY);
+  Promise.all([
+    ..._last7.map(d=>fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[]; })),
+    fbGetCol('journal').then(jc=>Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;})),
+  ]).then(()=>{renderProteinChart();renderWaterChart();});
   setSyncStatus('synced');
   loadAvatar();// load early so avatar shows on dashboard
   updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
   selectedFitnessDay=getActiveFitnessDay();
   renderFitness();renderMeds();renderGroceryList();
-  initChat();
+  // initChat deferred — loads lazily when user opens chat tab
   applyMedsVisibility();
   await checkAndAwardBadges();
   renderBadges();
