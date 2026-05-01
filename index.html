@@ -161,7 +161,14 @@ textarea{min-height:80px;}
 .food-time{font-size:12px;color:var(--muted);min-width:70px;padding-top:2px;}
 .food-delete{cursor:pointer;color:var(--muted);font-size:16px;padding:0 4px;}
 .food-delete:hover{color:var(--red);}
-.ai-feedback{background:linear-gradient(135deg,rgba(85,107,47,0.06),rgba(85,107,47,0.03));border:1px solid rgba(85,107,47,0.18);border-radius:var(--radius-sm);padding:14px 16px;font-size:13.5px;line-height:1.7;color:var(--text);white-space:pre-wrap;margin-top:12px;}
+.ai-feedback{background:linear-gradient(135deg,rgba(85,107,47,0.06),rgba(85,107,47,0.03));border:1px solid rgba(85,107,47,0.18);border-radius:var(--radius-sm);padding:0;font-size:13.5px;line-height:1.7;color:var(--text);margin-top:12px;overflow:hidden;}
+.ai-feedback-header{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;cursor:pointer;user-select:none;}
+.ai-feedback-header:hover{background:rgba(85,107,47,0.05);}
+.ai-feedback-title{font-weight:500;color:var(--accent);font-size:13px;}
+.ai-feedback-toggle{font-size:12px;color:var(--muted);flex-shrink:0;transition:transform 0.2s;}
+.ai-feedback-body{padding:0 14px 14px 14px;white-space:pre-wrap;border-top:1px solid rgba(85,107,47,0.1);}
+.ai-feedback.collapsed .ai-feedback-body{display:none;}
+.ai-feedback.collapsed .ai-feedback-toggle{transform:rotate(-90deg);}
 .sec-header{margin-bottom:20px;}
 .sec-title{font-family:var(--font-display);font-size:28px;color:var(--text);letter-spacing:-0.02em;margin-bottom:4px;}
 .sec-sub{font-size:14px;color:var(--muted);}
@@ -992,6 +999,19 @@ const API='https://health-tracker-api.matt-zmud.workers.dev';
 
 function formatDate(d){const dt=new Date(d+'T12:00:00');return DAY_NAMES[dt.getDay()]+', '+MONTH_NAMES[dt.getMonth()]+' '+dt.getDate()+', '+dt.getFullYear();}
 function getLast7Days(){const days=[];for(let i=6;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);days.push(d.toISOString().split('T')[0]);}return days;}
+function toggleAIFeedback(el){
+  const box=el.closest('.ai-feedback');
+  if(box)box.classList.toggle('collapsed');
+}
+function aiFeedbackHTML(icon, title, body, extraHTML=''){
+  return '<div class="ai-feedback">'
+    +'<div class="ai-feedback-header" onclick="toggleAIFeedback(this)">'
+    +'<div class="ai-feedback-title">'+icon+' '+title+'</div>'
+    +'<span class="ai-feedback-toggle">&#9660;</span>'
+    +'</div>'
+    +'<div class="ai-feedback-body">'+body+(extraHTML?'<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(85,107,47,0.1)">'+extraHTML+'</div>':'')+'</div>'
+    +'</div>';
+}
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
 
@@ -1209,7 +1229,7 @@ function getDefaultWorkoutPlan(){
 function showApp(){document.getElementById('app-screen').style.display='block';}
 
 // ── CACHE ──────────────────────────────────────────────────
-let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:[],bs:[]},vitalSettings:{trackBP:false,trackBS:false}};
+let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:[],bs:[]},vitalSettings:{trackBP:false,trackBS:false},groceryAnalysis:''};
 
 window.appInit=async function(){
   // Close mobile menu when tapping outside
@@ -1539,7 +1559,7 @@ async function logFood(){
       cache.food[viewDate].push({time:mt,text:item||'(water only)',protein:Math.round(totalP/perItem*10)/10,carbs:Math.round(totalC/perItem*10)/10,calories:Math.round(totalCal/perItem),water:i===0?woz:0,ts:Date.now()+i});
     });
     await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
-    document.getElementById('food-feedback').innerHTML='<div class="ai-feedback">&#127807; '+escHtml(displayText)+'</div>';
+    document.getElementById('food-feedback').innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));
     document.getElementById('food-input').value='';
     renderFoodEntries();
   }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
@@ -2030,21 +2050,28 @@ async function clearCheckedGrocery(){
 }
 async function clearAllGrocery(){
   if(!confirm('Clear your entire grocery list?'))return;
-  cache.grocery=[];await fbSet('grocery','list',{items:[]});renderGroceryList();
+  cache.grocery=[];cache.groceryAnalysis='';
+  await fbSet('grocery','list',{items:[]});renderGroceryList();
   document.getElementById('grocery-feedback').innerHTML='';
 }
 async function analyzeGroceryList(){
   if(!cache.grocery.length){alert('Add some items to your list first!');return;}
   const btn=document.getElementById('analyze-grocery-btn');btn.disabled=true;btn.textContent='Analyzing...';
+  document.getElementById('grocery-feedback').innerHTML='';
   try{
     const items=cache.grocery.map(i=>i.text).join(', ');
     const res=await callAI('Here is my grocery list: '+items+'\n\nAnalyze the nutritional profile. What does it do well? What is missing? Suggest 3 specific swaps or additions for my health goals.',
       'You are a nutrition coach. '+buildUserContext()+'. Be warm, specific, practical. Under 200 words.');
-    document.getElementById('grocery-feedback').innerHTML='<div class="ai-feedback">&#128722; <strong>Grocery list analysis:</strong><br><br>'+escHtml(res.replace(/```/g,''))+'</div>';
+    const html=aiFeedbackHTML('&#128722;','Grocery list analysis',escHtml(res.replace(/```/g,'')));
+    document.getElementById('grocery-feedback').innerHTML=html;
+    cache.groceryAnalysis=html;// persist across tab switches
   }catch(e){document.getElementById('grocery-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error. Please try again.</div>';}
-  btn.disabled=false;btn.textContent='&#129504; Analyze list';
+  btn.disabled=false;btn.textContent='🧠 Analyze list';
 }
 function renderGroceryList(){
+  // Restore analysis if it exists
+  const fb=document.getElementById('grocery-feedback');
+  if(fb&&cache.groceryAnalysis&&!fb.innerHTML)fb.innerHTML=cache.groceryAnalysis;
   const el=document.getElementById('grocery-list');
   if(!cache.grocery.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Your list is empty. Add items above!</div>';return;}
   const ri=i=>cache.grocery.indexOf(i);
@@ -2429,9 +2456,7 @@ async function logBloodPressure(){
       'You are a health coach. '+buildUserContext()+'. Give 2-3 sentences of warm, specific feedback on this blood pressure reading. If elevated or high, give 2-3 practical tips to help. If normal, give encouragement. Be reassuring, not alarming. Under 100 words.'
     );
     const cat2=bpCategory(sys,dia);
-    document.getElementById('bp-feedback').innerHTML='<div class="ai-feedback" style="background:'+cat2.bg+';border-color:'+cat2.color.replace('var(--','rgba(').replace(')',',0.3)')+'">'+
-      '<div style="font-size:12px;font-weight:600;color:'+cat2.color+';margin-bottom:6px">'+cat2.label+'</div>'+
-      escHtml(res.replace(/```/g,''))+'</div>';
+    document.getElementById('bp-feedback').innerHTML=aiFeedbackHTML('&#10084;&#65039;',cat2.label,'<div style="font-size:12px;font-weight:600;color:'+cat2.color+';margin-bottom:8px">'+cat2.label+'</div>'+escHtml(res.replace(/```/g,'')));
   }catch(e){
     document.getElementById('bp-feedback').innerHTML='<div class="ai-feedback">Reading logged!</div>';
   }
@@ -2461,9 +2486,7 @@ async function logBloodSugar(){
       'You are a health coach who specializes in diabetes management. '+buildUserContext()+'. Give 2-3 sentences of warm, specific feedback. If the reading is high, give practical tips (what to do, foods to avoid, movement suggestions). If low, give advice on how to bring it up safely. If normal, give encouragement. Be reassuring, specific, and diabetes-aware. Under 120 words.'
     );
     const cat2=bsCategory(val,selectedBsContext);
-    document.getElementById('bs-feedback').innerHTML='<div class="ai-feedback" style="background:'+cat2.bg+';border-color:'+cat2.color.replace('var(--','rgba(').replace(')',',0.3)')+'">'+
-      '<div style="font-size:12px;font-weight:600;color:'+cat2.color+';margin-bottom:6px">'+cat2.label+(ctx?' · '+ctx:'')+'</div>'+
-      escHtml(res.replace(/```/g,''))+'</div>';
+    document.getElementById('bs-feedback').innerHTML=aiFeedbackHTML('&#129482;',cat2.label+(ctx?' · '+ctx:''),'<div style="font-size:12px;font-weight:600;color:'+cat2.color+';margin-bottom:8px">'+cat2.label+(ctx?' · '+ctx:'')+'</div>'+escHtml(res.replace(/```/g,'')));
   }catch(e){
     document.getElementById('bs-feedback').innerHTML='<div class="ai-feedback">Reading logged!</div>';
   }
