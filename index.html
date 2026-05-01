@@ -394,8 +394,8 @@ textarea{min-height:80px;}
       <div class="stat-grid">
         <div class="stat-card"><div class="stat-num" id="dash-weight" style="color:var(--green)">&#8212;</div><div class="stat-label">Current Weight</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-lbs-lost" style="color:var(--amber)">&#8212;</div><div class="stat-label">Lbs Lost</div></div>
-        <div class="stat-card"><div class="stat-num" id="dash-protein" style="color:var(--blue)">&#8212;</div><div class="stat-label">Protein Today</div></div>
-        <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label">Water Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-protein" style="color:var(--blue)">&#8212;</div><div class="stat-label" id="stat-protein-label">Protein Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-water-label">Water Today</div></div>
       </div>
       <div class="grid2">
         <div class="card">
@@ -465,11 +465,13 @@ textarea{min-height:80px;}
       <div class="sec-header"><div class="sec-title">&#128147; Vitals</div><div class="sec-sub">Track your blood pressure and blood sugar over time.</div></div>
 
       <!-- Date nav -->
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="range-btn active" id="food-today-btn" onclick="pageJumpDate('food','today',this)">Today</button>
-        <button class="range-btn" id="food-yesterday-btn" onclick="pageJumpDate('food','yesterday',this)">Yesterday</button>
-        <button class="range-btn" onclick="openPageDatePicker('food')" id="food-pick-btn">&#128197; Pick date</button>
-        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="food-date-display">Today</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="vitals-today-btn" onclick="pageJumpDate('vitals','today',this)">Today</button>
+        <button class="range-btn" id="vitals-yesterday-btn" onclick="pageJumpDate('vitals','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('vitals')" id="vitals-pick-btn">&#128197; Pick date</button>
+        <button class="range-btn" onclick="openVitalsRangePicker()" id="vitals-range-btn">&#128202; Date range</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="vitals-date-display">Today</div>
+      </div>
       </div>
 
       <!-- Blood Pressure -->
@@ -613,11 +615,12 @@ textarea{min-height:80px;}
     <!-- FOOD -->
     <section id="sec-food" class="section">
       <div class="sec-header"><div class="sec-title">Food Diary</div><div class="sec-sub">Log meals — AI analyzes macros and gives personalized feedback.</div></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="range-btn active" id="fitness-today-btn" onclick="pageJumpDate('fitness','today',this)">Today</button>
-        <button class="range-btn" id="fitness-yesterday-btn" onclick="pageJumpDate('fitness','yesterday',this)">Yesterday</button>
-        <button class="range-btn" onclick="openPageDatePicker('fitness')" id="fitness-pick-btn">&#128197; Pick date</button>
-        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="fitness-date-display">Today</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="food-today-btn" onclick="pageJumpDate('food','today',this)">Today</button>
+        <button class="range-btn" id="food-yesterday-btn" onclick="pageJumpDate('food','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('food')" id="food-pick-btn">&#128197; Pick date</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="food-date-display">Today</div>
+      </div>
       </div>
       <div class="card">
         <div class="card-title">Log a meal or snack</div>
@@ -692,11 +695,12 @@ textarea{min-height:80px;}
     <!-- FITNESS -->
     <section id="sec-fitness" class="section">
       <div class="sec-header"><div class="sec-title">Fitness Plan</div><div class="sec-sub">Your personalized weekly workout. Tap "How to" for YouTube form videos.</div></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="range-btn active" id="meds-today-btn" onclick="pageJumpDate('meds','today',this)">Today</button>
-        <button class="range-btn" id="meds-yesterday-btn" onclick="pageJumpDate('meds','yesterday',this)">Yesterday</button>
-        <button class="range-btn" onclick="openPageDatePicker('meds')" id="meds-pick-btn">&#128197; Pick date</button>
-        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="meds-date-display">Today</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="fitness-today-btn" onclick="pageJumpDate('fitness','today',this)">Today</button>
+        <button class="range-btn" id="fitness-yesterday-btn" onclick="pageJumpDate('fitness','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('fitness')" id="fitness-pick-btn">&#128197; Pick date</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="fitness-date-display">Today</div>
+      </div>
       </div>
 
       <div style="margin-bottom:12px">
@@ -709,12 +713,12 @@ textarea{min-height:80px;}
     <!-- MEDS -->
     <section id="sec-meds" class="section">
       <div class="sec-header"><div class="sec-title">Medication Tracker</div><div class="sec-sub">Check off each medication as you take it.</div></div>
-      <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
-        <button class="range-btn active" id="vitals-today-btn" onclick="pageJumpDate('vitals','today',this)">Today</button>
-        <button class="range-btn" id="vitals-yesterday-btn" onclick="pageJumpDate('vitals','yesterday',this)">Yesterday</button>
-        <button class="range-btn" onclick="openPageDatePicker('vitals')" id="vitals-pick-btn">&#128197; Pick date</button>
-        <button class="range-btn" onclick="openVitalsRangePicker()" id="vitals-range-btn">&#128202; Date range</button>
-        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="vitals-date-display">Today</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <button class="range-btn active" id="meds-today-btn" onclick="pageJumpDate('meds','today',this)">Today</button>
+        <button class="range-btn" id="meds-yesterday-btn" onclick="pageJumpDate('meds','yesterday',this)">Yesterday</button>
+        <button class="range-btn" onclick="openPageDatePicker('meds')" id="meds-pick-btn">&#128197; Pick date</button>
+        <div style="flex:1;min-width:80px;text-align:right;font-size:13px;font-weight:500;color:var(--accent)" id="meds-date-display">Today</div>
+      </div>
       </div>
       <div class="today-banner"><strong id="meds-date-label">Today</strong> — tap each medication to mark it as taken.</div>
       <div class="grid2" id="meds-grid">
@@ -1027,20 +1031,20 @@ function updatePageDateDisplay(page,label){
 
 async function pageJumpDate(page,when,btn){
   vitalsRangeMode=false;vitalsRangeStart=null;vitalsRangeEnd=null;
-  window._foodDateLocked=(when!=='today');// lock date when user picks non-today
   const date=when==='today'?TODAY:getYesterday();
   viewDate=date;
   await ensureDateLoaded(viewDate);
   if(page==='vitals')await ensureVitalsLoaded(viewDate);
-  updateDateNav();
   const label=when==='today'?'Today':'Yesterday';
   updatePageDateDisplay(page,label);
   if(btn){
     document.querySelectorAll('#'+page+'-today-btn,#'+page+'-yesterday-btn,#'+page+'-pick-btn,#'+page+'-range-btn').forEach(b=>b.classList.remove('active'));
     btn.classList.add('active');
   }
-  renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
-  if(page==='vitals')renderVitals();
+  if(page==='food'){renderFoodEntries();renderFavorites();}
+  else if(page==='fitness')renderFitness();
+  else if(page==='meds')renderMeds();
+  else if(page==='vitals')renderVitals();
 }
 
 function openPageDatePicker(page){
@@ -1062,15 +1066,16 @@ async function applyPageDate(page){
   const val=document.getElementById('page-date-input')?.value;
   if(!val||val>TODAY)return;
   vitalsRangeMode=false;
-  window._foodDateLocked=(val!==TODAY);
   viewDate=val;
   await ensureDateLoaded(viewDate);
   if(page==='vitals')await ensureVitalsLoaded(viewDate);
   updateDateNav();
   updatePageDateDisplay(page,formatDate(viewDate));
   document.getElementById(page+'-pick-btn')?.classList.add('active');
-  renderFoodEntries();renderFavorites();renderFitness();renderMeds();refreshDashboard();
-  if(page==='vitals')renderVitals();
+  if(page==='food'){renderFoodEntries();renderFavorites();}
+  else if(page==='fitness')renderFitness();
+  else if(page==='meds')renderMeds();
+  else if(page==='vitals')renderVitals();
 }
 
 function openVitalsRangePicker(){
@@ -1172,21 +1177,15 @@ function showSection(name){
   document.getElementById('sec-'+name).classList.add('active');
   document.getElementById('nav-'+name)?.classList.add('active');
   document.getElementById('mob-'+name)?.classList.add('active');
+  // Each page-level tab resets to today on first visit — user uses the date buttons to change
+  if(['food','fitness','meds'].includes(name)){
+    viewDate=TODAY;
+    syncPageDateDisplay(name);
+  }
   if(name==='dashboard')refreshDashboard();
+  if(name==='food'){renderFoodEntries();renderFavorites();}
   if(name==='fitness')renderFitness();
-  if(name==='meds'){
-    if(viewDate!==TODAY&&!window._foodDateLocked){viewDate=TODAY;}
-    syncPageDateDisplay('meds');renderMeds();
-  }
-  if(name==='food'){
-    // Reset to today when switching to food tab (arrows/pickers will change it explicitly)
-    if(viewDate!==TODAY&&!window._foodDateLocked){viewDate=TODAY;}
-    syncPageDateDisplay('food');renderFoodEntries();renderFavorites();
-  }
-  if(name==='fitness'){
-    if(viewDate!==TODAY&&!window._foodDateLocked){viewDate=TODAY;}
-    syncPageDateDisplay('fitness');renderFitness();
-  }
+  if(name==='meds')renderMeds();
   if(name==='grocery')renderGroceryList();
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
   if(name==='profile')renderProfile();
@@ -1467,6 +1466,7 @@ window.appInit=async function(){
   // Load journal entries
   const jc=await fbGetCol('journal');Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;});
   const bc=await fbGet('badges','earned');cache.badges=bc?(bc.list||[]):[];
+  renderBadges();// show existing badges immediately while checking for new ones
   const vs=await fbGet('vitals','settings');
   cache.vitalSettings=vs||{trackBP:false,trackBS:false};
   if(cache.vitalSettings.trackBP||cache.vitalSettings.trackBS){
@@ -1476,9 +1476,10 @@ window.appInit=async function(){
     else{cache.vitals.bp[viewDate]=[];cache.vitals.bs[viewDate]=[];}
   }
   setSyncStatus('synced');
+  loadAvatar();// load early so avatar shows on dashboard
   updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
   selectedFitnessDay=getActiveFitnessDay();
-  renderFitness();renderMeds();renderGroceryList();loadAvatar();
+  renderFitness();renderMeds();renderGroceryList();
   initChat();
   applyMedsVisibility();
   await checkAndAwardBadges();
@@ -1491,7 +1492,18 @@ window.appInit=async function(){
 
 // ── AVATAR ──────────────────────────────────────────────────
 async function loadAvatar(){
-  try{const data=await fbGet('profile','avatar');if(data&&data.img){document.getElementById('avatar-img').src=data.img;document.getElementById('avatar-img').style.display='block';document.getElementById('avatar-placeholder').style.display='none';}}catch(e){}
+  try{
+    const data=await fbGet('profile','avatar');
+    if(data&&data.img){
+      ['avatar-img','profile-avatar-img'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el){el.src=data.img;el.style.display='block';}
+      });
+      ['avatar-placeholder','profile-avatar-placeholder'].forEach(id=>{
+        const el=document.getElementById(id);if(el)el.style.display='none';
+      });
+    }
+  }catch(e){}
 }
 async function uploadAvatar(event){
   const file=event.target.files[0];if(!file)return;
@@ -1530,6 +1542,8 @@ function refreshDashboard(){
   document.getElementById('dash-lbs-lost').textContent=lost>0?'-'+lost+' lbs':'0 lbs';
   document.getElementById('dash-protein').textContent=Math.round(tp)+'g';
   document.getElementById('dash-water').textContent=Math.round(tw)+' oz';
+  const _sl=document.getElementById('stat-protein-label');if(_sl)_sl.textContent=goalsDate===TODAY?'Protein Today':'Protein '+goalsDate.slice(5);
+  const _wl=document.getElementById('stat-water-label');if(_wl)_wl.textContent=goalsDate===TODAY?'Water Today':'Water '+goalsDate.slice(5);
   document.getElementById('prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
   document.getElementById('prog-water').style.width=Math.min(100,(tw/wg)*100)+'%';
   document.getElementById('prog-protein-label').textContent=Math.round(tp)+' / '+pg+'g';
@@ -2583,13 +2597,15 @@ async function saveVitalSettings(){
   const trackBP=document.getElementById('toggle-bp')?.checked||false;
   const trackBS=document.getElementById('toggle-bs')?.checked||false;
   cache.vitalSettings={trackBP,trackBS};
-  await fbSetFull('vitals','settings',{trackBP,trackBS});
-  applyVitalSettings();
-  // Show/hide vitals nav tab immediately
-  const showVitals=trackBP||trackBS;
-  if(showVitals&&document.getElementById('sec-vitals'))
-    {await ensureVitalsLoaded(viewDate);}
-  renderDashboardVitals();
+  // Save with full overwrite to ensure clean state
+  const saved=await fbSetFull('vitals','settings',{trackBP,trackBS});
+  if(saved){
+    applyVitalSettings();
+    if((trackBP||trackBS)&&document.getElementById('sec-vitals')){
+      await ensureVitalsLoaded(viewDate);
+    }
+    renderDashboardVitals();
+  }
 }
 
 function selectBsContext(btn,ctx){
