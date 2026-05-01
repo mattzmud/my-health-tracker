@@ -1177,19 +1177,16 @@ function showSection(name){
   document.getElementById('sec-'+name).classList.add('active');
   document.getElementById('nav-'+name)?.classList.add('active');
   document.getElementById('mob-'+name)?.classList.add('active');
-  // Each page-level tab resets to today on first visit — user uses the date buttons to change
-  if(['food','fitness','meds'].includes(name)){
-    viewDate=TODAY;
-    syncPageDateDisplay(name);
-  }
-  if(name==='dashboard')refreshDashboard();
-  if(name==='food'){renderFoodEntries();renderFavorites();}
-  if(name==='fitness')renderFitness();
-  if(name==='meds')renderMeds();
-  if(name==='grocery')renderGroceryList();
+  if(['food','fitness','meds'].includes(name)){viewDate=TODAY;syncPageDateDisplay(name);}
+  const _run=(fn,label)=>{try{fn();}catch(e){console.error('showSection '+label+' error:',e.message,e.stack);}};
+  if(name==='dashboard')_run(()=>refreshDashboard(),'dashboard');
+  if(name==='food'){_run(()=>renderFoodEntries(),'renderFoodEntries');_run(()=>renderFavorites(),'renderFavorites');}
+  if(name==='fitness')_run(()=>renderFitness(),'renderFitness');
+  if(name==='meds')_run(()=>renderMeds(),'renderMeds');
+  if(name==='grocery')_run(()=>renderGroceryList(),'renderGroceryList');
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
-  if(name==='profile')renderProfile();
-  if(name==='vitals'){ensureVitalsLoaded(viewDate).then(()=>renderVitals());syncPageDateDisplay('vitals');}
+  if(name==='profile')_run(()=>renderProfile(),'renderProfile');
+  if(name==='vitals'){ensureVitalsLoaded(viewDate).then(()=>_run(()=>renderVitals(),'renderVitals'));syncPageDateDisplay('vitals');}
 }
 
 // ── ONBOARDING ──────────────────────────────────────────────
