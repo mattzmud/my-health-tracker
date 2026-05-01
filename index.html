@@ -321,7 +321,7 @@ textarea{min-height:80px;}
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
           <div class="card-title" style="margin:0">&#11088; Quick-add favorites</div>
-          <select id="fav-filter" onchange="renderFavorites()" style="max-width:130px;font-size:13px"><option value="All">All meals</option><option value="Morning">Morning</option><option value="Mid-morning">Mid-morning</option><option value="Lunch">Lunch</option><option value="Afternoon">Afternoon</option><option value="Dinner">Dinner</option><option value="Late night">Late night</option></select>
+<span style="font-size:12px;color:var(--muted)">Tap + to add to log</span>
         </div>
         <div id="favorites-list"><div style="font-size:13px;color:var(--muted)">No favorites yet. Log food and save items you eat regularly!</div></div>
       </div>
@@ -363,8 +363,7 @@ textarea{min-height:80px;}
         <div class="date-nav-label" style="flex:1;text-align:center;font-size:14px;font-weight:500;color:var(--text)">Today</div>
         <button class="date-nav-next" onclick="changeDateAsync(1)" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:18px;padding:0 4px;" disabled>&#8594;</button>
       </div>
-      <div style="display:flex;gap:8px;margin-bottom:4px;flex-wrap:wrap;align-items:center">
-        <div class="day-tabs" id="fitness-day-tabs" style="flex:1;margin-bottom:12px"></div>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
         <button class="btn btn-ghost btn-sm" onclick="regenerateWorkout()" id="regen-btn" style="margin-bottom:12px">&#128260; Update plan</button>
       </div>
       <div id="fitness-day-content"></div>
@@ -450,6 +449,19 @@ textarea{min-height:80px;}
     <!-- CHAT -->
     <section id="sec-chat" class="section">
       <div class="sec-header"><div class="sec-title">Ask Your Health Coach</div><div class="sec-sub">Ask about recipes, exercises, your plan, or request changes to your workout.</div></div>
+
+      <!-- Conversation selector -->
+      <div class="card" style="padding:14px 16px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="font-size:13px;color:var(--muted);flex-shrink:0">Conversation:</div>
+          <select id="chat-session-select" onchange="loadChatSession(this.value)" style="flex:1;min-width:160px;font-size:13px">
+            <option value="new">Today (new)</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="startNewChatSession()" title="Start a new conversation">&#10133; New</button>
+          <button class="btn btn-ghost btn-sm" onclick="deleteChatSession()" title="Delete this conversation" style="color:var(--red)">&#128465;</button>
+        </div>
+      </div>
+
       <div class="card" style="padding:0;overflow:hidden">
         <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-ghost btn-sm" onclick="quickPrompt('What should I eat for a high-protein lunch today?')">&#127869;&#65039; Meal idea</button>
@@ -614,6 +626,7 @@ function showSection(name){
   if(name==='meds')renderMeds();
   if(name==='food'){renderFoodEntries();renderFavorites();}
   if(name==='grocery')renderGroceryList();
+  if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
 }
 
 // ── ONBOARDING ──────────────────────────────────────────────
@@ -750,7 +763,7 @@ function getDefaultWorkoutPlan(){
 function showApp(){document.getElementById('app-screen').style.display='block';}
 
 // ── CACHE ──────────────────────────────────────────────────
-let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[]};
+let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{}};
 
 window.appInit=async function(){
   const p=window._profile;
@@ -772,10 +785,13 @@ window.appInit=async function(){
   const fv=await fbGet('favorites','list');cache.favorites=fv?(fv.items||[]):[];
   const gr=await fbGet('grocery','list');cache.grocery=gr?(gr.items||[]):[];
   for(const d of getLast7Days()){if(!cache.food[d]){const fd=await fbGet('food',d);cache.food[d]=fd?(fd.entries||[]):[];}}
+  // Load journal entries
+  const jc=await fbGetCol('journal');Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;});
   setSyncStatus('synced');
   refreshDashboard();renderFoodEntries();renderFavorites();
   selectedFitnessDay=getActiveFitnessDay();
   renderFitness();renderMeds();renderGroceryList();loadAvatar();
+  initChat();
 };
 
 // ── AVATAR ──────────────────────────────────────────────────
@@ -916,11 +932,12 @@ async function logFood(){
 async function saveFavorite(idx,date){
   const d=date||viewDate;
   const entry=(cache.food[d]||[])[idx];if(!entry)return;
-  if(cache.favorites.find(f=>f.text===entry.text&&f.time===entry.time)){
+  if(cache.favorites.find(f=>f.text.toLowerCase()===entry.text.toLowerCase())){
     const btn=event.target.closest('button')||event.target;
     btn.textContent='Already saved!';return;
   }
-  cache.favorites.push({text:entry.text,time:entry.time,protein:entry.protein,carbs:entry.carbs,calories:entry.calories,id:Date.now()});
+  // Save without time — favorites are meal-agnostic
+  cache.favorites.push({text:entry.text,protein:entry.protein,carbs:entry.carbs,calories:entry.calories,id:Date.now()});
   await fbSet('favorites','list',{items:cache.favorites});
   renderFavorites();
   const btn=event.target.closest('button')||event.target;
@@ -929,8 +946,30 @@ async function saveFavorite(idx,date){
 
 function addFavoriteToLog(idx){
   const fav=cache.favorites[idx];if(!fav)return;
-  document.getElementById('meal-time').value=fav.time;
+  // Show meal time picker inline
+  const times=['Morning','Mid-morning','Lunch','Afternoon','Dinner','Late night'];
+  const opts=times.map(t=>`<option value="${t}">${t}</option>`).join('');
+  const modal=document.createElement('div');
+  modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;';
+  modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:28px;max-width:360px;width:100%;animation:fadeUp 0.2s ease">
+    <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:6px">Add to food log</div>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:18px">${escHtml(fav.text)}</div>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Which meal is this for?</label>
+    <select id="fav-time-pick" style="width:100%;margin-bottom:18px">${opts}</select>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('[style*=fixed]').remove()">Cancel</button>
+      <button class="btn btn-primary" style="flex:2" onclick="confirmFavAdd(${idx},document.getElementById('fav-time-pick').value);this.closest('[style*=fixed]').remove()">Add to log</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+}
+
+function confirmFavAdd(idx,time){
+  const fav=cache.favorites[idx];if(!fav)return;
+  document.getElementById('meal-time').value=time;
   document.getElementById('food-input').value=fav.text;
+  showSection('food');
   window.scrollTo(0,0);
 }
 
@@ -941,13 +980,12 @@ async function deleteFavorite(idx){
 }
 
 function renderFavorites(){
-  const filter=document.getElementById('fav-filter')?.value||'All';
-  const filtered=cache.favorites.filter(f=>filter==='All'||f.time===filter);
+  const filtered=cache.favorites;
   const el=document.getElementById('favorites-list');
   if(!filtered.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No favorites yet. Log food and tap "Save to favorites"!</div>';return;}
   el.innerHTML=filtered.map(f=>{
     const ri=cache.favorites.indexOf(f);
-    return'<div class="fav-item"><div><div class="fav-name">'+escHtml(f.text)+'</div><div class="fav-meta">'+f.time+' &middot; ~'+Math.round(f.protein||0)+'g protein &middot; ~'+Math.round(f.calories||0)+' cal</div></div><div class="fav-add" onclick="addFavoriteToLog('+ri+')" title="Quick add">&#65291;</div><div class="fav-del" onclick="deleteFavorite('+ri+')" title="Remove">&#10005;</div></div>';
+    return'<div class="fav-item"><div style="flex:1"><div class="fav-name">'+escHtml(f.text)+'</div><div class="fav-meta">~'+Math.round(f.protein||0)+'g protein &middot; ~'+Math.round(f.calories||0)+' cal</div></div><div class="fav-add" onclick="addFavoriteToLog('+ri+')" title="Add to log">&#65291;</div><div class="fav-del" onclick="deleteFavorite('+ri+')" title="Remove">&#10005;</div></div>';
   }).join('');
 }
 
@@ -1004,8 +1042,9 @@ function getActiveFitnessDay(){return['Sunday','Monday','Tuesday','Wednesday','T
 let selectedFitnessDay='Monday';
 
 function renderFitness(){
-  const plan=(window._profile&&window._profile.workoutPlan)||[];
-  document.getElementById('fitness-day-tabs').innerHTML=plan.map(d=>'<button class="day-tab '+(d.day===selectedFitnessDay?'active':'')+'" onclick="selectFitnessDay(\''+d.day+'\')">'+d.day.slice(0,3)+'</button>').join('');
+  // Sync day picker from viewDate
+  const _vdt=new Date(viewDate+'T12:00:00');
+  selectedFitnessDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_vdt.getDay()];
   renderFitnessDay();
 }
 function selectFitnessDay(d){selectedFitnessDay=d;renderFitness();}
@@ -1028,7 +1067,95 @@ function renderFitnessDay(){
   }
   html+='</div>';
   if(!dayPlan.rest)html+='<div class="card" style="background:linear-gradient(135deg,rgba(126,184,164,0.06),rgba(140,164,232,0.04));border-color:rgba(126,184,164,0.15)"><div style="font-size:13.5px;color:var(--muted);line-height:1.8"><div style="margin-bottom:6px">&#9888;&#65039; <strong style="color:var(--amber)">Keep a small snack nearby</strong> in case your blood sugar dips.</div><div style="margin-bottom:6px">&#128167; <strong style="color:var(--blue)">Hydration:</strong> Drink water before and during your workout.</div><div>&#128640; <strong style="color:var(--green)">Progress tip:</strong> Ask the coach to update your plan anytime!</div></div></div>';
+  // Journal card
+  const journalData=cache.journal[viewDate]||{};
+  const journalText=journalData.text||'';
+  const journalAI=journalData.aiResponse||'';
+  const isPastDay=viewDate!==TODAY;
+  html+='<div class="card" id="fitness-journal-card">'
+    +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">'
+    +'<div class="card-title" style="margin:0">&#128221; Workout journal</div>'
+    +(journalText?'<span class="pill pill-green" style="font-size:11px">&#10003; Saved</span>':'')
+    +'</div>';
+  if(isPastDay&&!journalText){
+    html+='<div style="font-size:13px;color:var(--muted);font-style:italic">No journal entry for this day.</div>';
+  } else {
+    // Show saved note (read-only on past days, editable today)
+    if(isPastDay){
+      html+='<div style="font-size:14px;color:var(--text);line-height:1.7;white-space:pre-wrap;margin-bottom:12px">'+escHtml(journalText)+'</div>';
+    } else {
+      html+='<textarea id="journal-input" placeholder="How did the workout feel? Any modifications? Great YouTube videos you found? Personal records? Notes for next time..." style="min-height:100px;margin-bottom:10px">'+escHtml(journalText)+'</textarea>'
+        +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+        +'<button class="btn btn-primary btn-sm" onclick="saveJournalEntry()">&#128190; Save entry</button>'
+        +'<button class="btn btn-ghost btn-sm" onclick="analyzeJournalEntry()" id="journal-analyze-btn">&#129504; Get coach feedback</button>'
+        +(journalText?'<button class="btn btn-ghost btn-sm" onclick="clearJournalEntry()">Clear</button>':'')
+        +'</div>';
+    }
+    // Show AI response if it exists
+    if(journalAI){
+      html+='<div style="background:linear-gradient(135deg,rgba(126,184,164,0.08),rgba(140,164,232,0.05));border:1px solid rgba(126,184,164,0.25);border-radius:var(--radius-sm);padding:14px 16px;margin-top:4px">'
+        +'<div style="font-size:12px;color:var(--accent);font-weight:500;margin-bottom:8px">&#127807; Coach feedback</div>'
+        +'<div style="font-size:13.5px;color:var(--text);line-height:1.7;white-space:pre-wrap">'+escHtml(journalAI)+'</div>'
+        +(isPastDay?'':'<button class="btn btn-ghost btn-sm" style="margin-top:10px;font-size:12px" onclick="clearJournalAI()">Remove feedback</button>')
+        +'</div>';
+    }
+  }
+  html+='</div>';
   document.getElementById('fitness-day-content').innerHTML=html;
+}
+
+async function saveJournalEntry(){
+  const text=document.getElementById('journal-input')?.value.trim()||'';
+  if(!text){alert('Please write something before saving.');return;}
+  if(!cache.journal[viewDate])cache.journal[viewDate]={};
+  const existing=cache.journal[viewDate];
+  cache.journal[viewDate]={...existing,text,date:viewDate,updatedAt:Date.now()};
+  await fbSet('journal',viewDate,cache.journal[viewDate]);
+  renderFitnessDay();
+}
+
+async function analyzeJournalEntry(){
+  const text=document.getElementById('journal-input')?.value.trim()||'';
+  if(!text){alert('Write your journal entry first, then get feedback.');return;}
+  const btn=document.getElementById('journal-analyze-btn');
+  btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing...';
+  // Save the text first
+  if(!cache.journal[viewDate])cache.journal[viewDate]={};
+  cache.journal[viewDate]={...cache.journal[viewDate],text,date:viewDate,updatedAt:Date.now()};
+  await fbSet('journal',viewDate,cache.journal[viewDate]);
+  try{
+    const p=window._profile||{};
+    const plan=(p.workoutPlan||[]).find(d=>d.day===selectedFitnessDay);
+    const exercises=plan?(plan.exercises||[]).map(e=>e.name).join(', '):'your workout';
+    const aiReply=await callAI(
+      "My workout journal entry for "+selectedFitnessDay+":\n\n"+text+"\n\nExercises today: "+exercises,
+      'You are a supportive personal fitness coach. '+buildUserContext()+'\n\nThe user has written a workout journal entry. Read it carefully and:\n1. Acknowledge what they shared (feelings, struggles, wins)\n2. If they mention any pain, discomfort, or difficulty with specific exercises, suggest safer alternatives or modifications\n3. If they mention a positive experience or personal record, celebrate it\n4. Give one practical tip for their next workout\nBe warm, specific, and encouraging. Under 150 words.'
+    );
+    cache.journal[viewDate].aiResponse=aiReply;
+    cache.journal[viewDate].aiDate=Date.now();
+    await fbSet('journal',viewDate,cache.journal[viewDate]);
+    renderFitnessDay();
+  }catch(e){
+    btn.disabled=false;btn.innerHTML='&#129504; Get coach feedback';
+    alert('Could not get feedback. Please check your connection.');
+  }
+}
+
+async function clearJournalAI(){
+  if(!confirm('Remove the coach feedback for this entry?'))return;
+  if(cache.journal[viewDate]){
+    delete cache.journal[viewDate].aiResponse;
+    delete cache.journal[viewDate].aiDate;
+    await fbSet('journal',viewDate,cache.journal[viewDate]);
+    renderFitnessDay();
+  }
+}
+
+async function clearJournalEntry(){
+  if(!confirm('Clear your journal entry and coach feedback for this day?'))return;
+  cache.journal[viewDate]={};
+  await fbSet('journal',viewDate,{text:'',date:viewDate});
+  renderFitnessDay();
 }
 async function toggleExercise(name){
   if(!cache.fitness[viewDate])cache.fitness[viewDate]={};
@@ -1193,10 +1320,96 @@ async function addRecipeToGrocery(ingredients){
 }
 
 // ── CHATBOT ──────────────────────────────────────────────────
+// ── CHAT WITH PERSISTENT SESSIONS ─────────────────────────────
 let chatHistory=[];
+let currentSessionId=null;
+let chatSessions={};
+
+function genSessionId(){return 'chat-'+Date.now()+'-'+Math.random().toString(36).slice(2,7);}
+
+async function initChat(){
+  const col=await fbGetCol('chats');
+  chatSessions={};
+  Object.entries(col).forEach(([id,s])=>{chatSessions[id]=s;});
+  const todaySessions=Object.values(chatSessions).filter(s=>s.createdAt&&s.createdAt.startsWith(TODAY));
+  if(todaySessions.length>0){
+    const latest=todaySessions.sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];
+    currentSessionId=latest.id;
+    populateSessionSelect();
+    renderChatSession(currentSessionId);
+  } else {
+    await startNewChatSession(true);
+  }
+}
+
+function populateSessionSelect(){
+  const sel=document.getElementById('chat-session-select');if(!sel)return;
+  const sorted=Object.values(chatSessions).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  sel.innerHTML=sorted.map(s=>'<option value="'+s.id+'"'+(s.id===currentSessionId?' selected':'')+'>'+escHtml((s.title||'Conversation').slice(0,40))+' \u2014 '+(s.createdAt||'').slice(5,10)+'</option>').join('');
+}
+
+function renderChatSession(sessionId){
+  const session=chatSessions[sessionId];
+  const ca=document.getElementById('chat-area');
+  const p=window._profile||{};
+  if(!session||!session.messages||session.messages.length===0){
+    ca.innerHTML='<div class="msg ai"><div class="msg-avatar">&#127807;</div><div class="msg-bubble">Hey '+p.name+"! I'm your personal health coach. What can I help you with today?</div></div>";
+    chatHistory=[];return;
+  }
+  ca.innerHTML='';chatHistory=[];
+  session.messages.forEach(m=>{
+    const clean=m.content.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').trim();
+    addChatMsgDOM(m.role,clean);
+    chatHistory.push({role:m.role,content:m.content});
+  });
+  ca.scrollTop=ca.scrollHeight;
+}
+
+function loadChatSession(sessionId){currentSessionId=sessionId;renderChatSession(sessionId);}
+
+async function startNewChatSession(silent){
+  const id=genSessionId();
+  const p=window._profile||{};
+  const session={id,title:'New conversation',messages:[],createdAt:TODAY,updatedAt:Date.now()};
+  chatSessions[id]=session;currentSessionId=id;
+  await fbSet('chats',id,session);
+  populateSessionSelect();
+  const ca=document.getElementById('chat-area');
+  ca.innerHTML='<div class="msg ai"><div class="msg-avatar">&#127807;</div><div class="msg-bubble">Hey '+p.name+"! Starting a new conversation. What's on your mind?</div></div>";
+  chatHistory=[];
+  if(!silent)document.getElementById('chat-input')?.focus();
+}
+
+async function deleteChatSession(){
+  if(!currentSessionId)return;
+  const session=chatSessions[currentSessionId];
+  if(!confirm('Delete this conversation?'))return;
+  await fbDel('chats',currentSessionId);
+  delete chatSessions[currentSessionId];
+  const remaining=Object.values(chatSessions).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0));
+  if(remaining.length>0){currentSessionId=remaining[0].id;populateSessionSelect();renderChatSession(currentSessionId);}
+  else{await startNewChatSession(true);}
+}
+
+async function saveMessageToSession(role,content){
+  if(!currentSessionId)return;
+  const session=chatSessions[currentSessionId];if(!session)return;
+  if(!session.messages)session.messages=[];
+  session.messages.push({role,content,ts:Date.now()});
+  session.updatedAt=Date.now();
+  if(role==='user'&&session.messages.filter(m=>m.role==='user').length===1){
+    session.title=content.slice(0,45)+(content.length>45?'...':'');
+    populateSessionSelect();
+  }
+  await fbSet('chats',currentSessionId,session);
+}
+
 async function sendChat(){
   const input=document.getElementById('chat-input'),text=input.value.trim();if(!text)return;
-  addChatMsg('user',text);input.value='';chatHistory.push({role:'user',content:text});
+  if(!currentSessionId)await startNewChatSession(true);
+  addChatMsgDOM('user',text);input.value='';
+  chatHistory.push({role:'user',content:text});
+  await saveMessageToSession('user',text);
   const btn=document.getElementById('chat-send-btn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
   const tid='t'+Date.now(),ca=document.getElementById('chat-area');
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
@@ -1205,27 +1418,21 @@ async function sendChat(){
     const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
-
-    // Handle workout update
     if(reply.includes('WORKOUT_UPDATE:')){
       try{const m=reply.match(/WORKOUT_UPDATE:(\{[\s\S]*?\})\s*(?=RECIPE|$)/);if(m){const p=JSON.parse(m[1]);if(p.plan){window._profile.workoutPlan=p.plan;await fbSet('profile','survey',window._profile);renderFitness();}}}catch(e){}
     }
-
-    // Handle recipe ingredients
     let ingredients=null;
-    if(reply.includes('RECIPE_INGREDIENTS:')){
-      try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}
-    }
-
+    if(reply.includes('RECIPE_INGREDIENTS:')){try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}}
     chatHistory.push({role:'assistant',content:reply});
+    await saveMessageToSession('assistant',reply);
     document.getElementById(tid)?.remove();
     const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').trim();
-    addChatMsg('ai',cleanReply,ingredients);
-  }catch(e){document.getElementById(tid)?.remove();addChatMsg('ai','Sorry, connection issue. Please try again!');}
+    addChatMsgDOM('ai',cleanReply,ingredients);
+  }catch(e){document.getElementById(tid)?.remove();addChatMsgDOM('ai','Sorry, connection issue. Please try again!');}
   btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 }
 
-function addChatMsg(role,text,ingredients=null){
+function addChatMsgDOM(role,text,ingredients=null){
   const ca=document.getElementById('chat-area');
   let extra='';
   if(role==='ai'&&ingredients&&ingredients.length){
@@ -1235,6 +1442,7 @@ function addChatMsg(role,text,ingredients=null){
   ca.innerHTML+='<div class="msg '+role+'"><div class="msg-avatar">'+(role==='ai'?'&#127807;':'&#128100;')+'</div><div class="msg-bubble">'+escHtml(text)+extra+'</div></div>';
   ca.scrollTop=ca.scrollHeight;
 }
+function addChatMsg(role,text,ingredients=null){addChatMsgDOM(role,text,ingredients);}
 function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
 function quickPrompt(t){document.getElementById('chat-input').value=t;sendChat();showSection('chat');}
 </script>
