@@ -77,7 +77,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .gen-title{font-family:var(--font-display);font-size:24px;color:var(--text);margin-bottom:8px;}
 .gen-sub{font-size:14px;color:var(--muted);line-height:1.7;}
 #app-screen{display:none;}
-.nav{position:fixed;top:0;left:0;right:0;background:var(--nav-bg);backdrop-filter:blur(12px);box-shadow:0 1px 8px rgba(85,107,47,0.1);border-bottom:1px solid var(--border);z-index:100;display:flex;align-items:center;padding:0 24px;height:60px;gap:4px;}
+.nav{position:fixed;top:0;left:0;right:0;background:var(--nav-bg);backdrop-filter:blur(12px);box-shadow:0 1px 8px rgba(85,107,47,0.1);border-bottom:1px solid var(--border);z-index:100;display:flex;align-items:center;padding:0 24px;height:90px;gap:4px;}
 .nav-logo{font-family:var(--font-display);font-size:20px;color:var(--accent);margin-right:auto;letter-spacing:-0.02em;}
 .sync-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:8px;transition:background 0.3s;}
 .sync-dot.synced{background:var(--green);}
@@ -91,7 +91,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .nav-btn svg{width:16px;height:16px;flex-shrink:0;}
 .signout-btn{margin-left:4px;padding:6px 12px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-family:var(--font-body);font-size:12px;cursor:pointer;transition:all 0.2s;}
 .signout-btn:hover{color:var(--red);border-color:rgba(176,48,48,0.4);}
-.main{padding-top:60px;min-height:100vh;}
+.main{padding-top:90px;min-height:100vh;}
 .section{display:none;padding:28px 24px;max-width:900px;margin:0 auto;}
 .section.active{display:block;}
 .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 22px;margin-bottom:16px;box-shadow:0 1px 4px rgba(85,107,47,0.07);}
@@ -213,8 +213,9 @@ textarea{min-height:80px;}
 .mobile-menu-divider{height:1px;background:var(--border);margin:6px 0;}
 
 @media(max-width:600px){
-  .nav{padding:0 12px;}
-  .nav-logo img{height:38px;}
+  .nav{padding:0 12px;height:80px;}
+  .main{padding-top:80px;}
+  .nav-logo img{height:70px;}
   .nav-btn{display:none;}
   .signout-btn{display:none;}
   .sync-label{display:none;}
@@ -286,7 +287,7 @@ textarea{min-height:80px;}
 <!-- APP -->
 <div id="app-screen" class="screen">
   <nav class="nav">
-    <div class="nav-logo"><img src="https://mattzmud.github.io/my-health-tracker/My%20Health.png" alt="Wellpath" style="height:48px;width:auto;object-fit:contain;vertical-align:middle"/></div>
+    <div class="nav-logo"><img src="https://mattzmud.github.io/my-health-tracker/My%20Health.png" alt="Wellpath" style="height:90px;width:auto;object-fit:contain;vertical-align:middle"/></div>
     <span class="sync-dot" id="sync-dot"></span>
     <span class="sync-label" id="sync-label">Connecting...</span>
     <button class="nav-btn active" onclick="showSection('dashboard')" id="nav-dashboard">
@@ -591,7 +592,7 @@ textarea{min-height:80px;}
       <div class="card">
         <div class="card-title">Log a meal or snack</div>
         <div style="display:flex;gap:10px;margin-bottom:10px;flex-wrap:wrap">
-          <select id="meal-time" style="max-width:150px"><option value="Morning">Morning</option><option value="Mid-morning">Mid-morning</option><option value="Lunch" selected>Lunch</option><option value="Afternoon">Afternoon</option><option value="Dinner">Dinner</option><option value="Late night">Late night</option></select>
+          <select id="meal-time" style="max-width:150px"><option value="Breakfast">Breakfast</option><option value="Mid-morning">Mid-morning</option><option value="Lunch" selected>Lunch</option><option value="Afternoon">Afternoon</option><option value="Dinner">Dinner</option><option value="Late night">Late night</option></select>
         </div>
         <textarea id="food-input" placeholder="Describe what you ate... separate items with commas"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
@@ -1313,7 +1314,8 @@ async function uploadAvatar(event){
 let weightChart,proteinChart,waterChart;
 function refreshDashboard(){
   const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80;
-  const entries=cache.food[viewDate]||[];
+  const rawEntries=cache.food[viewDate]||[];
+  const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
@@ -1517,7 +1519,7 @@ async function logFood(){
   try{
     const itemList=items.length>0?items.join(', '):'Nothing food-wise, just water.';
     const res=await callAI(
-      'I just ate ('+mt+'): '+itemList+(woz>0?' Also drank '+woz+' oz of water.':''),
+      'I just ate ('+mt.replace("Breakfast","Breakfast/Morning")+': '+itemList+(woz>0?' Also drank '+woz+' oz of water.':''),
       'You are a nutrition coach. '+buildUserContext()+'\n\nEstimate TOTAL protein(g), net carbs(g), calories for all items combined. Give 2-3 sentences warm personalized feedback. End ONLY with: {"protein":30,"carbs":15,"calories":300}. Under 130 words total.'
     );
     let totalP=0,totalC=0,totalCal=0;
@@ -1536,9 +1538,9 @@ async function logFood(){
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
 }
 
-async function saveFavorite(idx,date){
+async function saveFavorite(ts,date){
   const d=date||viewDate;
-  const entry=(cache.food[d]||[])[idx];if(!entry)return;
+  const entry=(cache.food[d]||[]).find(e=>e.ts===ts);if(!entry)return;
   if(cache.favorites.find(f=>f.text.toLowerCase()===entry.text.toLowerCase())){
     const btn=event.target.closest('button')||event.target;
     btn.textContent='Already saved!';return;
@@ -1554,7 +1556,7 @@ async function saveFavorite(idx,date){
 function addFavoriteToLog(idx){
   const fav=cache.favorites[idx];if(!fav)return;
   // Show meal time picker inline
-  const times=['Morning','Mid-morning','Lunch','Afternoon','Dinner','Late night'];
+  const times=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late night'];
   const opts=times.map(t=>`<option value="${t}">${t}</option>`).join('');
   const modal=document.createElement('div');
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;';
@@ -1671,6 +1673,7 @@ function scheduleMidnightAnalysis(){
   setTimeout(async()=>{await runDailyAnalysis(TODAY);scheduleMidnightAnalysis();},ms);
 }
 
+const MEAL_ORDER=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late night','Water'];
 function renderFoodEntries(){
   const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
@@ -1698,12 +1701,12 @@ function renderFoodEntries(){
   if(!entries.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">'+(isPast?'No food logged on this day.':'Nothing logged yet today.')+'</div>';return;}
   el.innerHTML=entries.map((e,i)=>{
     const macros=(e.protein?'<span class="pill pill-blue" style="font-size:11px">~'+Math.round(e.protein)+'g protein</span> ':'')+(e.carbs?'<span class="pill pill-amber" style="font-size:11px">~'+Math.round(e.carbs)+'g carbs</span> ':'')+(e.water?'<span class="pill pill-green" style="font-size:11px">'+e.water+' oz water</span>':'');
-    const favBtn='<button onclick="saveFavorite('+i+',\''+viewDate+'\');event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;transition:color 0.2s" title="Save to favorites" onmouseover="this.style.color=\'var(--amber)\'" onmouseout="this.style.color=\'var(--muted)\'">&#11088;</button>';
-    const delBtn=isPast?'':'<button onclick="deleteEntry('+i+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px;transition:color 0.2s" title="Remove" onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--muted)\'">&#215;</button>';
+    const favBtn='<button onclick="saveFavorite('+e.ts+',\''+viewDate+'\');event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;transition:color 0.2s" title="Save to favorites" onmouseover="this.style.color=\'var(--amber)\'" onmouseout="this.style.color=\'var(--muted)\'">&#11088;</button>';
+    const delBtn=isPast?'':'<button onclick="deleteEntry('+e.ts+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px;transition:color 0.2s" title="Remove" onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--muted)\'">&#215;</button>';
     return'<div class="food-entry"><div class="food-time">'+e.time+'</div><div style="flex:1"><div style="font-size:14px;color:var(--text)">'+escHtml(e.text)+'</div><div style="font-size:12px;margin-top:3px">'+macros+'</div></div><div style="display:flex;align-items:center;gap:2px">'+favBtn+delBtn+'</div></div>';
   }).join('');
 }
-async function deleteEntry(i){if(!cache.food[viewDate])return;cache.food[viewDate].splice(i,1);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
+async function deleteEntry(ts){if(!cache.food[viewDate])return;cache.food[viewDate]=cache.food[viewDate].filter(e=>e.ts!==ts);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
 async function logWaterOnly(){
   const woz=parseFloat(document.getElementById('water-log').value)||0;
   if(!woz||woz<=0){alert('Please enter an amount.');return;}
@@ -1745,7 +1748,7 @@ function toggleWeeklyView(){
   const container=document.getElementById('fitness-weekly-view');
   if(!weeklyViewOpen){
     container.style.display='none';
-    if(btn)btn.textContent='&#128197; View full week';
+    if(btn)btn.textContent='📅 View full week';
     return;
   }
   if(btn)btn.textContent='✕ Hide full week';
@@ -2181,7 +2184,7 @@ async function checkAndAwardBadges(){
   if(journalDays.length>=7)await awardBadge('journal_7');
 
   // Early bird — breakfast before 9am today
-  const breakfastToday=(cache.food[TODAY]||[]).find(e=>e.time==='Morning');
+  const breakfastToday=(cache.food[TODAY]||[]).find(e=>e.time==='Breakfast'||e.time==='Morning');
   if(breakfastToday){const h=new Date(breakfastToday.ts).getHours();if(h<9)await awardBadge('early_bird');}
 
   // Night owl — late night entry today
