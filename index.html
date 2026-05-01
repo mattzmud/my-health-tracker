@@ -1027,6 +1027,7 @@ function updatePageDateDisplay(page,label){
 
 async function pageJumpDate(page,when,btn){
   vitalsRangeMode=false;vitalsRangeStart=null;vitalsRangeEnd=null;
+  window._foodDateLocked=(when!=='today');// lock date when user picks non-today
   const date=when==='today'?TODAY:getYesterday();
   viewDate=date;
   await ensureDateLoaded(viewDate);
@@ -1061,6 +1062,7 @@ async function applyPageDate(page){
   const val=document.getElementById('page-date-input')?.value;
   if(!val||val>TODAY)return;
   vitalsRangeMode=false;
+  window._foodDateLocked=(val!==TODAY);
   viewDate=val;
   await ensureDateLoaded(viewDate);
   if(page==='vitals')await ensureVitalsLoaded(viewDate);
@@ -1172,9 +1174,19 @@ function showSection(name){
   document.getElementById('mob-'+name)?.classList.add('active');
   if(name==='dashboard')refreshDashboard();
   if(name==='fitness')renderFitness();
-  if(name==='meds'){renderMeds();syncPageDateDisplay('meds');}
-  if(name==='food'){renderFoodEntries();renderFavorites();syncPageDateDisplay('food');}
-  if(name==='fitness'){renderFitness();syncPageDateDisplay('fitness');}
+  if(name==='meds'){
+    if(viewDate!==TODAY&&!window._foodDateLocked){viewDate=TODAY;}
+    syncPageDateDisplay('meds');renderMeds();
+  }
+  if(name==='food'){
+    // Reset to today when switching to food tab (arrows/pickers will change it explicitly)
+    if(viewDate!==TODAY&&!window._foodDateLocked){viewDate=TODAY;}
+    syncPageDateDisplay('food');renderFoodEntries();renderFavorites();
+  }
+  if(name==='fitness'){
+    if(viewDate!==TODAY&&!window._foodDateLocked){viewDate=TODAY;}
+    syncPageDateDisplay('fitness');renderFitness();
+  }
   if(name==='grocery')renderGroceryList();
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
   if(name==='profile')renderProfile();
@@ -1502,7 +1514,14 @@ async function uploadAvatar(event){
 let weightChart,proteinChart,waterChart;
 function refreshDashboard(){
   const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80;
-  const rawEntries=cache.food[viewDate]||[];
+  // goalsDate = single selected day (or today for multi-day ranges)
+  const _dashDays=getDashDays();
+  const _isSingle=_dashDays.length===1;
+  const goalsDate=_isSingle?_dashDays[0]:TODAY;
+  // Update goals card title
+  const goalTitle=document.getElementById('goals-card-title');
+  if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
+  const rawEntries=cache.food[goalsDate]||[];
   const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
@@ -1516,9 +1535,9 @@ function refreshDashboard(){
   document.getElementById('prog-protein-label').textContent=Math.round(tp)+' / '+pg+'g';
   document.getElementById('prog-water-label').textContent=Math.round(tw)+' / '+wg+' oz';
   const plan=(window._profile&&window._profile.workoutPlan)||[];
-  const _vd=new Date(viewDate+'T12:00:00');
-  const _viewDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_vd.getDay()];
-  const todayPlan=plan.find(d=>d.day===_viewDay)||{exercises:[]};
+  const _gd=new Date(goalsDate+'T12:00:00');
+  const _goalDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_gd.getDay()];
+  const todayPlan=plan.find(d=>d.day===_goalDay)||{exercises:[]};
   const exData=cache.fitness[goalsDate]||{};
   const exDone=todayPlan.exercises.filter(e=>exData[e.name]).length;
   document.getElementById('prog-ex').style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
@@ -1885,11 +1904,6 @@ const MEAL_ORDER=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late n
 function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML='';
-  // Today's Goals only reflects single-day data
-  const isSingleDay=getDashDays().length===1;
-  const goalsDate=isSingleDay?getDashDays()[0]:TODAY;
-  const goalTitle=document.getElementById('goals-card-title');
-  if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
   const entries=cache.food[goalsDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
   const p=window._profile||{};
@@ -2467,12 +2481,20 @@ function renderProfile(){
   document.getElementById('profile-email').textContent=auth_user.email||'—';
   document.getElementById('profile-age-weight').textContent='Age '+p.age+' · '+p.currentWeight+' lbs starting · Goal: '+p.goalWeight+' lbs';
   // Sync avatar
-  const img=document.getElementById('avatar-img');
-  const profImg=document.getElementById('profile-avatar-img');
-  const profPlaceholder=document.getElementById('profile-avatar-placeholder');
-  if(img&&img.src&&img.style.display!=='none'&&profImg){
-    profImg.src=img.src;profImg.style.display='block';if(profPlaceholder)profPlaceholder.style.display='none';
-  }
+  // Load avatar fresh for profile page
+  fbGet('profile','avatar').then(data=>{
+    if(data&&data.img){
+      const profImg=document.getElementById('profile-avatar-img');
+      const profPlaceholder=document.getElementById('profile-avatar-placeholder');
+      if(profImg){profImg.src=data.img;profImg.style.display='block';}
+      if(profPlaceholder)profPlaceholder.style.display='none';
+      // Also sync dashboard avatar
+      const dashImg=document.getElementById('avatar-img');
+      const dashPlaceholder=document.getElementById('avatar-placeholder');
+      if(dashImg){dashImg.src=data.img;dashImg.style.display='block';}
+      if(dashPlaceholder)dashPlaceholder.style.display='none';
+    }
+  });
   renderBadges();
 }
 
@@ -2561,8 +2583,13 @@ async function saveVitalSettings(){
   const trackBP=document.getElementById('toggle-bp')?.checked||false;
   const trackBS=document.getElementById('toggle-bs')?.checked||false;
   cache.vitalSettings={trackBP,trackBS};
-  await fbSet('vitals','settings',{trackBP,trackBS});
+  await fbSetFull('vitals','settings',{trackBP,trackBS});
   applyVitalSettings();
+  // Show/hide vitals nav tab immediately
+  const showVitals=trackBP||trackBS;
+  if(showVitals&&document.getElementById('sec-vitals'))
+    {await ensureVitalsLoaded(viewDate);}
+  renderDashboardVitals();
 }
 
 function selectBsContext(btn,ctx){
