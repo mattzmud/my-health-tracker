@@ -1235,8 +1235,9 @@ function renderObStep(){
   const step=OB_STEPS[obStep];
   document.getElementById('ob-progress').innerHTML=OB_STEPS.map((_,i)=>`<div class="onboard-pip ${i<=obStep?'done':''}"></div>`).join('');
   let html=`<div class="onboard-step active"><div class="onboard-title">${step.title}</div><div class="onboard-sub">${step.sub}</div>`;
-  if(step.single_label){
-    html+=`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:500">${step.single_label}</div><div class="onboard-grid" style="margin-bottom:20px">${step.single.map(o=>`<div class="option-card ${obData[step.id+'_single']===o?'selected':''}" onclick="selectSingle('${step.id}','${o.replace(/'/g,"&#39;")}')">${o}</div>`).join('')}</div>`;
+  if(step.single||step.single_label){
+    if(step.single_label)html+=`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:500">${step.single_label}</div>`;
+    html+=`<div class="onboard-grid" style="margin-bottom:20px">${step.single.map(o=>`<div class="option-card ${obData[step.id+'_single']===o?'selected':''}" onclick="selectSingle('${step.id}','${o.replace(/'/g,"&#39;")}')">${o}</div>`).join('')}</div>`;
   }
   if(step.multi||step.multi_label){
     if(step.multi_label)html+=`<div style="font-size:13px;color:var(--muted);margin-bottom:10px;font-weight:500">${step.multi_label}</div>`;
