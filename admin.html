@@ -186,7 +186,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
 import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
-import{getFirestore,collection,getDocs,doc,getDoc,setDoc,deleteDoc,writeBatch}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+import{getFirestore,doc,getDoc,collection,getDocs,deleteDoc,writeBatch}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 const firebaseConfig={
   apiKey:"AIzaSyCtF07EW4j93mdLhPgEPKWC5npOnXRUb3Y",
@@ -202,6 +202,49 @@ const auth=getAuth(app);
 const db=getFirestore(app);
 
 let allUsers=[];
+const PROJECT='my-health-tracker-d8d0d';
+const FS_BASE=`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+
+async function fsGet(path){
+  const token=await auth.currentUser.getIdToken();
+  const r=await fetch(`${FS_BASE}/${path}`,{headers:{Authorization:'Bearer '+token}});
+  if(!r.ok)throw new Error('Firestore GET failed: '+r.status);
+  return r.json();
+}
+
+async function fsList(path){
+  const token=await auth.currentUser.getIdToken();
+  const r=await fetch(`${FS_BASE}/${path}`,{headers:{Authorization:'Bearer '+token}});
+  if(!r.ok)throw new Error('Firestore LIST failed: '+r.status+' '+await r.text());
+  const data=await r.json();
+  return data.documents||[];
+}
+
+async function fsDelete(path){
+  const token=await auth.currentUser.getIdToken();
+  const r=await fetch(`${FS_BASE}/${path}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
+  return r.ok;
+}
+
+function fsVal(field){
+  if(!field)return null;
+  if(field.stringValue!==undefined)return field.stringValue;
+  if(field.booleanValue!==undefined)return field.booleanValue;
+  if(field.integerValue!==undefined)return parseInt(field.integerValue);
+  if(field.timestampValue!==undefined)return field.timestampValue;
+  return null;
+}
+
+function fsFields(doc){
+  const f=doc.fields||{};
+  const out={};
+  Object.entries(f).forEach(([k,v])=>out[k]=fsVal(v));
+  return out;
+}
+
+function docId(doc){
+  return doc.name.split('/').pop();
+}
 
 // ── AUTH STATE ──
 onAuthStateChanged(auth,async user=>{
@@ -272,40 +315,35 @@ window.doSignOut=async function(){
 window.loadUsers=async function(){
   document.getElementById('users-grid').innerHTML='<div class="empty-state"><div class="spinner"></div>Loading users…</div>';
   try{
-    console.log('loadUsers: auth user=',auth.currentUser?.uid, auth.currentUser?.email);
-    const usersSnap=await getDocs(collection(db,'users'));
-    console.log('loadUsers: snap size=',usersSnap.size, 'empty=',usersSnap.empty);
-    usersSnap.forEach(d=>console.log('doc:',d.id));
-    const promises=[];
-    usersSnap.forEach(d=>promises.push(loadUserData(d.id)));
+    const userDocs=await fsList('users');
+    console.log('users found:',userDocs.length);
+    const promises=userDocs.map(d=>loadUserData(docId(d)));
     allUsers=(await Promise.all(promises)).filter(Boolean).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    console.log('loadUsers: allUsers=',allUsers.length);
     renderStats();
     renderUsers(allUsers);
   }catch(e){
-    console.error('loadUsers error:',e.code, e.message);
-    document.getElementById('users-grid').innerHTML=`<div class="empty-state">Error: ${e.code} — ${e.message}</div>`;
+    console.error('loadUsers error:',e.message);
+    document.getElementById('users-grid').innerHTML=`<div class="empty-state">Error loading users: ${e.message}</div>`;
   }
 };
 
 async function loadUserData(uid){
   try{
-    const[surveySnap,vsSnap,loginSnap,avatarSnap]=await Promise.all([
-      getDoc(doc(db,'users',uid,'profile','survey')),
-      getDoc(doc(db,'users',uid,'vitals','settings')),
-      getDoc(doc(db,'users',uid,'profile','lastLogin')),
-      getDoc(doc(db,'users',uid,'profile','avatar')),
+    const[sData,vData,lData,aData]=await Promise.all([
+      fsGet(`users/${uid}/profile/survey`).then(d=>fsFields(d)).catch(()=>({})),
+      fsGet(`users/${uid}/vitals/settings`).then(d=>fsFields(d)).catch(()=>({})),
+      fsGet(`users/${uid}/profile/lastLogin`).then(d=>fsFields(d)).catch(()=>({})),
+      fsGet(`users/${uid}/profile/avatar`).then(d=>fsFields(d)).catch(()=>({})),
     ]);
-    const s=surveySnap.exists()?surveySnap.data():{};
-    const v=vsSnap.exists()?vsSnap.data():{};
-    const l=loginSnap.exists()?loginSnap.data():{};
-    const a=avatarSnap.exists()?avatarSnap.data():{};
-    return{uid,name:s.name||'—',email:s.email||'—',age:s.age||null,
-      createdAt:s.createdAt||null,trackMeds:s.trackMeds!==false,
-      trackBP:v.trackBP||false,trackBS:v.trackBS||false,
-      lastLoginDate:l.date||null,lastLoginTs:l.ts||null,
-      device:l.device||null,browser:l.browser||null,avatarImg:a.img||null};
-  }catch(e){return null;}
+    return{uid,
+      name:sData.name||'—',email:sData.email||'—',age:sData.age||null,
+      createdAt:sData.createdAt||null,
+      trackMeds:sData.trackMeds!==false,
+      trackBP:vData.trackBP||false,trackBS:vData.trackBS||false,
+      lastLoginDate:lData.date||null,lastLoginTs:lData.ts||null,
+      device:lData.device||null,browser:lData.browser||null,
+      avatarImg:aData.img||null};
+  }catch(e){console.error('loadUserData error for',uid,e.message);return null;}
 }
 
 // ── RENDER ──
@@ -400,16 +438,15 @@ window.doWipe=async function(uid){
   try{
     const cols=['food','fitness','meds','weights','favorites','grocery','journal','badges','chats','vitals'];
     for(const col of cols){
-      const snap=await getDocs(collection(db,'users',uid,col));
-      if(snap.empty)continue;
-      const batch=writeBatch(db);
-      snap.forEach(d=>batch.delete(d.ref));
-      await batch.commit();
+      const docs=await fsList(`users/${uid}/${col}`).catch(()=>[]);
+      for(const d of docs){
+        await fsDelete(d.name.replace(`projects/${PROJECT}/databases/(default)/documents/`,'')).catch(()=>{});
+      }
     }
     for(const pd of['survey','avatar','lastLogin']){
-      try{await deleteDoc(doc(db,'users',uid,'profile',pd));}catch(e){}
+      await fsDelete(`users/${uid}/profile/${pd}`).catch(()=>{});
     }
-    try{await deleteDoc(doc(db,'users',uid,'medications','list'));}catch(e){}
+    await fsDelete(`users/${uid}/medications/list`).catch(()=>{});
     showToast('✓ Data wiped. User will redo onboarding on next login.');
     setTimeout(loadUsers,1800);
   }catch(e){showToast('Error: '+e.message,'error');}
