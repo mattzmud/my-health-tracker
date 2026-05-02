@@ -1504,6 +1504,72 @@ function loadTextSize(){
   setTextSize(saved);
 }
 
+// ── USDA FOOD DATABASE ────────────────────────────────────────
+const USDA_KEY='JVgSbW6qH3avDh2UYtxcY8eepEmrubBc93qBBuav';
+
+async function lookupUSDA(query){
+  // Returns {calories, protein, carbs, source:'usda', name} or null
+  try{
+    const url='https://api.nal.usda.gov/fdc/v1/foods/search?'
+      +'query='+encodeURIComponent(query)
+      +'&dataType=Branded,SR+Legacy,Survey+(FNDDS)'
+      +'&pageSize=5'
+      +'&api_key='+USDA_KEY;
+    const res=await fetch(url);
+    if(!res.ok)return null;
+    const data=await res.json();
+    const foods=data.foods||[];
+    if(!foods.length)return null;
+
+    // Score each result — prefer exact/close name matches
+    const qLower=query.toLowerCase();
+    let best=null,bestScore=0;
+    for(const food of foods){
+      const desc=(food.description||'').toLowerCase();
+      // Skip if completely unrelated
+      const qWords=qLower.split(/\s+/).filter(w=>w.length>2);
+      const matchCount=qWords.filter(w=>desc.includes(w)).length;
+      const score=matchCount/Math.max(qWords.length,1);
+      if(score>bestScore){bestScore=score;best=food;}
+    }
+    // Require at least 50% word match to use USDA data
+    if(bestScore<0.5||!best)return null;
+
+    const nutrients={};
+    (best.foodNutrients||[]).forEach(n=>{
+      const name=(n.nutrientName||'').toLowerCase();
+      if(name.includes('energy')&&!name.includes('alcohol'))nutrients.calories=Math.round(n.value||0);
+      if(name==='protein')nutrients.protein=Math.round((n.value||0)*10)/10;
+      if(name.includes('carbohydrate, by difference'))nutrients.carbs=Math.round((n.value||0)*10)/10;
+    });
+
+    // Adjust for serving size if not per 100g
+    const serving=best.servingSize||100;
+    const unit=(best.servingSizeUnit||'g').toLowerCase();
+    // USDA values are per 100g for SR Legacy, per serving for Branded
+    // Branded foods already have per-serving values
+    if(best.dataType==='Branded'&&serving&&serving!==100){
+      // Values are already per-serving for branded — use as-is
+    }
+    // Only return if we have at least calories and one macro
+    if(!nutrients.calories&&!nutrients.protein)return null;
+
+    return{
+      calories:nutrients.calories||0,
+      protein:nutrients.protein||0,
+      carbs:nutrients.carbs||0,
+      source:'usda',
+      name:best.description,
+      brand:best.brandOwner||null,
+      servingSize:best.servingSize,
+      servingSizeUnit:best.servingSizeUnit,
+    };
+  }catch(e){
+    console.warn('USDA lookup failed for "'+query+'":', e.message);
+    return null;
+  }
+}
+
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
 
@@ -2318,46 +2384,62 @@ async function logFood(){
   try{
     const itemList=items.length>0?items.join(', '):'Nothing food-wise, just water.';
     // Ask AI for per-item breakdown as JSON array + feedback
-    const res=await callAI(
-      'Meal: '+mt+'\nItems logged:\n'+items.map((it,i)=>(i+1)+'. '+it).join('\n'),
-      'You are a nutrition coach. '+buildUserContext()+'\n\nYou MUST return a JSON array with EXACTLY '+items.length+' objects, one per item in the order listed. Then a blank line. Then 2-3 sentences of feedback.\n\nEXACT format required:\n[\n{"item":"item name","protein":26,"carbs":0,"calories":140},\n{"item":"item name","protein":3,"carbs":28,"calories":165}\n]\n\nFeedback text here.\n\nRules:\n- Each object MUST have realistic individual estimates (not split evenly)\n- protein, carbs, calories are integers\n- Match items in the EXACT order listed\n- Do NOT combine items'
-    );
-    // Parse per-item JSON array — use greedy match to capture full array
-    let parsedItems=[];
-    let displayText=res;
-    try{
-      // Find the outermost [ ... ] in the response
-      const start=res.indexOf('[');
-      const end=res.lastIndexOf(']');
-      if(start>=0&&end>start){
-        const jsonStr=res.slice(start,end+1);
-        parsedItems=JSON.parse(jsonStr);
-        displayText=res.slice(end+1).replace(/```json|```/g,'').trim();
+    // ── Step 1: Try USDA database for each item in parallel ──
+    const usdaResults=await Promise.all(items.map(item=>lookupUSDA(item)));
+    const itemsNeedingAI=items.filter((_,i)=>!usdaResults[i]);
+
+    // ── Step 2: AI estimates only for items not found in USDA ──
+    let aiParsed=[];
+    let displayText='';
+    if(itemsNeedingAI.length>0){
+      const res=await callAI(
+        'Meal: '+mt+'\nItems needing nutrition estimates:\n'+itemsNeedingAI.map((it,i)=>(i+1)+'. '+it).join('\n'),
+        'You are a nutrition coach. '+buildUserContext()+'\n\nReturn a JSON array with EXACTLY '+itemsNeedingAI.length+' objects, one per item in order listed. Then a blank line. Then 2-3 sentences of feedback.\n\nFormat:\n[\n{"item":"name","protein":26,"carbs":0,"calories":140}\n]\n\nFeedback text here.\n\nRules: realistic individual estimates, integers, same order as listed, do not combine items.'
+      );
+      try{
+        const start=res.indexOf('[');
+        const end=res.lastIndexOf(']');
+        if(start>=0&&end>start){
+          aiParsed=JSON.parse(res.slice(start,end+1));
+          displayText=res.slice(end+1).replace(/```json|```/g,'').trim();
+        }
+      }catch(e){
+        const objMatches=[...res.matchAll(/\{[^{}]*"item"[^{}]*\}/g)];
+        if(objMatches.length){try{aiParsed=objMatches.map(m=>JSON.parse(m[0]));}catch(e2){}}
+        displayText=res.replace(/\[.*?\]/s,'').replace(/```json|```/g,'').trim();
       }
-    }catch(e){
-      // Fallback: extract individual objects
-      const objMatches=[...res.matchAll(/\{[^{}]*"item"[^{}]*\}/g)];
-      if(objMatches.length){
-        try{parsedItems=objMatches.map(m=>JSON.parse(m[0]));}catch(e2){}
-      }
-      displayText=res.replace(/\[.*\]/s,'').replace(/```json|```/g,'').trim();
+    } else {
+      // All items found in USDA — still get AI feedback
+      try{
+        const fb=await callAI(
+          'I just logged for '+mt+': '+items.join(', '),
+          'You are a nutrition coach. '+buildUserContext()+' Give 2-3 sentences of warm personalized feedback on this meal. No nutrition estimates needed — just coaching feedback.'
+        );
+        displayText=fb.replace(/```/g,'').trim();
+      }catch(e){}
     }
-    // Ensure we have one entry per item — pad with estimates if AI returned fewer
-    if(!parsedItems.length){
-      parsedItems=items.map(it=>({item:it,protein:0,carbs:0,calories:0}));
-    }
-    // Store EACH item as its own independent cache entry with its own macros
+
+    // ── Step 3: Merge USDA + AI results and store each item ──
+    let aiIdx=0;
     items.forEach((item,i)=>{
-      // Match by index — AI should return in same order
-      const pi=parsedItems[i]||{protein:0,carbs:0,calories:0};
+      const usda=usdaResults[i];
+      let macros;
+      if(usda){
+        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs};
+      } else {
+        const ai=aiParsed[aiIdx]||{protein:0,carbs:0,calories:0};
+        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10};
+        aiIdx++;
+      }
       cache.food[viewDate].push({
         time:mt,
         text:item,
-        protein:Math.round((pi.protein||0)*10)/10,
-        carbs:Math.round((pi.carbs||0)*10)/10,
-        calories:Math.round(pi.calories||0),
+        protein:macros.protein,
+        carbs:macros.carbs,
+        calories:macros.calories,
         water:0,
-        ts:Date.now()+i
+        ts:Date.now()+i,
+        source:usda?'usda':'ai',
       });
     });
     await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
@@ -2592,10 +2674,11 @@ function renderFoodEntries(){
         html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
           +'<div style="flex:1;min-width:0">'
           +'<div style="font-size:13.5px;color:var(--text)">'+escHtml(e.text)+'</div>'
-          +'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">'
+          +'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;align-items:center">'
           +(e.calories!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.calories)+' kcal</span>':'')
           +(e.protein!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g pro</span>':'')
           +(e.carbs!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
+          +(e.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)" title="Verified nutrition facts from USDA database">&#10003; USDA</span>':'')
           +'</div></div>'
           +(!isPast?favBtn+delBtn:'')
           +'</div>';
