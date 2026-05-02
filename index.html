@@ -903,10 +903,10 @@ onAuthStateChanged(auth, async user => {
         const _brw2=/CriOS|Chrome/.test(_ua2)?'Chrome':/Safari/.test(_ua2)?'Safari':/Firefox/.test(_ua2)?'Firefox':/Edg/.test(_ua2)?'Edge':'Unknown';
         const _tok=await user.getIdToken();
         const _now=new Date().toISOString().split('T')[0];
-        await fetch(`https://firestore.googleapis.com/v1/projects/my-health-tracker-d8d0d/databases/(default)/documents/users/${user.uid}?updateMask.fieldPaths=lastSeen&updateMask.fieldPaths=device&updateMask.fieldPaths=browser`,{
+        await fetch(`https://firestore.googleapis.com/v1/projects/my-health-tracker-d8d0d/databases/(default)/documents/users/${user.uid}?updateMask.fieldPaths=lastSeen&updateMask.fieldPaths=device&updateMask.fieldPaths=browser&updateMask.fieldPaths=email`,{
           method:'PATCH',
           headers:{'Authorization':'Bearer '+_tok,'Content-Type':'application/json'},
-          body:JSON.stringify({fields:{lastSeen:{stringValue:_now},device:{stringValue:_dev2},browser:{stringValue:_brw2}}})
+          body:JSON.stringify({fields:{lastSeen:{stringValue:_now},device:{stringValue:_dev2},browser:{stringValue:_brw2},email:{stringValue:user.email||''}}})
         });
       }catch(e){}
     })();

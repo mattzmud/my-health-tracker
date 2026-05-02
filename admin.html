@@ -337,7 +337,7 @@ async function loadUserData(uid){
       fsGet(`users/${uid}/profile/avatar`).then(d=>fsFields(d)).catch(()=>({})),
     ]);
     return{uid,
-      name:sData.name||'—',email:sData.email||'—',age:sData.age||null,
+      name:sData.name||rootData.name||'—',email:sData.email||rootData.email||'—',age:sData.age||null,
       createdAt:sData.createdAt||null,
       trackMeds:sData.trackMeds!==false,
       trackBP:vData.trackBP||false,trackBS:vData.trackBS||false,
