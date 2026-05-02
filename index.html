@@ -590,6 +590,15 @@ textarea{min-height:80px;}
         <div id="profile-badges-display"><div style="font-size:13px;color:var(--muted)">No badges yet — keep going!</div></div>
       </div>
 
+      <!-- MyWellpath Plan -->
+      <div class="card" id="plan-card" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+          <div class="card-title" style="margin:0">&#127807; My Wellpath Plan</div>
+          <span style="font-size:12px;color:var(--muted)" id="plan-updated-date"></span>
+        </div>
+        <div id="plan-text" style="font-size:13.5px;color:var(--text);line-height:1.8;white-space:pre-wrap"></div>
+      </div>
+
       <!-- Meds tracking settings -->
       <div class="card">
         <div class="card-title">&#128138; Medication tracking</div>
@@ -771,6 +780,14 @@ textarea{min-height:80px;}
       </div>
       <div id="fitness-weekly-view" style="display:none"></div>
       <div id="fitness-day-content"></div>
+      <div class="card" style="margin-top:12px">
+        <div class="card-title">&#127939; Log other activity</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Log any exercise not in your plan — a walk, a swim, yard work, anything that counts.</div>
+        <textarea id="extra-activity-input" placeholder="e.g. 30-minute walk around the neighborhood, light stretching" style="margin-bottom:10px"></textarea>
+        <button class="btn btn-primary btn-sm" onclick="logExtraActivity()" id="log-extra-btn">Log &amp; get feedback</button>
+        <div id="extra-activity-feedback"></div>
+        <div id="extra-activity-history" style="margin-top:16px"></div>
+      </div>
     </section>
 
     <!-- MEDS -->
@@ -1134,7 +1151,7 @@ async function pageJumpDate(page,when,btn){
     btn.classList.add('active');
   }
   if(page==='food'){renderFoodEntries();renderFavorites();}
-  else if(page==='fitness')renderFitness();
+  else if(page==='fitness'){renderFitness();renderExtraActivities();const ef=document.getElementById('extra-activity-feedback');if(ef)ef.innerHTML='';}
   else if(page==='meds')renderMeds();
   else if(page==='vitals')renderVitals();
 }
@@ -1165,7 +1182,7 @@ async function applyPageDate(page){
   updatePageDateDisplay(page,formatDate(viewDate));
   document.getElementById(page+'-pick-btn')?.classList.add('active');
   if(page==='food'){renderFoodEntries();renderFavorites();}
-  else if(page==='fitness')renderFitness();
+  else if(page==='fitness'){renderFitness();renderExtraActivities();const ef=document.getElementById('extra-activity-feedback');if(ef)ef.innerHTML='';}
   else if(page==='meds')renderMeds();
   else if(page==='vitals')renderVitals();
 }
@@ -1372,7 +1389,7 @@ const OB_STEPS=[
    fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_dob',label:'Date of birth',type:'date',placeholder:''},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
   {id:'health',title:'Health conditions',sub:'Select any that apply.',
    multi:['Type 2 Diabetes','Type 1 Diabetes','High blood pressure','High cholesterol','Heart condition','Thyroid condition','PCOS','Anxiety / Depression','Chronic pain','None of the above']},
-  {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath?',
+  {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath? <span style="font-size:12px;color:var(--accent);display:block;margin-top:8px;line-height:1.6">&#128161; We recommend logging your medications — some (like diuretics, GLP-1s, and blood pressure meds) directly affect hydration, nutrition needs, and how your body responds to exercise. Logging them helps MyWellpath build a more accurate, personalized plan for you.</span>',
    single_label:'',single:['Yes, I take medications I want to track','No, skip this for now'],
    fields_conditional:{condition:'medications_single',value:'Yes, I take medications I want to track',fields:[{id:'ob_meds_all',label:'Your medications & supplements (one per line)',type:'textarea',placeholder:'e.g.\nMetformin 1000mg, twice daily\nAtorvastatin 20mg, once at night\nVitamin D, once in morning\nMounjaro 15mg, once weekly\nFish oil, as needed'}]}},
   {id:'nutrition',title:'Your eating habits',sub:'Help us understand your preferences.',
@@ -1563,6 +1580,8 @@ async function generatePlan(){
 
   // Single save with both results applied
   await fbSet('profile','survey',window._profile);
+  // Generate wellness plan summary
+  await generateWellnessPlan(true);// true = show modal on first load
   // Save avatar photo if provided during onboarding
   if(obData.ob_photo_data){
     await fbSet('profile','avatar',{img:obData.ob_photo_data});
@@ -1598,6 +1617,48 @@ function showApp(){document.getElementById('app-screen').style.display='block';}
 
 // ── CACHE ──────────────────────────────────────────────────
 let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:{},bs:{}},vitalSettings:{trackBP:false,trackBS:false},trackMeds:true,groceryAnalysis:''};
+
+async function generateWellnessPlan(showModal=false){
+  const p=window._profile;if(!p)return;
+  try{
+    const plan=await callAI(
+      'Create a clear, personalized wellness plan for:\n'+buildUserContext()
+      +'\n\nInclude these sections (use plain text, no markdown):\n'
+      +'FOCUS FOODS: What foods to prioritize and why (5-7 items)\n'
+      +'FOODS TO LIMIT: What to reduce or avoid and why (4-5 items)\n'
+      +'WORKOUT APPROACH: Types of exercise, intensity, frequency\n'
+      +'DAILY HABITS: 3-4 key daily habits to build\n'
+      +'WHAT TO WATCH: Any health-specific cautions given their conditions/meds\n\n'
+      +'Be warm, specific to their situation, and actionable. About 250 words total.',
+      'You are a health coach creating a personalized wellness plan. Be specific and encouraging.'
+    );
+    const cleaned=plan.replace(/```/g,'').trim();
+    const record={text:cleaned,updatedAt:new Date().toISOString().split('T')[0]};
+    window._profile.wellnessPlan=record;
+    await fbSet('profile','survey',window._profile);
+    // Update profile display if visible
+    const planEl=document.getElementById('plan-text');
+    const planDate=document.getElementById('plan-updated-date');
+    const planCard=document.getElementById('plan-card');
+    if(planEl)planEl.textContent=cleaned;
+    if(planDate)planDate.textContent='Updated '+record.updatedAt;
+    if(planCard)planCard.style.display='block';
+    // Show modal on first load
+    if(showModal){
+      const modal=document.createElement('div');
+      modal.className='date-picker-modal';
+      modal.innerHTML='<div class="date-picker-card" style="max-width:480px;max-height:80vh;overflow-y:auto">'
+        +'<div style="font-size:12px;color:var(--accent);font-weight:600;margin-bottom:6px">&#127807; Your MyWellpath Plan</div>'
+        +'<div style="font-family:var(--font-display);font-size:22px;color:var(--text);margin-bottom:16px">Here&#39;s your personalized plan, '+escHtml(p.name.split(' ')[0])+'</div>'
+        +'<div style="font-size:13.5px;color:var(--text);line-height:1.8;white-space:pre-wrap;margin-bottom:20px">'+escHtml(cleaned)+'</div>'
+        +'<div style="font-size:12px;color:var(--muted);margin-bottom:16px">You can always find this plan in your Profile page under &#39;My Wellpath Plan&#39;.</div>'
+        +'<button class="btn btn-primary" style="width:100%" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Let&#39;s get started!</button>'
+        +'</div>';
+      modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+      document.body.appendChild(modal);
+    }
+  }catch(e){console.error('generateWellnessPlan error:',e);}
+}
 
 window.appInit=async function(){
   // Close mobile menu when tapping outside
@@ -2228,6 +2289,55 @@ async function clearTodayFood(){if(!confirm('Clear all food entries for this day
 function getActiveFitnessDay(){return['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][new Date().getDay()];}
 let selectedFitnessDay='Monday';
 
+async function logExtraActivity(){
+  const raw=document.getElementById('extra-activity-input').value.trim();
+  if(!raw){alert('Please describe the activity.');return;}
+  const btn=document.getElementById('log-extra-btn');
+  btn.disabled=true;btn.textContent='Logging...';
+  // Save to fitness cache under 'extras' array
+  if(!cache.fitness[viewDate])cache.fitness[viewDate]={};
+  if(!cache.fitness[viewDate].extras)cache.fitness[viewDate].extras=[];
+  const entry={text:raw,ts:Date.now(),date:viewDate};
+  cache.fitness[viewDate].extras.push(entry);
+  await fbSet('fitness',viewDate,cache.fitness[viewDate]);
+  document.getElementById('extra-activity-input').value='';
+  renderExtraActivities();
+  // Get AI feedback
+  try{
+    const res=await callAI(
+      'I just completed this activity: '+raw+'\nThis was on top of my regular workout plan.',
+      'You are a fitness coach. '+buildUserContext()+'. Give warm, encouraging feedback on this extra activity. Note any benefits for their specific goals. Under 80 words.'
+    );
+    const fb=document.getElementById('extra-activity-feedback');
+    if(fb)fb.innerHTML=aiFeedbackHTML('&#127939;','Activity feedback',escHtml(res.replace(/```/g,'')));
+  }catch(e){}
+  btn.disabled=false;btn.textContent='Log & get feedback';
+}
+
+function renderExtraActivities(){
+  const el=document.getElementById('extra-activity-history');if(!el)return;
+  const extras=(cache.fitness[viewDate]&&cache.fitness[viewDate].extras)||[];
+  if(!extras.length){el.innerHTML='';return;}
+  el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">Other activities logged</div>'
+    +extras.slice().reverse().map(e=>'<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="flex:1;font-size:13px;color:var(--text)">'+escHtml(e.text)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);flex-shrink:0">'+new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
+      +'<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+      +'<div style="flex:1;font-size:13px;color:var(--text)">'+escHtml(e.text)+'</div>'
+      +'<div style="font-size:11px;color:var(--muted);flex-shrink:0">'+new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
+      +'<button data-ts="'+e.ts+'" onclick="deleteExtraActivity(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px">&#215;</button>'
+      +'</div>'
+      +'</div>'
+    ).join('');
+}
+
+async function deleteExtraActivity(ts){
+  if(!cache.fitness[viewDate]||!cache.fitness[viewDate].extras)return;
+  cache.fitness[viewDate].extras=cache.fitness[viewDate].extras.filter(e=>e.ts!==ts);
+  await fbSet('fitness',viewDate,cache.fitness[viewDate]);
+  renderExtraActivities();
+}
+
 function renderFitness(){
   // Sync day picker from viewDate
   const _vdt=new Date(viewDate+'T12:00:00');
@@ -2497,6 +2607,7 @@ async function addMedicationAI(){
     if(!cache.medsList)cache.medsList={};
     parsed.forEach(med=>{
       if(!med.id||!med.name)return;
+      med.addedDate=viewDate;// track when this med was added
       cache.medsList[med.id]=med;
     });
     await fbSetFull('medications','list',{meds:cache.medsList});
@@ -2506,7 +2617,7 @@ async function addMedicationAI(){
     // Fallback: add as simple morning med
     const id='med-'+Date.now();
     if(!cache.medsList)cache.medsList={};
-    cache.medsList[id]={id,name:raw,dose:'',qty:1,times:['am']};
+    cache.medsList[id]={id,name:raw,dose:'',qty:1,times:['am'],addedDate:viewDate};
     await fbSetFull('medications','list',{meds:cache.medsList});
     document.getElementById('med-name-input').value='';
     renderMeds();
@@ -2515,9 +2626,12 @@ async function addMedicationAI(){
 }
 
 async function deleteMed(id){
-  if(!cache.medsList)return;
-  delete cache.medsList[id];
-  await fbSetFull('medications','list',{meds:cache.medsList});renderMeds();
+  if(!cache.medsList||!cache.medsList[id])return;
+  if(!confirm('Remove '+cache.medsList[id].name+'? It will still appear on past dates.'))return;
+  // Mark as deleted with date — don't remove, so history stays intact
+  cache.medsList[id].deletedDate=viewDate;
+  await fbSetFull('medications','list',{meds:cache.medsList});
+  renderMeds();
 }
 async function toggleMed(k){
   if(!cache.meds[viewDate])cache.meds[viewDate]={};
@@ -2798,6 +2912,17 @@ function renderProfile(){
   document.getElementById('profile-name').textContent=p.name||'—';
   const cbMeds=document.getElementById('toggle-meds');
   if(cbMeds)cbMeds.checked=cache.trackMeds!==false;
+  // Show wellness plan if exists
+  const planCard=document.getElementById('plan-card');
+  const planEl=document.getElementById('plan-text');
+  const planDate=document.getElementById('plan-updated-date');
+  if(p.wellnessPlan&&p.wellnessPlan.text){
+    if(planCard)planCard.style.display='block';
+    if(planEl)planEl.textContent=p.wellnessPlan.text;
+    if(planDate)planDate.textContent='Updated '+p.wellnessPlan.updatedAt;
+  }else{
+    if(planCard)planCard.style.display='none';
+  }
   document.getElementById('profile-email').textContent=auth_user.email||'—';
   const _age=p.dob?computeAge(p.dob):p.age;
   const _dobStr=p.dob?(' · Born '+new Date(p.dob+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})):'';
