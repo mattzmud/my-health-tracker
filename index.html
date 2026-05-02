@@ -816,6 +816,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="logFood()" id="log-food-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Log &amp; Analyze</button>
         </div>
+        <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">&#8505;&#65039; Nutrition facts are sourced from community-contributed databases. If values look incorrect, tap any logged item to edit them.</div>
         <div id="food-feedback"></div>
       </div>
       <div class="card">
@@ -1289,7 +1290,7 @@ function openPageDatePicker(page){
     +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:16px">&#128197; Pick a date</div>'
     +'<input type="date" id="page-date-input" style="margin-bottom:18px" max="'+TODAY+'" value="'+viewDate+'"/>'
     +'<div style="display:flex;gap:10px">'
-    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="closeFoodEditModal()">Cancel</button>'
     +'<button class="btn btn-primary" style="flex:2" onclick="applyPageDate(&#39;'+page+'&#39;);this.closest(&#39;.date-picker-modal&#39;).remove()">Go</button>'
     +'</div></div>';
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
@@ -2326,7 +2327,7 @@ function openDatePicker(labelEl){
       <button class="btn btn-ghost btn-sm" style="flex:1" onclick="jumpRelative(-30);this.closest('.date-picker-modal').remove()">Last 30 days</button>
     </div>
     <div style="display:flex;gap:10px">
-      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.date-picker-modal').remove()">Cancel</button>
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>
       <button class="btn btn-primary" style="flex:2" onclick="jumpToDate(document.getElementById('date-pick-input').value);this.closest('.date-picker-modal').remove()">Go</button>
     </div>
   </div>`;
@@ -2577,6 +2578,10 @@ async function logFood(){
         protein:macros.protein,
         carbs:macros.carbs,
         calories:macros.calories,
+        baseProtein:macros.protein,
+        baseCarbs:macros.carbs,
+        baseCalories:macros.calories,
+        servings:1,
         water:0,
         ts:Date.now()+i,
         source:usda?(usda.source||'usda'):'ai',
@@ -2812,15 +2817,19 @@ function renderFoodEntries(){
       const delBtn=isPast?'':'<button data-ts="'+e.ts+'" onclick="deleteEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px" title="Remove">&#215;</button>';
       const favBtn='<button data-ts="'+e.ts+'" data-date="'+viewDate+'" onclick="saveFavorite(parseInt(this.dataset.ts),this.dataset.date);event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px" title="Save to favorites">&#11088;</button>';
       {
-        html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+        const servings=e.servings||1;
+        const servingLabel=servings===1?'1 serving':(servings%1===0?servings+' servings':servings+' servings');
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
           +'<div style="flex:1;min-width:0">'
           +'<div style="font-size:13.5px;color:var(--text)">'+escHtml(e.text)+'</div>'
-          +'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap;align-items:center">'
+          +'<div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap;align-items:center">'
           +(e.calories!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.calories)+' kcal</span>':'')
           +(e.protein!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g pro</span>':'')
           +(e.carbs!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
-          +(e.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)" title="Verified nutrition facts from Open Food Facts">&#10003; Verified</span>':e.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)" title="Verified nutrition facts from USDA database">&#10003; USDA</span>':'')
+          +'<span style="font-size:11px;color:var(--muted);font-style:italic">'+servingLabel+'</span>'
+          +(e.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; Verified</span>':e.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; USDA</span>':e.source==='edited'?'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(42,90,138,0.2)">&#9998; Edited</span>':'')
           +'</div></div>'
+          +(!isPast?'<button data-ts="'+e.ts+'" onclick="openEditEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px" title="Edit">&#9998;</button>':'')
           +(!isPast?favBtn+delBtn:'')
           +'</div>';
       }
@@ -2837,6 +2846,82 @@ function toggleMealGroup(header){
   const collapsed=items.style.display==='none';
   items.style.display=collapsed?'':'none';
   if(chevron)chevron.style.transform=collapsed?'rotate(0deg)':'rotate(-90deg)';
+}
+
+function openEditEntry(ts){
+  const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
+  if(!entry)return;
+  const servings=entry.servings||1;
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0};
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:4px">Edit entry</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">'+escHtml(entry.text)+'</div>'
+    +'<div style="margin-bottom:16px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Servings</div>'
+    +'<div style="display:flex;align-items:center;gap:12px">'
+    +'<button onclick="adjustServings('+ts+',-0.25)" style="width:36px;height:36px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);font-size:18px;cursor:pointer;color:var(--text)">&#8722;</button>'
+    +'<div style="text-align:center;min-width:80px"><div style="font-size:22px;font-weight:600;color:var(--text)" id="edit-servings-display">'+servings+'</div><div style="font-size:11px;color:var(--muted)">serving'+(servings===1?'':'s')+'</div></div>'
+    +'<button onclick="adjustServings('+ts+',0.25)" style="width:36px;height:36px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);font-size:18px;cursor:pointer;color:var(--text)">&#43;</button>'
+    +'</div></div>'
+    +'<div style="margin-bottom:16px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Nutrition facts (per serving: '+Math.round(base.cal)+' kcal · '+Math.round(base.pro)+'g pro · '+Math.round(base.carbs)+'g carbs)</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Calories</div><input type="number" id="edit-cal" value="'+Math.round(entry.calories)+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Protein (g)</div><input type="number" id="edit-pro" value="'+Math.round(entry.protein)+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Carbs (g)</div><input type="number" id="edit-carbs" value="'+Math.round(entry.carbs)+'" min="0" style="width:100%"/></div>'
+    +'</div></div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="closeFoodEditModal()">Cancel</button>'
+    +'<button class="btn btn-primary btn-sm" style="flex:2" onclick="saveEditEntry('+ts+')">Save changes</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  // Store ts for adjustServings
+  window._editingTs=ts;
+}
+
+function adjustServings(ts,delta){
+  const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
+  if(!entry)return;
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0};
+  const current=entry.servings||1;
+  const next=Math.max(0.25,Math.round((current+delta)*4)/4);
+  entry.servings=next;
+  // Update display
+  const disp=document.getElementById('edit-servings-display');
+  if(disp)disp.textContent=next;
+  // Update macro inputs to reflect new serving count
+  const calEl=document.getElementById('edit-cal');
+  const proEl=document.getElementById('edit-pro');
+  const carbsEl=document.getElementById('edit-carbs');
+  if(calEl)calEl.value=Math.round(base.cal*next);
+  if(proEl)proEl.value=Math.round(base.pro*next*10)/10;
+  if(carbsEl)carbsEl.value=Math.round(base.carbs*next*10)/10;
+}
+
+async function saveEditEntry(ts){
+  const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
+  if(!entry)return;
+  const cal=parseFloat(document.getElementById('edit-cal').value)||0;
+  const pro=parseFloat(document.getElementById('edit-pro').value)||0;
+  const carbs=parseFloat(document.getElementById('edit-carbs').value)||0;
+  const servings=entry.servings||1;
+  // Store base values (per single serving) derived from new manual values
+  entry.calories=Math.round(cal);
+  entry.protein=Math.round(pro*10)/10;
+  entry.carbs=Math.round(carbs*10)/10;
+  entry.servings=servings;
+  // Update base macros to match manual edit (so future serving adjustments work correctly)
+  entry.baseCalories=Math.round(cal/servings);
+  entry.baseProtein=Math.round((pro/servings)*10)/10;
+  entry.baseCarbs=Math.round((carbs/servings)*10)/10;
+  entry.source='edited';
+  await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+  document.querySelector('.date-picker-modal')?.remove();
+  renderFoodEntries();
+  refreshDashboard();
 }
 
 async function deleteEntry(ts){if(!cache.food[viewDate])return;cache.food[viewDate]=cache.food[viewDate].filter(e=>e.ts!==ts);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
