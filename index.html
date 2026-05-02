@@ -2583,8 +2583,8 @@ async function logFood(){
     });
     await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
     document.getElementById('food-input').value='';
+    if(displayText){const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));}
     renderFoodEntries();// update log entries
-    if(displayText)setTimeout(()=>{const fb=document.getElementById('food-feedback');if(fb)fb.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));},50);
   }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
 }
@@ -2727,7 +2727,7 @@ function scheduleMidnightAnalysis(){
 const MEAL_ORDER=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late night','Water'];
 function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
-  const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML='';
+  // food-feedback is managed by logFood — don't clear it here
   const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0);
   const p=window._profile||{};
