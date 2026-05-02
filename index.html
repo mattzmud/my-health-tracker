@@ -2547,11 +2547,14 @@ function getWeeklyMedStatus(medId){
 }
 
 function getMedsByTime(time){
-  const ml=cache.medsList||{};
-  return Object.entries(ml)
-    .filter(([k,v])=>v.times&&v.times.includes(time))
-    .map(([k,v])=>v)
-    .sort((a,b)=>a.name.localeCompare(b.name));
+  return Object.values(cache.medsList||{}).filter(m=>{
+    if(!m.times||!m.times.includes(time))return false;
+    // Only show if added on or before viewDate (or no addedDate = legacy med, always show)
+    if(m.addedDate&&m.addedDate>viewDate)return false;
+    // Hide if deleted on or before viewDate (still shows on days before deletedDate)
+    if(m.deletedDate&&m.deletedDate<=viewDate)return false;
+    return true;
+  }).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
 }
 
 function renderMeds(){
