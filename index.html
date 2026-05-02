@@ -1560,10 +1560,13 @@ async function lookupUSDA(query){
     let calories=0,protein=0,carbs=0;
 
     // For Branded: use labelNutrients which are always per-serving
-    if(detail.labelNutrients){
-      calories=Math.round(detail.labelNutrients.calories?.value||0);
-      protein=Math.round((detail.labelNutrients.protein?.value||0)*10)/10;
-      carbs=Math.round((detail.labelNutrients.carbohydrates?.value||0)*10)/10;
+    // Only use labelNutrients if they have actual values
+    const ln=detail.labelNutrients;
+    const lnHasData=ln&&((ln.calories?.value||0)>0||(ln.protein?.value||0)>0);
+    if(lnHasData){
+      calories=Math.round(ln.calories?.value||0);
+      protein=Math.round((ln.protein?.value||0)*10)/10;
+      carbs=Math.round((ln.carbohydrates?.value||0)*10)/10;
       console.log('[USDA] Using labelNutrients (per-serving):',calories,'kcal',protein,'pro',carbs,'carbs');
     } else {
       // For SR Legacy / Foundation: foodNutrients are per 100g, scale by serving
