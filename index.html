@@ -1508,68 +1508,67 @@ function loadTextSize(){
 const USDA_KEY='JVgSbW6qH3avDh2UYtxcY8eepEmrubBc93qBBuav';
 
 async function lookupUSDA(query){
-  // Returns {calories, protein, carbs, source:'usda', name} or null
   try{
     const url='https://api.nal.usda.gov/fdc/v1/foods/search?'
       +'query='+encodeURIComponent(query)
       +'&dataType=Branded&dataType=Foundation&dataType=SR+Legacy'
-      +'&pageSize=8'
+      +'&pageSize=10'
       +'&api_key='+USDA_KEY;
     const res=await fetch(url);
-    if(!res.ok)return null;
+    if(!res.ok){console.warn('[USDA] HTTP',res.status,'for',query);return null;}
     const data=await res.json();
     const foods=data.foods||[];
     if(!foods.length)return null;
 
-    // Score each result — prefer exact/close name matches
+    // Score each result — weight brand name match heavily
     const qLower=query.toLowerCase();
+    const qWords=qLower.split(/\s+/).filter(w=>w.length>2);
     let best=null,bestScore=0;
     for(const food of foods){
       const desc=(food.description||'').toLowerCase();
-      // Skip if completely unrelated
-      const qWords=qLower.split(/\s+/).filter(w=>w.length>2);
-      const matchCount=qWords.filter(w=>desc.includes(w)).length;
-      const score=matchCount/Math.max(qWords.length,1);
+      const brand=(food.brandOwner||food.brandName||'').toLowerCase();
+      const combined=desc+' '+brand;
+      const matchCount=qWords.filter(w=>combined.includes(w)).length;
+      // Bonus if brand name appears in query
+      const brandBonus=brand&&qLower.includes(brand.split(' ')[0])?0.2:0;
+      const score=(matchCount/Math.max(qWords.length,1))+brandBonus;
       if(score>bestScore){bestScore=score;best=food;}
     }
-    // Require at least 50% word match to use USDA data
-    if(bestScore<0.5||!best)return null;
+    // Require at least 40% word match
+    if(bestScore<0.4||!best)return null;
 
-    const nutrients={};
+    // Extract raw nutrient values (USDA Branded = per 100g)
+    const raw={};
     (best.foodNutrients||[]).forEach(n=>{
       const name=(n.nutrientName||'').toLowerCase();
-      if(name.includes('energy')&&!name.includes('alcohol'))nutrients.calories=Math.round(n.value||0);
-      if(name==='protein')nutrients.protein=Math.round((n.value||0)*10)/10;
-      if(name.includes('carbohydrate, by difference'))nutrients.carbs=Math.round((n.value||0)*10)/10;
+      const val=n.value||0;
+      if(name.includes('energy')&&!name.includes('alcohol'))raw.calories=val;
+      if(name==='protein')raw.protein=val;
+      if(name.includes('carbohydrate, by difference'))raw.carbs=val;
     });
 
-    // Adjust for serving size if not per 100g
-    const serving=best.servingSize||100;
+    // Scale from per-100g to per-serving for Branded foods
+    const servingG=best.servingSize||100;
     const unit=(best.servingSizeUnit||'g').toLowerCase();
-    // USDA values are per 100g for SR Legacy, per serving for Branded
-    // Branded foods already have per-serving values
-    if(best.dataType==='Branded'&&serving&&serving!==100){
-      // Values are already per-serving for branded — use as-is
-    }
-    // Only return if we have at least calories and one macro
-    if(!nutrients.calories&&!nutrients.protein)return null;
+    const scale=(best.dataType==='Branded'&&unit==='g')?servingG/100:1;
 
-    return{
-      calories:nutrients.calories||0,
-      protein:nutrients.protein||0,
-      carbs:nutrients.carbs||0,
-      source:'usda',
-      name:best.description,
-      brand:best.brandOwner||null,
-      servingSize:best.servingSize,
-      servingSizeUnit:best.servingSizeUnit,
-    };
+    const calories=Math.round((raw.calories||0)*scale);
+    const protein=Math.round((raw.protein||0)*scale*10)/10;
+    const carbs=Math.round((raw.carbs||0)*scale*10)/10;
+
+    if(!calories&&!protein)return null;
+
+    console.log('[USDA] Matched "'+best.description+'" ('+best.brandOwner+') score='+bestScore.toFixed(2)+' scale='+scale.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
+
+    return{calories,protein,carbs,source:'usda',
+      name:best.description,brand:best.brandOwner||null,
+      servingSize:best.servingSize,servingSizeUnit:best.servingSizeUnit};
   }catch(e){
-    console.warn('USDA lookup failed for "'+query+'":', e.message);
+    console.warn('[USDA] lookup failed for "'+query+'":', e.message);
     return null;
   }
 }
-window.lookupUSDA=lookupUSDA;// expose for debugging
+window.lookupUSDA=lookupUSDA;
 
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
