@@ -2369,6 +2369,21 @@ async function regenerateWorkout(){
 }
 
 // ── MEDICATIONS ──────────────────────────────────────────────
+function getWeeklyMedStatus(medId){
+  // Returns {takenDate, daysAgo} if taken within last 7 days, else null
+  // Searches cache for wk-{medId} checkoff across last 7 days
+  const key='wk-'+medId;
+  const today=new Date(TODAY+'T12:00:00');
+  for(let i=0;i<=6;i++){
+    const d=new Date(today);d.setDate(d.getDate()-i);
+    const ds=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+    if(cache.meds[ds]&&cache.meds[ds][key]){
+      return{takenDate:ds,daysAgo:i};
+    }
+  }
+  return null;
+}
+
 function getMedsByTime(time){
   const ml=cache.medsList||{};
   return Object.entries(ml)
@@ -2378,19 +2393,38 @@ function getMedsByTime(time){
 }
 
 function renderMeds(){
+  // Ensure last 7 days of meds are loaded for weekly carry-forward detection
+  const _today7=new Date(TODAY+'T12:00:00');
+  for(let _i=1;_i<=6;_i++){
+    const _d=new Date(_today7);_d.setDate(_d.getDate()-_i);
+    const _ds=_d.getFullYear()+'-'+String(_d.getMonth()+1).padStart(2,'0')+'-'+String(_d.getDate()).padStart(2,'0');
+    if(!cache.meds[_ds]){
+      fbGet('meds',_ds).then(m=>{cache.meds[_ds]=m?(m.taken||{}):{};renderMeds&&setTimeout(renderMeds,0);});
+    }
+  }
   const ms=cache.meds[viewDate]||{};
   const checkSvg='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f1117" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
 
   function buildMedItem(med,time){
     const key=time+'-'+med.id;
     const done=!!ms[key];
+    // Weekly carry-forward: check if taken within last 7 days on a different date
+    let carryOver=null;
+    if(time==='wk'&&!done){
+      carryOver=getWeeklyMedStatus(med.id);
+      if(carryOver&&carryOver.daysAgo===0)carryOver=null;
+    }
+    const isCarried=!done&&carryOver!==null;
     const qty=med.qty&&med.qty>1?' &nbsp;<span style="font-size:12px;color:var(--muted)">Qty: '+med.qty+'</span>':'';
-    return'<div class="check-item '+(done?'done':'')+'" onclick="toggleMed(\''+key+'\')">'
-      +'<div class="check-box">'+(done?checkSvg:'')+'</div>'
-      +'<div style="flex:1"><span style="font-weight:600;color:var(--text)">'+escHtml(med.name)+'</span>'
+    const checkSvgMuted='<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>';
+    const checkDisplay=done?checkSvg:isCarried?checkSvgMuted:'';
+    const carriedNote=isCarried?('<div style="font-size:11px;color:var(--muted);margin-top:2px">Taken '+carryOver.daysAgo+' day'+(carryOver.daysAgo!==1?'s':'')+' ago — '+carryOver.takenDate+'</div>')  :'';
+    return'<div class="check-item '+(done?'done':'')+'" style="'+(isCarried?'opacity:0.6;':'')+  '" onclick="toggleMed(\''+key+'\')">'  
+      +'<div class="check-box" style="'+(isCarried?'border-color:var(--muted);background:rgba(122,111,94,0.08)':'')+'">'+checkDisplay+'</div>'  
+      +'<div style="flex:1"><span style="font-weight:600;color:var(--text)">'+escHtml(med.name)+'</span>'  
       +(med.dose?' <span style="color:var(--muted);font-size:13px">'+escHtml(med.dose)+'</span>':'')
-      +qty+'</div>'
-      +'<div onclick="event.stopPropagation();deleteMed(\''+med.id+'\')" style="color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px">&#10005;</div>'
+      +qty+carriedNote+'</div>'  
+      +'<div onclick="event.stopPropagation();deleteMed(\''+med.id+'\')" style="color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px">&#10005;</div>'  
     +'</div>';
   }
 
