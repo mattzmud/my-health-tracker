@@ -1745,9 +1745,9 @@ async function uploadAvatar(event){
 }
 
 // ── DASHBOARD ──────────────────────────────────────────────
-let weightChart,proteinChart,waterChart;
+let weightChart,proteinChart,waterChart,carbsChart;
 function refreshDashboard(){
-  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80;
+  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80,cg=p.carbGoal||100;
   // goalsDate = single selected day (or today for multi-day ranges)
   const _dashDays=getDashDays();
   const _isSingle=_dashDays.length===1;
@@ -1975,7 +1975,6 @@ async function callAI(prompt,systemPrompt){
   const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await res.json();return d.content[0].text;
 }
-let carbsChart=null;
 function renderCarbsChart(){
   const days=getDashDays(),goal=(window._profile||{}).carbGoal||100;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.carbs||0),0)));
