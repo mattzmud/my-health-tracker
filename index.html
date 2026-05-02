@@ -1350,6 +1350,13 @@ function computeAge(dob){
   return age;
 }
 
+function showToast(msg,type='success'){
+  const t=document.createElement('div');
+  t.style.cssText='position:fixed;bottom:24px;right:24px;padding:11px 16px;background:var(--surface);border:1px solid '+(type==='error'?'rgba(192,57,43,0.4)':'rgba(85,107,47,0.3)')+';border-radius:8px;font-size:13px;color:var(--text);box-shadow:0 4px 16px rgba(85,107,47,0.12);z-index:9999;animation:slideUp 0.2s ease;max-width:300px';
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3000);
+}
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
 
@@ -2674,13 +2681,104 @@ async function analyzeGroceryList(){
   document.getElementById('grocery-feedback').innerHTML='';
   try{
     const items=cache.grocery.map(i=>i.text).join(', ');
-    const res=await callAI('Here is my grocery list: '+items+'\n\nAnalyze the nutritional profile. What does it do well? What is missing? Suggest 3 specific swaps or additions for my health goals.',
-      'You are a nutrition coach. '+buildUserContext()+'. Be warm, specific, practical. Under 200 words.');
-    const html=aiFeedbackHTML('&#128722;','Grocery list analysis',escHtml(res.replace(/```/g,'')));
-    document.getElementById('grocery-feedback').innerHTML=html;
-    cache.groceryAnalysis=html;// persist across tab switches
-  }catch(e){document.getElementById('grocery-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error. Please try again.</div>';}
+    const res=await callAI(
+      'Here is my grocery list: '+items
+      +'\n\nAnalyze this list for someone with these health goals: '+buildUserContext()
+      +'\n\nReturn ONLY valid JSON in this exact format, no other text:'
+      +'{'
+      +'"summary":"2-3 sentence overall assessment of the list",'
+      +'"strengths":["what this list does well (1-2 items)"],'
+      +'"additions":[{"item":"specific item to add","reason":"why it helps","category":"vegetable/protein/fruit/etc"}],'
+      +'"swaps":[{"remove":"exact item name from list","add":"specific replacement","reason":"why this swap helps"}]'
+      +'}'
+      +'\n\nFor additions: be specific (say "broccoli" not "vegetables", "Greek yogurt" not "dairy"). Include 3-5 additions.'
+      +'\n\nFor swaps: only suggest swapping items that are actually on the list. Be specific about the replacement. Include 2-4 swaps.',
+      'You are a nutrition coach. Return ONLY valid JSON, nothing else.'
+    );
+    const cleaned=res.replace(/```json|```/g,'').trim();
+    const data=JSON.parse(cleaned);
+    renderGroceryAnalysis(data);
+  }catch(e){
+    document.getElementById('grocery-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing list. Please try again.</div>';
+  }
   btn.disabled=false;btn.textContent='🧠 Analyze list';
+}
+
+function renderGroceryAnalysis(data){
+  let html='<div class="ai-feedback"><div class="ai-feedback-header" onclick="toggleAIFeedback(this)">'
+    +'<div class="ai-feedback-title">&#128722; Grocery list analysis</div>'
+    +'<span class="ai-feedback-toggle">&#9660;</span></div>'
+    +'<div class="ai-feedback-body">';
+  // Summary
+  if(data.summary)html+='<div style="margin-bottom:14px;line-height:1.7">'+escHtml(data.summary)+'</div>';
+  // Strengths
+  if(data.strengths&&data.strengths.length){
+    html+='<div style="font-weight:600;color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">&#10003; What&#39;s working</div>';
+    data.strengths.forEach(s=>{
+      html+='<div style="font-size:13px;color:var(--text);padding:4px 0;border-bottom:1px solid var(--border)">'+escHtml(s)+'</div>';
+    });
+    html+='<div style="margin-bottom:14px"></div>';
+  }
+  // Additions
+  if(data.additions&&data.additions.length){
+    html+='<div style="font-weight:600;color:var(--accent);font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">&#43; Suggested additions</div>';
+    data.additions.forEach(a=>{
+      const enc=encodeURIComponent(JSON.stringify([a.item]));
+      html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1"><div style="font-size:13px;font-weight:500;color:var(--text)">'+escHtml(a.item)+'</div>'
+        +(a.reason?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+escHtml(a.reason)+'</div>':'')
+        +'</div>'
+        +'<button data-enc="'+enc+'" onclick="addFromAnalysis(this)" style="flex-shrink:0;padding:5px 12px;background:rgba(85,107,47,0.1);border:1px solid rgba(85,107,47,0.3);border-radius:6px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;white-space:nowrap;font-family:var(--font-body)">+ Add</button>'
+        +'</div>';
+    });
+    html+='<div style="margin-bottom:14px"></div>';
+  }
+  // Swaps
+  if(data.swaps&&data.swaps.length){
+    html+='<div style="font-weight:600;color:var(--amber);font-size:12px;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">&#8644; Suggested swaps</div>';
+    data.swaps.forEach(s=>{
+      const enc=encodeURIComponent(JSON.stringify({remove:s.remove,add:s.add}));
+      html+='<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1">'
+        +'<div style="font-size:13px;color:var(--text)"><span style="color:var(--muted);text-decoration:line-through">'+escHtml(s.remove)+'</span>'
+        +' <span style="color:var(--muted)">&#8594;</span> <span style="font-weight:500">'+escHtml(s.add)+'</span></div>'
+        +(s.reason?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+escHtml(s.reason)+'</div>':'')
+        +'</div>'
+        +'<button data-enc="'+enc+'" onclick="swapFromAnalysis(this)" style="flex-shrink:0;padding:5px 12px;background:rgba(138,106,26,0.1);border:1px solid rgba(138,106,26,0.3);border-radius:6px;font-size:12px;font-weight:600;color:var(--amber);cursor:pointer;white-space:nowrap;font-family:var(--font-body)">&#8644; Swap</button>'
+        +'</div>';
+    });
+  }
+  html+='</div></div>';
+  document.getElementById('grocery-feedback').innerHTML=html;
+  cache.groceryAnalysis=html;
+}
+
+async function addFromAnalysis(btn){
+  const data=JSON.parse(decodeURIComponent(btn.dataset.enc));
+  const items=Array.isArray(data)?data:[data];
+  items.forEach(text=>{
+    if(!cache.grocery.find(g=>g.text.toLowerCase()===text.toLowerCase())){
+      cache.grocery.push({text,checked:false,id:Date.now()+Math.random()});
+    }
+  });
+  await fbSet('grocery','list',{items:cache.grocery});
+  btn.textContent='✓ Added';btn.disabled=true;btn.style.opacity='0.6';
+  renderGroceryList();
+  showToast('Added to grocery list');
+}
+
+async function swapFromAnalysis(btn){
+  const data=JSON.parse(decodeURIComponent(btn.dataset.enc));
+  // Remove the old item (case-insensitive match)
+  cache.grocery=cache.grocery.filter(g=>g.text.toLowerCase()!==data.remove.toLowerCase());
+  // Add the new item if not already there
+  if(!cache.grocery.find(g=>g.text.toLowerCase()===data.add.toLowerCase())){
+    cache.grocery.push({text:data.add,checked:false,id:Date.now()+Math.random()});
+  }
+  await fbSet('grocery','list',{items:cache.grocery});
+  btn.textContent='✓ Swapped';btn.disabled=true;btn.style.opacity='0.6';
+  renderGroceryList();
+  showToast('Swapped '+data.remove+' for '+data.add);
 }
 function renderGroceryList(){
   // Restore analysis if it exists
@@ -2694,16 +2792,19 @@ function renderGroceryList(){
   el.innerHTML=[...unchecked,...checked].map(renderItem).join('');
 }
 
-async function addRecipeToGrocery(ingredients){
+async function addRecipeToGrocery(ingredients,btn){
   if(!ingredients||!ingredients.length)return;
-  ingredients.forEach(item=>{
-    if(!cache.grocery.find(g=>g.text.toLowerCase()===item.toLowerCase())){
-      cache.grocery.push({text:item,checked:false,id:Date.now()+Math.random()});
+  let items=ingredients;
+  if(typeof ingredients==='string'){try{items=JSON.parse(decodeURIComponent(ingredients));}catch(e){return;}}
+  items.forEach(item=>{
+    const text=typeof item==='string'?item:item.text||item.name||String(item);
+    if(text&&!cache.grocery.find(g=>g.text.toLowerCase()===text.toLowerCase())){
+      cache.grocery.push({text,checked:false,id:Date.now()+Math.random()});
     }
   });
   await fbSet('grocery','list',{items:cache.grocery});
-  const btn=event.target.closest('button');
-  if(btn){btn.textContent='Added to grocery list!';btn.disabled=true;btn.style.opacity='0.7';}
+  if(btn){btn.textContent='✓ Added!';btn.disabled=true;btn.style.opacity='0.7';}
+  showToast('Added '+items.length+' item'+(items.length!==1?'s':'')+' to grocery list','success');
 }
 
 // ── CHATBOT ──────────────────────────────────────────────────
@@ -3483,7 +3584,8 @@ function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null,suggestedD
   let extra='';
   if(role==='ai'&&ingredients&&ingredients.length){
     const safe=JSON.stringify(ingredients).replace(/'/g,'\u0027');
-    extra+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)"><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">'+ingredients.length+' ingredients in this recipe</div><button onclick="addRecipeToGrocery('+safe+')" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(126,184,164,0.2);color:var(--accent);border:1px solid rgba(126,184,164,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10133; Add ingredients to grocery list</button></div>';
+    const encIngr=encodeURIComponent(JSON.stringify(ingredients));
+    extra+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)"><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">'+ingredients.length+' ingredients in this recipe</div><button data-enc="'+encIngr+'" onclick="addRecipeToGrocery(this.dataset.enc,this)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(126,184,164,0.2);color:var(--accent);border:1px solid rgba(126,184,164,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10133; Add ingredients to grocery list</button></div>';
   }
   if(role==='ai'&&suggestedGoals){
     const p=suggestedGoals.proteinGoal,w=suggestedGoals.waterGoal,c=suggestedGoals.carbGoal;
