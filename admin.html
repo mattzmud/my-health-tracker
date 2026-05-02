@@ -208,12 +208,18 @@ onAuthStateChanged(auth,async user=>{
   if(!user){
     show('login-screen');return;
   }
+  console.log('Auth user:', user.uid, user.email);
   // Check if this user is in the admins collection
-  const adminSnap=await getDoc(doc(db,'admins',user.uid));
-  if(!adminSnap.exists()){
-    show('not-authorized');
-    document.getElementById('admin-email-display').textContent=user.email;
-    return;
+  try{
+    const adminSnap=await getDoc(doc(db,'admins',user.uid));
+    console.log('Admin doc exists:', adminSnap.exists());
+    if(!adminSnap.exists()){
+      show('not-authorized');
+      document.getElementById('admin-email-display').textContent=user.email;
+      return;
+    }
+  }catch(e){
+    console.error('Admin check error:',e.code,e.message);
   }
   // Authorized admin
   show('admin-panel');
@@ -266,14 +272,19 @@ window.doSignOut=async function(){
 window.loadUsers=async function(){
   document.getElementById('users-grid').innerHTML='<div class="empty-state"><div class="spinner"></div>Loading users…</div>';
   try{
+    console.log('loadUsers: auth user=',auth.currentUser?.uid, auth.currentUser?.email);
     const usersSnap=await getDocs(collection(db,'users'));
+    console.log('loadUsers: snap size=',usersSnap.size, 'empty=',usersSnap.empty);
+    usersSnap.forEach(d=>console.log('doc:',d.id));
     const promises=[];
     usersSnap.forEach(d=>promises.push(loadUserData(d.id)));
     allUsers=(await Promise.all(promises)).filter(Boolean).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    console.log('loadUsers: allUsers=',allUsers.length);
     renderStats();
     renderUsers(allUsers);
   }catch(e){
-    document.getElementById('users-grid').innerHTML=`<div class="empty-state">Error loading users: ${e.message}</div>`;
+    console.error('loadUsers error:',e.code, e.message);
+    document.getElementById('users-grid').innerHTML=`<div class="empty-state">Error: ${e.code} — ${e.message}</div>`;
   }
 };
 
