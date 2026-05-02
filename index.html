@@ -2837,23 +2837,40 @@ function bsAvg(readings){
 
 function renderBPReadingRow(r, showDate=false){
   const cat=bpCategory(r.systolic,r.diastolic);
+  const _bpDate=r.date||viewDate;
+  const delBtn=vitalsRangeMode?"":"<button onclick=\"deleteVitalReading(this)\" data-type=\"bp\" data-ts=\""+r.ts+"\" data-date=\""+(_bpDate)+"\" style=\"background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 2px\" title=\"Delete reading\">&#215;</button>";
   return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
     +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.systolic+'/'+r.diastolic+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mmHg</span></div>'
     +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
     +'<div style="font-size:12px;color:var(--muted)">'+(showDate?r.date+' ':'')+( r.time||'')+'</div>'
+    +delBtn
     +'</div>';
 }
 
 function renderBSReadingRow(r, showDate=false){
   const cat=bsCategory(r.value,r.context);
   const ctxLabels={fasting:'Fasting',before_meal:'Before meal',after_breakfast:'After breakfast',after_lunch:'After lunch',after_dinner:'After dinner',after_snack:'After snack',random:'Random'};
+  const _bsDate=r.date||viewDate;
+  const delBtn=vitalsRangeMode?"":"<button onclick=\"deleteVitalReading(this)\" data-type=\"bs\" data-ts=\""+r.ts+"\" data-date=\""+(_bsDate)+"\" style=\"background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 2px\" title=\"Delete reading\">&#215;</button>";
   return'<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
     +'<div style="flex:1"><span style="font-size:15px;font-weight:600;color:var(--text)">'+r.value+'</span><span style="font-size:12px;color:var(--muted);margin-left:6px">mg/dL</span>'
     +(r.context?'<div style="font-size:11px;color:var(--muted)">'+(ctxLabels[r.context]||r.context)+'</div>':'')
     +'</div>'
     +'<span class="pill" style="background:'+cat.bg+';color:'+cat.color+';font-size:11px">'+cat.label+'</span>'
     +'<div style="font-size:12px;color:var(--muted)">'+(showDate?r.date:'')+'</div>'
+    +delBtn
     +'</div>';
+}
+
+async function deleteVitalReading(btn){
+  const type=btn.dataset.type;
+  const ts=parseInt(btn.dataset.ts);
+  const date=btn.dataset.date;
+  if(!cache.vitals[type][date])return;
+  cache.vitals[type][date]=cache.vitals[type][date].filter(r=>r.ts!==ts);
+  await saveVitalsForDate(date);
+  renderVitals();
+  renderDashboardVitals();
 }
 
 function renderAvgRow(label, avgHtml, cat){
