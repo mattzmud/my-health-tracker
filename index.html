@@ -1550,7 +1550,7 @@ async function lookupUSDA(query){
     // Scale from per-100g to per-serving for Branded foods
     const servingG=best.servingSize||100;
     const unit=(best.servingSizeUnit||'g').toLowerCase();
-    const scale=(best.dataType==='Branded'&&unit==='g')?servingG/100:1;
+    const scale=(best.dataType==='Branded'&&(unit==='g'||unit==='grm'||unit==='gram'||unit==='grams'))?servingG/100:1;
 
     const calories=Math.round((raw.calories||0)*scale);
     const protein=Math.round((raw.protein||0)*scale*10)/10;
