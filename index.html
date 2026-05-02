@@ -591,7 +591,7 @@ textarea{min-height:80px;}
       </div>
 
       <!-- Badges -->
-      <div class="card profile-card" id="pc-badges">
+      <div class="card profile-card collapsed" id="pc-badges">
         <div class="profile-card-header" onclick="toggleProfileCard('pc-badges')">
           <div class="card-title" style="margin:0">&#127942; My badges</div>
           <span class="profile-card-chevron">&#9660;</span>
@@ -619,7 +619,7 @@ textarea{min-height:80px;}
       </div>
 
       <!-- Meds tracking settings -->
-      <div class="card profile-card" id="pc-meds">
+      <div class="card profile-card collapsed" id="pc-meds">
         <div class="profile-card-header" onclick="toggleProfileCard('pc-meds')">
           <div class="card-title" style="margin:0">&#128138; Medication tracking</div>
           <span class="profile-card-chevron">&#9660;</span>
@@ -637,7 +637,7 @@ textarea{min-height:80px;}
       </div>
 
       <!-- Vitals tracking settings -->
-      <div class="card profile-card" id="pc-vitals">
+      <div class="card profile-card collapsed" id="pc-vitals">
         <div class="profile-card-header" onclick="toggleProfileCard('pc-vitals')">
           <div class="card-title" style="margin:0">&#128147; Vitals tracking</div>
           <span class="profile-card-chevron">&#9660;</span>
@@ -665,7 +665,7 @@ textarea{min-height:80px;}
       </div>
 
       <!-- Change password -->
-      <div class="card profile-card" id="pc-password">
+      <div class="card profile-card collapsed" id="pc-password">
         <div class="profile-card-header" onclick="toggleProfileCard('pc-password')">
           <div class="card-title" style="margin:0">&#128272; Change password</div>
           <span class="profile-card-chevron">&#9660;</span>
@@ -683,7 +683,7 @@ textarea{min-height:80px;}
       </div>
 
       <!-- Add to home screen -->
-      <div class="card profile-card" id="pc-homescreen">
+      <div class="card profile-card collapsed" id="pc-homescreen">
         <div class="profile-card-header" onclick="toggleProfileCard('pc-homescreen')">
           <div class="card-title" style="margin:0">&#128241; Add to home screen</div>
           <span class="profile-card-chevron">&#9660;</span>
@@ -3091,13 +3091,13 @@ function renderProfile(){
   const planEl=document.getElementById('plan-text');
   const planDate=document.getElementById('plan-updated-date');
   if(p.wellnessPlan&&p.wellnessPlan.text){
-    if(planCard)planCard.style.display='block';
+    if(planCard){planCard.style.display='block';planCard.classList.add('collapsed');}
     if(planEl)planEl.textContent=p.wellnessPlan.text;
     if(planDate)planDate.textContent='Updated '+p.wellnessPlan.updatedAt;
     const genBtn=document.getElementById('plan-generate-btn');
     if(genBtn)genBtn.remove();
   }else{
-    if(planCard)planCard.style.display='block';
+    if(planCard){planCard.style.display='block';planCard.classList.add('collapsed');}
     if(planEl)planEl.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7">Your personalized plan covers the foods to focus on, what to limit, your workout approach, daily habits to build, and anything specific to watch for given your health profile.</div>'
       +'<button id="plan-generate-btn" class="btn btn-primary" onclick="triggerGeneratePlan(this)">&#127807; See my Wellpath plan</button>';
     if(planDate)planDate.textContent='';
