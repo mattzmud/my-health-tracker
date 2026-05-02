@@ -1512,8 +1512,8 @@ async function lookupUSDA(query){
   try{
     const url='https://api.nal.usda.gov/fdc/v1/foods/search?'
       +'query='+encodeURIComponent(query)
-      +'&dataType=Branded,SR+Legacy,Survey+(FNDDS)'
-      +'&pageSize=5'
+      +'&dataType=Branded&dataType=Foundation&dataType=SR+Legacy'
+      +'&pageSize=8'
       +'&api_key='+USDA_KEY;
     const res=await fetch(url);
     if(!res.ok)return null;
