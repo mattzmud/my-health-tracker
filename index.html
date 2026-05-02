@@ -1693,7 +1693,7 @@ async function generatePlan(){
   window._profile=profile;
   // Run nutrition goals + workout plan in parallel — both independent
   const nutritionPromise=callAI(
-    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80}\nProtein in grams, water in oz, net carbs in grams. Be specific to this person.',
+    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200}\nProtein in grams, water in oz, net carbs in grams, calories in kcal. Calculate calorie goal using TDEE minus appropriate deficit for their goals and activity level. Be specific to this person.',
     'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
   ).catch(()=>null);
 
@@ -1715,6 +1715,7 @@ async function generatePlan(){
         if(ng.proteinGoal&&ng.proteinGoal>0)window._profile.proteinGoal=Math.round(ng.proteinGoal);
         if(ng.waterGoal&&ng.waterGoal>0)window._profile.waterGoal=Math.round(ng.waterGoal);
         if(ng.carbGoal&&ng.carbGoal>0)window._profile.carbGoal=Math.round(ng.carbGoal);
+        if(ng.calorieGoal&&ng.calorieGoal>0)window._profile.calorieGoal=Math.round(ng.calorieGoal);
       }
     }
   }catch(e){}
@@ -2251,7 +2252,7 @@ function renderCarbsChart(){
 
 function buildUserContext(){
   const p=window._profile||{};
-  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs';
+  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal';
 }
 
 // ── FOOD DIARY ──────────────────────────────────────────────
@@ -4016,7 +4017,7 @@ async function sendChat(){
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
-      try{const m=reply.match(/WORKOUT_UPDATE:(\{[\s\S]*?\})\s*(?=RECIPE|$)/);if(m){const p=JSON.parse(m[1]);if(p.plan){window._profile.workoutPlan=p.plan;await fbSet('profile','survey',window._profile);renderFitness();}}}catch(e){}
+      try{const m=reply.match(/WORKOUT_UPDATE:(\{[\s\S]*?\})\s*(?=RECIPE|$)/);if(m){const p=JSON.parse(m[1]);if(p.plan){window._profile.workoutPlan=p.plan;await fbSet('profile','survey',window._profile);renderFitness();generateWellnessPlan(false);}}}catch(e){}
     }
     let ingredients=null;
     if(reply.includes('RECIPE_INGREDIENTS:')){try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}}
@@ -4098,13 +4099,17 @@ async function applyGoalSuggestion(encoded){
   if(!window._profile)return;
   let goals;
   try{goals=JSON.parse(decodeURIComponent(encoded));}catch(e){return;}
-  if(goals.proteinGoal)window._profile.proteinGoal=Math.round(goals.proteinGoal);
-  if(goals.waterGoal)window._profile.waterGoal=Math.round(goals.waterGoal);
-  if(goals.carbGoal)window._profile.carbGoal=Math.round(goals.carbGoal);
+  const changed=[];
+  if(goals.proteinGoal){window._profile.proteinGoal=Math.round(goals.proteinGoal);changed.push('Protein: '+window._profile.proteinGoal+'g');}
+  if(goals.waterGoal){window._profile.waterGoal=Math.round(goals.waterGoal);changed.push('Water: '+window._profile.waterGoal+' oz');}
+  if(goals.carbGoal){window._profile.carbGoal=Math.round(goals.carbGoal);changed.push('Carbs: '+window._profile.carbGoal+'g');}
+  if(goals.calorieGoal){window._profile.calorieGoal=Math.round(goals.calorieGoal);changed.push('Calories: '+window._profile.calorieGoal+' kcal');}
   await fbSet('profile','survey',window._profile);
   const card=document.getElementById('goal-suggestion-card');
-  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);text-align:center;padding:4px">&#10003; Goals updated — Protein: '+window._profile.proteinGoal+'g · Water: '+window._profile.waterGoal+' oz · Carbs: '+window._profile.carbGoal+'g</div>';
+  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);text-align:center;padding:4px">&#10003; Goals updated — '+changed.join(' · ')+'<br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span></div>';
   refreshDashboard();
+  // Regenerate plan to reflect new goals
+  generateWellnessPlan(false);
 }
 </script>
 </body>
