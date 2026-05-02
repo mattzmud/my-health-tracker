@@ -2605,7 +2605,9 @@ async function logExtraActivity(){
   if(!cache.fitness[viewDate].extras)cache.fitness[viewDate].extras=[];
   const entry={text:raw,ts:Date.now(),date:viewDate};
   cache.fitness[viewDate].extras.push(entry);
-  await fbSet('fitness',viewDate,cache.fitness[viewDate]);
+  // Save fitness data preserving done structure
+  const _fitSave={done:{},...cache.fitness[viewDate]};Object.keys(cache.fitness[viewDate]).forEach(k=>{if(k!=='extras'&&k!=='_autoSwapped')_fitSave.done[k]=cache.fitness[viewDate][k];});
+  await fbSet('fitness',viewDate,{done:_fitSave.done,extras:cache.fitness[viewDate].extras||[],_autoSwapped:cache.fitness[viewDate]._autoSwapped||false,date:viewDate});
   document.getElementById('extra-activity-input').value='';
   renderExtraActivities();
   try{
@@ -2744,9 +2746,9 @@ async function handleSwapDecision(ts, doSwap){
     const dayPlan=plan.find(d=>d.day===getActiveFitnessDay());
     if(dayPlan&&dayPlan.exercises&&dayPlan.exercises.length){
       dayPlan.exercises.forEach(ex=>{
-        const key='ex-'+ex.name.replace(/\s+/g,'-').toLowerCase();
+        // Use same key format as toggleExercise — just ex.name
         if(!cache.fitness[viewDate])cache.fitness[viewDate]={};
-        cache.fitness[viewDate][key]=true;
+        cache.fitness[viewDate][ex.name]=true;
       });
       // Mark that checkboxes were auto-filled by a swap — not manually done
       cache.fitness[viewDate]._autoSwapped=true;
@@ -2756,7 +2758,7 @@ async function handleSwapDecision(ts, doSwap){
   }
 
   // Save and re-render
-  await fbSet('fitness',viewDate,cache.fitness[viewDate]);
+  await fbSet('fitness',viewDate,{done:cache.fitness[viewDate],extras:cache.fitness[viewDate].extras||[],date:viewDate});
   renderExtraActivities();
   renderFitnessDay();// update checkboxes
   refreshDashboard();// update fitness progress bar
@@ -4025,10 +4027,12 @@ async function sendChat(){
     if(reply.includes('GOALS_SUGGESTION:')){try{const m=reply.match(/GOALS_SUGGESTION:(\{[^}]+\})/);if(m)suggestedGoals=JSON.parse(m[1]);}catch(e){}}
     let suggestedDOB=null;
     if(reply.includes('DOB_UPDATE:')){try{const m=reply.match(/DOB_UPDATE:(\{[^}]+\})/);if(m)suggestedDOB=JSON.parse(m[1]);}catch(e){}}
+    // Regenerate plan whenever coach discusses/confirms goals or plan
+    if(reply.includes('PLAN_REFRESH:true')){generateWellnessPlan(false);}
     chatHistory.push({role:'assistant',content:reply});
     await saveMessageToSession('assistant',reply);
     document.getElementById(tid)?.remove();
-    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').replace(/DOB_UPDATE:\{[^}]+\}/,'').trim();
+    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').replace(/DOB_UPDATE:\{[^}]+\}/,'').replace(/PLAN_REFRESH:true/g,'').trim();
     addChatMsgDOM('ai',cleanReply,ingredients,suggestedGoals,suggestedDOB);
   }catch(e){document.getElementById(tid)?.remove();addChatMsgDOM('ai','Sorry, connection issue. Please try again!');}
   btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
