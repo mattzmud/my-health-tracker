@@ -659,7 +659,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
             &#128172; Have questions about your plan or want to make changes? Chat with your <button onclick="showSection('chat')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font-body);padding:0;text-decoration:underline">Health Coach</button> any time — they know your full profile and can update your plan on the spot.
           </div>
           <div id="plan-history-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
-            <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Plan history</div>
+            <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:12px">&#128203; Previous versions</div>
             <div id="plan-history-list"></div>
           </div>
         </div>
@@ -1779,6 +1779,15 @@ function toggleProfileCard(id){
   const card=document.getElementById(id);
   if(!card)return;
   card.classList.toggle('collapsed');
+}
+
+function togglePlanHistoryEntry(id){
+  const el=document.getElementById(id);
+  const btn=document.getElementById(id+'-btn');
+  if(!el)return;
+  const open=el.style.display==='block';
+  el.style.display=open?'none':'block';
+  if(btn)btn.innerHTML=open?'&#9656; View full plan':'&#9662; Hide plan';
 }
 
 async function triggerGeneratePlan(btn){
@@ -3504,19 +3513,23 @@ function renderProfile(){
     if(planDate)planDate.textContent='Updated '+p.wellnessPlan.updatedAt;
     const histSection=document.getElementById('plan-history-section');
     const histList=document.getElementById('plan-history-list');
-    const history=(p.planHistory||[]).slice(1);// skip current — already shown above
-    if(histSection&&histList&&history.length){
+    const history=p.planHistory||[];
+    if(histSection&&histList&&history.length>1){
       histSection.style.display='block';
-      histList.innerHTML=history.map(h=>'<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
-        +'<div style="font-size:12px;font-weight:600;color:var(--text)">'+(h.updatedAt||'')+'</div>'
-        +'<div style="font-size:11px;color:var(--muted)">'+escHtml(h.reason||'')+'</div>'
-        +'</div>'
-        +(h.changeSummary?'<div style="font-size:12px;color:var(--accent);margin-bottom:6px;line-height:1.5">'+escHtml(h.changeSummary)+'</div>':'')
-        +'<details style="margin-top:2px"><summary style="font-size:12px;color:var(--muted);cursor:pointer;user-select:none">View full plan text</summary>'
-        +'<div style="font-size:12px;color:var(--text);line-height:1.7;margin-top:8px;white-space:pre-wrap;padding:8px;background:var(--surface2);border-radius:6px">'+escHtml(h.text||'')+'</div>'
-        +'</details></div>'
-      ).join('');
+      // Show all entries except the first (current) — it's already displayed above
+      const pastEntries=history.slice(1);
+      histList.innerHTML=pastEntries.map((h,idx)=>{
+        const entryId='ph-entry-'+idx;
+        return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
+          +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">'
+          +'<div style="font-size:13px;font-weight:600;color:var(--text)">'+(h.updatedAt||'')+'</div>'
+          +'<div style="font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:10px;border:1px solid var(--border)">'+escHtml(h.reason||'Plan updated')+'</div>'
+          +'</div>'
+          +(h.changeSummary?'<div style="font-size:12px;color:var(--accent);margin-bottom:8px;line-height:1.6;padding:6px 8px;background:rgba(85,107,47,0.06);border-radius:6px;border-left:2px solid var(--accent)">&#128260; '+escHtml(h.changeSummary)+'</div>':'')
+          +'<div data-eid="'+entryId+'" onclick="togglePlanHistoryEntry(this.dataset.eid)" id="'+entryId+'-btn" style="font-size:12px;color:var(--muted);cursor:pointer;text-decoration:underline;user-select:none">&#9656; View full plan</div>'
+          +'<div id="'+entryId+'" style="display:none;margin-top:8px;font-size:12px;color:var(--text);line-height:1.7;white-space:pre-wrap;padding:10px;background:var(--surface2);border-radius:6px;border:1px solid var(--border)">'+escHtml(h.text||'')+'</div>'
+          +'</div>';
+      }).join('');
     }else if(histSection){histSection.style.display='none';}
     const genBtn=document.getElementById('plan-generate-btn');
     if(genBtn)genBtn.remove();
