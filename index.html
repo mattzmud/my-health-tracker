@@ -1509,18 +1509,18 @@ const USDA_KEY='JVgSbW6qH3avDh2UYtxcY8eepEmrubBc93qBBuav';
 
 async function lookupUSDA(query){
   try{
-    const url='https://api.nal.usda.gov/fdc/v1/foods/search?'
+    // Step 1: Search for the food
+    const searchUrl='https://api.nal.usda.gov/fdc/v1/foods/search?'
       +'query='+encodeURIComponent(query)
       +'&dataType=Branded&dataType=Foundation&dataType=SR+Legacy'
-      +'&pageSize=10'
-      +'&api_key='+USDA_KEY;
-    const res=await fetch(url);
-    if(!res.ok){console.warn('[USDA] HTTP',res.status,'for',query);return null;}
-    const data=await res.json();
-    const foods=data.foods||[];
+      +'&pageSize=10&api_key='+USDA_KEY;
+    const searchRes=await fetch(searchUrl);
+    if(!searchRes.ok){console.warn('[USDA] Search HTTP',searchRes.status);return null;}
+    const searchData=await searchRes.json();
+    const foods=searchData.foods||[];
     if(!foods.length)return null;
 
-    // Score each result — weight brand name match heavily
+    // Step 2: Score results
     const qLower=query.toLowerCase();
     const qWords=qLower.split(/\s+/).filter(w=>w.length>2);
     let best=null,bestScore=0;
@@ -1529,117 +1529,72 @@ async function lookupUSDA(query){
       const brand=(food.brandOwner||food.brandName||'').toLowerCase();
       const combined=desc+' '+brand;
       const matchCount=qWords.filter(w=>combined.includes(w)).length;
-      // Bonus if brand name appears in query
       const brandBonus=brand&&qLower.includes(brand.split(' ')[0])?0.2:0;
       const score=(matchCount/Math.max(qWords.length,1))+brandBonus;
       if(score>bestScore){bestScore=score;best=food;}
     }
-    // Require at least 40% word match
     if(bestScore<0.4||!best)return null;
 
-    // Extract raw nutrient values (USDA Branded = per 100g)
-    const raw={};
-    console.log('[USDA] Nutrients for',best.description,':',
-      (best.foodNutrients||[]).map(n=>n.nutrientName+'='+n.value).join(' | '));
-    (best.foodNutrients||[]).forEach(n=>{
-      const name=(n.nutrientName||'').toLowerCase();
-      const val=n.value||0;
-      if(name.includes('energy')||name==='calories'||name.includes('atwater')||name.includes('kcal'))raw.calories=val;
-      if(name==='protein')raw.protein=val;
-      if(name.includes('carbohydrate, by difference'))raw.carbs=val;
-    });
-
-    // Scale from per-100g to per-serving for Branded foods
-    const servingG=best.servingSize||100;
-    const unit=(best.servingSizeUnit||'g').toLowerCase();
-    // Determine scale factor
-    // USDA Branded entries are inconsistent — some store per-100g, some per-serving
-    // Heuristic: if raw calories scaled would exceed 1200 kcal, values are likely already per-serving
-    const isGram=unit==='g'||unit==='grm'||unit==='gram'||unit==='grams';
-    const isML=unit==='ml'||unit==='mlt'||unit==='milliliter'||unit==='milliliters';
-    const isBranded=best.dataType==='Branded';
-    let scale=(isBranded&&(isGram||isML))?servingG/100:1;
-    // Sanity check: determine if raw values are already per-serving or per-100g
-    // Key insight: if raw_nutrient / servingG * 100 gives a realistic per-100g density,
-    // then raw values are per-serving. If raw_nutrient itself is already a per-100g density,
-    // scaling is needed.
-    // For protein: yogurt ~6-10g/100g, protein bar ~30-40g/100g
-    // If raw protein divided by scale gives an implausible per-100g value (>60g/100g), 
-    // the raw values are already per-serving.
-    if(scale!==1&&raw.protein){
-      const impliedPer100g=raw.protein/scale*scale; // raw is what we have
-      const per100gIfScaled=raw.protein; // raw already represents 100g value
-      // Check: if raw protein > 25% of servingG in grams, it's likely already per-serving
-      // e.g. Oikos: 15g protein in 150g serving = 10% which is realistic per-serving
-      // but 15g/100g × 1.5 = 22.5g which implies 15g/100g density — also plausible
-      // Better check: compare scaled result against known physiological maxima per serving
-      const scaledProtein=(raw.protein||0)*scale;
-      const scaledCarbs=(raw.carbs||0)*scale;
-      const scaledCal=(raw.calories||0)*scale;
-      // If scaled protein > 60g or scaled carbs > 150g for a single item, scale=1
-      if(scaledProtein>60||scaledCarbs>150||(scaledCal>1500&&scaledCal>0)){
-        console.log('[USDA] Scaled values implausible, using scale=1');
-        scale=1;
-      }
-      // If no calories in DB, check if raw protein alone suggests per-serving values
-      // by seeing if the implied calorie count (from macros at scale=1) is more reasonable
-      if(!raw.calories&&scale!==1){
-        const calAtScale1=Math.round((raw.protein||0)*4+(raw.carbs||0)*4);
-        const calAtScaleN=Math.round(((raw.protein||0)*scale)*4+((raw.carbs||0)*scale)*4);
-        // Pick whichever gives a more typical single-serving calorie count (50-600 kcal)
-        if(Math.abs(calAtScale1-300)<Math.abs(calAtScaleN-300)){
-          console.log('[USDA] No calories: scale=1 gives more plausible result ('+calAtScale1+' vs '+calAtScaleN+')');
-          scale=1;
-        }
-      }
-    }
-    if(scale!==1&&raw.calories){
-      const scaledCal=(raw.calories||0)*scale;
-      if(scaledCal>1500){
-        console.log('[USDA] Calorie sanity check failed, using scale=1');
-        scale=1;
-      }
-    }
-
-    // Brand sanity check — reject if matched brand not mentioned in query
+    // Step 3: Brand sanity — reject restaurant brand mismatches
     const brandLower=(best.brandOwner||best.brandName||'').toLowerCase();
     const brandWords=brandLower.split(/\s+/).filter(w=>w.length>2);
-    const queryMentionsBrand=brandWords.some(w=>qLower.includes(w));
-    // Strong brand signals — if these appear in query, brand MUST match
-    const strongBrands=['starbucks','mcdonald','chipotle','subway','dunkin','chick-fil','taco bell','panera'];
+    const strongBrands=['starbucks','mcdonald','chipotle','subway','dunkin','panera','chick-fil','taco bell'];
     const queryHasStrongBrand=strongBrands.some(b=>qLower.includes(b));
-    const strongBrandMatch=queryHasStrongBrand&&brandWords.some(w=>qLower.includes(w));
-    if(queryHasStrongBrand&&!strongBrandMatch){
-      console.log('[USDA] Rejected — strong brand in query not matched by',best.brandOwner);
+    if(queryHasStrongBrand&&!brandWords.some(w=>qLower.includes(w))){
+      console.log('[USDA] Rejected — restaurant brand mismatch:',best.brandOwner);
       return null;
     }
-    const effectiveScore=isBranded&&brandWords.length>0&&!queryMentionsBrand?bestScore*0.6:bestScore;
+    const isBranded=best.dataType==='Branded';
+    const effectiveScore=isBranded&&brandWords.length>0&&!brandWords.some(w=>qLower.includes(w))?bestScore*0.6:bestScore;
     if(effectiveScore<0.5){
-      console.log('[USDA] Rejected "'+best.description+'" — brand mismatch ('+best.brandOwner+'), effective score='+effectiveScore.toFixed(2));
+      console.log('[USDA] Rejected — brand mismatch:',best.brandOwner,'score='+effectiveScore.toFixed(2));
       return null;
     }
 
-    let calories=Math.round((raw.calories||0)*scale);
-    const protein=Math.round((raw.protein||0)*scale*10)/10;
-    const carbs=Math.round((raw.carbs||0)*scale*10)/10;
+    // Step 4: Fetch full food detail to get labelNutrients (always per-serving for Branded)
+    const detailUrl='https://api.nal.usda.gov/fdc/v1/food/'+best.fdcId+'?api_key='+USDA_KEY;
+    const detailRes=await fetch(detailUrl);
+    if(!detailRes.ok){console.warn('[USDA] Detail HTTP',detailRes.status);return null;}
+    const detail=await detailRes.json();
 
-    // If calories missing, estimate from macros (4/4/9 kcal per g protein/carbs/fat)
-    if(!calories&&protein){
-      const rawFat=(best.foodNutrients||[]).find(n=>(n.nutrientName||'').toLowerCase().includes('total lipid'));
-      const fat=Math.round(((rawFat?.value||0)*scale)*10)/10;
+    let calories=0,protein=0,carbs=0;
+
+    // For Branded: use labelNutrients which are always per-serving
+    if(detail.labelNutrients){
+      calories=Math.round(detail.labelNutrients.calories?.value||0);
+      protein=Math.round((detail.labelNutrients.protein?.value||0)*10)/10;
+      carbs=Math.round((detail.labelNutrients.carbohydrates?.value||0)*10)/10;
+      console.log('[USDA] Using labelNutrients (per-serving):',calories,'kcal',protein,'pro',carbs,'carbs');
+    } else {
+      // For SR Legacy / Foundation: foodNutrients are per 100g, scale by serving
+      const servingG=detail.servingSize||100;
+      const unit=(detail.servingSizeUnit||'g').toLowerCase();
+      const scale=(unit==='g'||unit==='grm')?servingG/100:1;
+      (detail.foodNutrients||[]).forEach(n=>{
+        const name=(n.nutrient?.name||n.nutrientName||'').toLowerCase();
+        const val=n.amount||n.value||0;
+        if(name.includes('energy')&&!name.includes('alcohol'))calories=Math.round(val*scale);
+        if(name==='protein')protein=Math.round(val*scale*10)/10;
+        if(name.includes('carbohydrate, by difference'))carbs=Math.round(val*scale*10)/10;
+      });
+      console.log('[USDA] Using foodNutrients scale='+scale.toFixed(2)+':',calories,'kcal',protein,'pro',carbs,'carbs');
+    }
+
+    // Calculate missing calories from macros
+    if(!calories&&(protein||carbs)){
+      const fat=detail.labelNutrients?.fat?.value||0;
       calories=Math.round(protein*4+carbs*4+fat*9);
       console.log('[USDA] Calculated calories from macros:',calories);
     }
 
     if(!calories&&!protein)return null;
 
-    console.log('[USDA] Matched "'+best.description+'" ('+best.brandOwner+') score='+bestScore.toFixed(2)+' scale='+scale.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
-
+    console.log('[USDA] Final:',best.description,'→',calories,'kcal',protein,'pro',carbs,'carbs');
     return{calories,protein,carbs,source:'usda',
       name:best.description,brand:best.brandOwner||null,
-      servingSize:best.servingSize,servingSizeUnit:best.servingSizeUnit};
+      servingSize:detail.servingSize,servingSizeUnit:detail.servingSizeUnit};
   }catch(e){
-    console.warn('[USDA] lookup failed for "'+query+'":', e.message);
+    console.warn('[USDA] Error for "'+query+'":', e.message);
     return null;
   }
 }
