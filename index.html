@@ -895,6 +895,11 @@ const auth = getAuth(fbApp);
 onAuthStateChanged(auth, async user => {
   if (user) {
     window._uid = user.uid;
+    // Save last login timestamp + device/browser info
+    const _ua=navigator.userAgent;
+    const _dev=/iPhone/.test(_ua)?'iPhone':/iPad/.test(_ua)?'iPad':/Android/.test(_ua)?'Android':/Mac/.test(_ua)?'Mac':/Windows/.test(_ua)?'Windows':'Unknown';
+    const _brw=/CriOS|Chrome/.test(_ua)?'Chrome':/Safari/.test(_ua)?'Safari':/Firefox/.test(_ua)?'Firefox':/Edg/.test(_ua)?'Edge':'Unknown';
+    window.fbSet&&window.fbSet('profile','lastLogin',{date:new Date().toISOString().split('T')[0],ts:Date.now(),device:_dev,browser:_brw});
     window._authUser = user;
     document.getElementById('login-screen').style.display = 'none';
     const profile = await window.fbGet('profile','survey');

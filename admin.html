@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MyWellpath Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a0c10;--surface:#111318;--surface2:#181c24;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#e8eaf0;--muted:#6b7280;
+  --accent:#4ade80;--accent2:#22c55e;
+  --red:#f87171;--amber:#fbbf24;--blue:#60a5fa;--purple:#a78bfa;
+  --font-display:'Syne',sans-serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;
+  background:radial-gradient(ellipse at 30% 20%,rgba(74,222,128,0.06) 0%,transparent 60%),
+             radial-gradient(ellipse at 70% 80%,rgba(96,165,250,0.04) 0%,transparent 60%),var(--bg);}
+.login-card{width:380px;padding:48px 40px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:16px;box-shadow:0 0 0 1px rgba(74,222,128,0.05),0 32px 64px rgba(0,0,0,0.4);}
+.login-logo{font-family:var(--font-display);font-size:28px;font-weight:800;color:var(--accent);letter-spacing:-0.5px;margin-bottom:4px;}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:36px;}
+.login-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:8px;}
+.login-input{width:100%;padding:12px 14px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-family:var(--font-body);font-size:14px;margin-bottom:16px;transition:border-color 0.2s;}
+.login-input:focus{outline:none;border-color:rgba(74,222,128,0.4);}
+.login-btn{width:100%;padding:13px;background:var(--accent);color:#0a0c10;border:none;border-radius:8px;
+  font-family:var(--font-display);font-size:14px;font-weight:700;cursor:pointer;transition:background 0.2s,transform 0.1s;}
+.login-btn:hover{background:var(--accent2);}
+.login-btn:active{transform:scale(0.98);}
+.login-error{font-size:13px;color:var(--red);margin-top:12px;text-align:center;min-height:20px;}
+.login-forgot{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;cursor:pointer;text-decoration:underline;}
+.login-forgot:hover{color:var(--accent);}
+
+/* NOT AUTHORIZED */
+#not-authorized{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:40px;}
+.na-title{font-family:var(--font-display);font-size:24px;font-weight:700;color:var(--red);margin-bottom:12px;}
+.na-sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
+
+/* MAIN PANEL */
+#admin-panel{display:none;}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(10,12,16,0.92);backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);padding:0 32px;height:60px;
+  display:flex;align-items:center;justify-content:space-between;}
+.topbar-logo{font-family:var(--font-display);font-size:18px;font-weight:800;color:var(--accent);}
+.topbar-logo span{color:var(--muted);font-weight:400;font-size:13px;margin-left:10px;}
+.topbar-right{display:flex;align-items:center;gap:16px;}
+.admin-email{font-size:13px;color:var(--muted);}
+.signout-link{font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:var(--font-body);}
+.signout-link:hover{color:var(--red);}
+
+.main{padding:32px;}
+.page-title{font-family:var(--font-display);font-size:28px;font-weight:800;margin-bottom:6px;}
+.page-sub{font-size:14px;color:var(--muted);margin-bottom:28px;}
+
+.stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:28px;}
+.stat-pill{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;}
+.stat-pill-val{font-family:var(--font-display);font-size:26px;font-weight:800;}
+.stat-pill-label{font-size:12px;color:var(--muted);margin-top:2px;}
+
+.search-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:200px;padding:10px 14px;background:var(--surface);border:1px solid var(--border2);
+  border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:14px;}
+.search-input:focus{outline:none;border-color:rgba(74,222,128,0.4);}
+.search-input::placeholder{color:var(--muted);}
+.refresh-btn{padding:10px 18px;background:var(--surface2);border:1px solid var(--border2);border-radius:8px;
+  color:var(--text);font-size:13px;cursor:pointer;white-space:nowrap;font-family:var(--font-body);transition:border-color 0.2s;}
+.refresh-btn:hover{border-color:var(--accent);}
+
+.users-grid{display:flex;flex-direction:column;gap:12px;}
+.user-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;transition:border-color 0.2s;}
+.user-card:hover{border-color:var(--border2);}
+.user-card-header{display:flex;align-items:center;gap:16px;padding:18px 20px;cursor:pointer;flex-wrap:wrap;}
+.user-avatar{width:48px;height:48px;border-radius:50%;background:var(--surface2);border:1px solid var(--border2);
+  flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;}
+.user-avatar img{width:100%;height:100%;object-fit:cover;}
+.user-info{flex:1;min-width:160px;}
+.user-name{font-weight:600;font-size:15px;}
+.user-email{font-size:13px;color:var(--muted);margin-top:1px;}
+.user-uid{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:3px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;}
+.user-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+.pill{display:inline-flex;align-items:center;padding:3px 8px;border-radius:20px;font-size:11px;font-weight:500;}
+.pill-green{background:rgba(74,222,128,0.1);color:var(--accent);}
+.pill-red{background:rgba(248,113,113,0.1);color:var(--red);}
+.pill-amber{background:rgba(251,191,36,0.1);color:var(--amber);}
+.pill-muted{background:rgba(107,114,128,0.12);color:var(--muted);}
+.expand-icon{color:var(--muted);font-size:14px;transition:transform 0.2s;flex-shrink:0;margin-left:auto;}
+.user-card.expanded .expand-icon{transform:rotate(180deg);}
+.user-card-body{display:none;padding:0 20px 20px;border-top:1px solid var(--border);}
+.user-card.expanded .user-card-body{display:block;}
+
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:16px 0;}
+.detail-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
+.detail-val{font-size:13px;color:var(--text);}
+.detail-val.mono{font-family:var(--font-mono);font-size:12px;word-break:break-all;}
+
+.actions-row{display:flex;gap:10px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);}
+.action-btn{padding:8px 16px;border-radius:7px;font-size:13px;font-weight:500;cursor:pointer;
+  font-family:var(--font-body);transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;border:1px solid;}
+.action-btn-blue{background:rgba(96,165,250,0.1);border-color:rgba(96,165,250,0.3);color:var(--blue);}
+.action-btn-blue:hover{background:rgba(96,165,250,0.2);}
+.action-btn-red{background:rgba(248,113,113,0.1);border-color:rgba(248,113,113,0.3);color:var(--red);}
+.action-btn-red:hover{background:rgba(248,113,113,0.2);}
+
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;background:var(--surface2);
+  border:1px solid var(--border2);border-radius:8px;font-size:13px;color:var(--text);
+  box-shadow:0 8px 24px rgba(0,0,0,0.4);z-index:999;animation:slideUp 0.2s ease;max-width:320px;}
+.toast.error{border-color:rgba(248,113,113,0.4);}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;
+  justify-content:center;z-index:500;backdrop-filter:blur(4px);}
+.modal-card{background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:32px;max-width:420px;width:90%;}
+.modal-title{font-family:var(--font-display);font-size:20px;font-weight:700;margin-bottom:10px;}
+.modal-body{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
+.modal-actions{display:flex;gap:10px;}
+.modal-cancel{flex:1;padding:11px;background:var(--surface2);border:1px solid var(--border2);
+  border-radius:8px;color:var(--muted);font-family:var(--font-body);font-size:14px;cursor:pointer;}
+.modal-confirm{flex:2;padding:11px;background:rgba(248,113,113,0.15);border:1px solid rgba(248,113,113,0.4);
+  border-radius:8px;color:var(--red);font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;}
+
+@media(max-width:600px){
+  .main{padding:16px;}
+  .topbar{padding:0 16px;}
+  .user-uid{max-width:160px;}
+}
+</style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">wp</div>
+    <div class="login-sub">Admin panel — sign in with your admin account</div>
+    <label class="login-label">Email</label>
+    <input type="email" class="login-input" id="admin-email" placeholder="admin@example.com" onkeydown="if(event.key==='Enter')document.getElementById('admin-pass').focus()"/>
+    <label class="login-label">Password</label>
+    <input type="password" class="login-input" id="admin-pass" placeholder="Password" onkeydown="if(event.key==='Enter')doAdminLogin()"/>
+    <button class="login-btn" onclick="doAdminLogin()" id="login-btn">Sign in →</button>
+    <div class="login-forgot" onclick="doPasswordReset()">Forgot password?</div>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="not-authorized">
+  <div class="na-title">Access denied</div>
+  <div class="na-sub">This account does not have admin privileges.<br>Contact the site owner to request access.</div>
+  <button class="login-btn" style="width:200px" onclick="doSignOut()">Sign out</button>
+</div>
+
+<div id="admin-panel">
+  <div class="topbar">
+    <div class="topbar-logo">wp <span>admin</span></div>
+    <div class="topbar-right">
+      <div class="admin-email" id="admin-email-display"></div>
+      <button class="signout-link" onclick="doSignOut()">Sign out</button>
+    </div>
+  </div>
+  <div class="main">
+    <div class="page-title">User management</div>
+    <div class="page-sub">View and manage all MyWellpath accounts.</div>
+    <div class="stats-row" id="stats-row"></div>
+    <div class="search-bar">
+      <input class="search-input" id="search-input" placeholder="Search by name, email, or user ID…" oninput="filterUsers()"/>
+      <button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button>
+    </div>
+    <div class="users-grid" id="users-grid">
+      <div class="empty-state"><div class="spinner"></div>Loading users…</div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,signOut,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import{getFirestore,collection,getDocs,doc,getDoc,setDoc,deleteDoc,writeBatch}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+const firebaseConfig={
+  apiKey:"AIzaSyCtF07EW4j93mdLhPgEPKWC5npOnXRUb3Y",
+  authDomain:"my-health-tracker-d8d0d.firebaseapp.com",
+  projectId:"my-health-tracker-d8d0d",
+  storageBucket:"my-health-tracker-d8d0d.firebasestorage.app",
+  messagingSenderId:"655023693628",
+  appId:"1:655023693628:web:11936ef434649233998839"
+};
+
+const app=initializeApp(firebaseConfig);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+let allUsers=[];
+
+// ── AUTH STATE ──
+onAuthStateChanged(auth,async user=>{
+  if(!user){
+    show('login-screen');return;
+  }
+  // Check if this user is in the admins collection
+  const adminSnap=await getDoc(doc(db,'admins',user.uid));
+  if(!adminSnap.exists()){
+    show('not-authorized');
+    document.getElementById('admin-email-display').textContent=user.email;
+    return;
+  }
+  // Authorized admin
+  show('admin-panel');
+  document.getElementById('admin-email-display').textContent=user.email;
+  loadUsers();
+});
+
+function show(id){
+  ['login-screen','not-authorized','admin-panel'].forEach(s=>{
+    const el=document.getElementById(s);
+    el.style.display=s===id?(s==='not-authorized'?'flex':s==='login-screen'?'flex':'block'):'none';
+  });
+}
+
+// ── LOGIN ──
+window.doAdminLogin=async function(){
+  const email=document.getElementById('admin-email').value.trim();
+  const pass=document.getElementById('admin-pass').value;
+  const err=document.getElementById('login-error');
+  const btn=document.getElementById('login-btn');
+  if(!email||!pass){err.textContent='Please enter email and password.';return;}
+  btn.textContent='Signing in…';btn.disabled=true;err.textContent='';
+  try{
+    await signInWithEmailAndPassword(auth,email,pass);
+    // onAuthStateChanged will handle the rest
+  }catch(e){
+    const msgs={'auth/invalid-credential':'Incorrect email or password.','auth/user-not-found':'No account found with that email.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Please enter a valid email address.'};
+    err.textContent=msgs[e.code]||e.message;
+  }finally{btn.textContent='Sign in →';btn.disabled=false;}
+};
+
+window.doPasswordReset=async function(){
+  const email=document.getElementById('admin-email').value.trim();
+  if(!email){document.getElementById('login-error').textContent='Enter your email address above first.';return;}
+  try{
+    await sendPasswordResetEmail(auth,email);
+    document.getElementById('login-error').style.color='var(--accent)';
+    document.getElementById('login-error').textContent='Password reset email sent!';
+  }catch(e){
+    document.getElementById('login-error').style.color='var(--red)';
+    document.getElementById('login-error').textContent=e.message;
+  }
+};
+
+window.doSignOut=async function(){
+  await signOut(auth);
+};
+
+// ── LOAD USERS ──
+window.loadUsers=async function(){
+  document.getElementById('users-grid').innerHTML='<div class="empty-state"><div class="spinner"></div>Loading users…</div>';
+  try{
+    const usersSnap=await getDocs(collection(db,'users'));
+    const promises=[];
+    usersSnap.forEach(d=>promises.push(loadUserData(d.id)));
+    allUsers=(await Promise.all(promises)).filter(Boolean).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+    renderStats();
+    renderUsers(allUsers);
+  }catch(e){
+    document.getElementById('users-grid').innerHTML=`<div class="empty-state">Error loading users: ${e.message}</div>`;
+  }
+};
+
+async function loadUserData(uid){
+  try{
+    const[surveySnap,vsSnap,loginSnap,avatarSnap]=await Promise.all([
+      getDoc(doc(db,'users',uid,'profile','survey')),
+      getDoc(doc(db,'users',uid,'vitals','settings')),
+      getDoc(doc(db,'users',uid,'profile','lastLogin')),
+      getDoc(doc(db,'users',uid,'profile','avatar')),
+    ]);
+    const s=surveySnap.exists()?surveySnap.data():{};
+    const v=vsSnap.exists()?vsSnap.data():{};
+    const l=loginSnap.exists()?loginSnap.data():{};
+    const a=avatarSnap.exists()?avatarSnap.data():{};
+    return{uid,name:s.name||'—',email:s.email||'—',age:s.age||null,
+      createdAt:s.createdAt||null,trackMeds:s.trackMeds!==false,
+      trackBP:v.trackBP||false,trackBS:v.trackBS||false,
+      lastLoginDate:l.date||null,lastLoginTs:l.ts||null,
+      device:l.device||null,browser:l.browser||null,avatarImg:a.img||null};
+  }catch(e){return null;}
+}
+
+// ── RENDER ──
+function renderStats(){
+  const t=allUsers.length;
+  const pills=[
+    ['Total users',t,'var(--accent)'],
+    ['Tracking meds',allUsers.filter(u=>u.trackMeds).length,'var(--purple)'],
+    ['Tracking BP',allUsers.filter(u=>u.trackBP).length,'var(--red)'],
+    ['Tracking sugar',allUsers.filter(u=>u.trackBS).length,'var(--amber)'],
+  ];
+  document.getElementById('stats-row').innerHTML=pills.map(([l,v,c])=>
+    `<div class="stat-pill"><div class="stat-pill-val" style="color:${c}">${v}</div><div class="stat-pill-label">${l}</div></div>`
+  ).join('');
+}
+
+window.filterUsers=function(){
+  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  renderUsers(q?allUsers.filter(u=>(u.name||'').toLowerCase().includes(q)||(u.email||'').toLowerCase().includes(q)||(u.uid||'').toLowerCase().includes(q)):allUsers);
+};
+
+function renderUsers(users){
+  if(!users.length){document.getElementById('users-grid').innerHTML='<div class="empty-state">No users found.</div>';return;}
+  document.getElementById('users-grid').innerHTML=users.map(renderUserCard).join('');
+}
+
+function renderUserCard(u){
+  const av=u.avatarImg?`<img src="${u.avatarImg}" alt=""/>`:`<span>👤</span>`;
+  const statusPills=[
+    u.trackMeds?'<span class="pill pill-green">✓ Meds</span>':'<span class="pill pill-muted">— Meds</span>',
+    u.trackBP?'<span class="pill pill-red">✓ Blood pressure</span>':'<span class="pill pill-muted">— Blood pressure</span>',
+    u.trackBS?'<span class="pill pill-amber">✓ Blood sugar</span>':'<span class="pill pill-muted">— Blood sugar</span>',
+  ].join('');
+  const lastLogin=u.lastLoginTs?new Date(u.lastLoginTs).toLocaleString():(u.lastLoginDate||'—');
+  const deviceStr=u.device?(u.device+(u.browser?' · '+u.browser:'')):'Not yet recorded';
+  return`<div class="user-card" id="card-${u.uid}">
+    <div class="user-card-header" onclick="toggleCard('${u.uid}')">
+      <div class="user-avatar">${av}</div>
+      <div class="user-info">
+        <div class="user-name">${esc(u.name)}</div>
+        <div class="user-email">${esc(u.email)}</div>
+        <div class="user-uid" title="${u.uid}">${u.uid}</div>
+      </div>
+      <div class="user-meta">${statusPills}</div>
+      <div class="expand-icon">▼</div>
+    </div>
+    <div class="user-card-body">
+      <div class="detail-grid">
+        <div><div class="detail-label">Firebase UID</div><div class="detail-val mono">${u.uid}</div></div>
+        <div><div class="detail-label">Email</div><div class="detail-val">${esc(u.email)}</div></div>
+        <div><div class="detail-label">Account created</div><div class="detail-val">${u.createdAt||'—'}</div></div>
+        <div><div class="detail-label">Last login</div><div class="detail-val">${lastLogin}</div></div>
+        <div><div class="detail-label">Device / browser</div><div class="detail-val">${deviceStr}</div></div>
+        <div><div class="detail-label">Age</div><div class="detail-val">${u.age||'—'}</div></div>
+      </div>
+      <div class="detail-label" style="margin-bottom:8px">Feature tracking</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">${statusPills}</div>
+      <div class="actions-row">
+        <button class="action-btn action-btn-blue" onclick="doSendReset('${esc(u.email)}','${esc(u.name)}')">✉ Send password reset</button>
+        <button class="action-btn action-btn-red" onclick="confirmWipe('${u.uid}','${esc(u.name)}')">⚠ Reset all data</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+window.toggleCard=function(uid){document.getElementById('card-'+uid)?.classList.toggle('expanded');};
+
+// ── ACTIONS ──
+window.doSendReset=async function(email,name){
+  if(!email||email==='—'){showToast('No email address on file.');return;}
+  try{await sendPasswordResetEmail(auth,email);showToast('✓ Password reset sent to '+email);}
+  catch(e){showToast('Error: '+e.message,'error');}
+};
+
+window.confirmWipe=function(uid,name){
+  const m=document.createElement('div');
+  m.className='modal-overlay';
+  m.innerHTML=`<div class="modal-card">
+    <div class="modal-title" style="color:var(--red)">⚠ Reset account data</div>
+    <div class="modal-body">This will permanently delete all health data for <strong>${esc(name)}</strong> — food logs, vitals, fitness, medications, badges, journal entries, chat sessions, and weight logs.<br><br>Their login credentials stay intact. On next login they will complete the intake survey again.<br><br><strong>This cannot be undone.</strong></div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="modal-confirm" onclick="doWipe('${uid}');this.closest('.modal-overlay').remove()">Yes, reset all data</button>
+    </div>
+  </div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+};
+
+window.doWipe=async function(uid){
+  showToast('Wiping data…');
+  try{
+    const cols=['food','fitness','meds','weights','favorites','grocery','journal','badges','chats','vitals'];
+    for(const col of cols){
+      const snap=await getDocs(collection(db,'users',uid,col));
+      if(snap.empty)continue;
+      const batch=writeBatch(db);
+      snap.forEach(d=>batch.delete(d.ref));
+      await batch.commit();
+    }
+    for(const pd of['survey','avatar','lastLogin']){
+      try{await deleteDoc(doc(db,'users',uid,'profile',pd));}catch(e){}
+    }
+    try{await deleteDoc(doc(db,'users',uid,'medications','list'));}catch(e){}
+    showToast('✓ Data wiped. User will redo onboarding on next login.');
+    setTimeout(loadUsers,1800);
+  }catch(e){showToast('Error: '+e.message,'error');}
+};
+
+// ── HELPERS ──
+function showToast(msg,type=''){
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:'');
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),3500);
+}
+function esc(s){
+  if(!s)return'';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+</script>
+</body>
+</html>
