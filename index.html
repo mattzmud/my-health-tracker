@@ -36,6 +36,13 @@
   --radius:14px;
   --radius-sm:8px;
 }
+/* Text size levels */
+body{font-size:15px;line-height:1.6;}
+body.text-large{font-size:17px;line-height:1.7;}
+body.text-xlarge{font-size:19px;line-height:1.8;}
+/* Darken muted text at larger sizes for readability */
+body.text-large{--muted:#5e5347;}
+body.text-xlarge{--muted:#4a4139;}
 *{box-sizing:border-box;margin:0;padding:0;}
 body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;line-height:1.6;}
 .screen{display:none;min-height:100vh;}
@@ -207,6 +214,16 @@ textarea{min-height:80px;}
 .profile-card-body{margin-top:14px;}
 .profile-card.collapsed .profile-card-body{display:none;}
 .profile-card.collapsed .profile-card-chevron{transform:rotate(-90deg);}
+/* Muted text gets darker at larger sizes for readability */
+body.text-large .stat-label,body.text-large .card-title + div,
+body.text-xlarge .stat-label,body.text-xlarge .card-title + div{color:#5e5347;}
+body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:var(--muted)"]{color:var(--base-muted) !important;}
+/* Text size picker button styles */
+.text-size-btn{padding:8px 16px;border:1px solid var(--border2);border-radius:var(--radius-sm);
+  background:var(--surface2);color:var(--text);font-family:var(--font-body);font-size:14px;
+  cursor:pointer;transition:all 0.15s;flex:1;}
+.text-size-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.text-size-btn:hover:not(.active){border-color:var(--accent);color:var(--accent);}
 .disclaimer a{color:var(--accent);}
 .range-btn{padding:4px 10px;border-radius:20px;border:1px solid var(--border2);background:transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:var(--font-body);transition:all 0.18s;}
 .range-btn:hover{color:var(--text);border-color:var(--accent);}
@@ -419,6 +436,7 @@ textarea{min-height:80px;}
         <div class="stat-card"><div class="stat-num" id="dash-protein" style="color:var(--blue)">&#8212;</div><div class="stat-label" id="stat-protein-label">Protein Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-water-label">Water Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-carbs" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-carbs-label">Carbs Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-calories" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-calories-label">Calories Today</div></div>
       </div>
       <div class="grid2">
         <div class="card">
@@ -427,6 +445,7 @@ textarea{min-height:80px;}
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Net carbs</span><span id="prog-carbs-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-carbs" style="width:0%;background:var(--amber)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Calories</span><span id="prog-cal-label">0 kcal</span></div><div class="prog-bar"><div class="prog-fill" id="prog-cal" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px;display:none"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
         </div>
         <div class="card">
@@ -467,6 +486,10 @@ textarea{min-height:80px;}
         <div class="card">
           <div class="card-title" id="carbs-chart-title" style="margin-bottom:14px">Net carbs</div>
           <canvas id="carbs-chart" height="160"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title" id="cal-chart-title" style="margin-bottom:14px">Calories</div>
+          <canvas id="cal-chart" height="160"></canvas>
         </div>
       </div>
       <!-- BADGES -->
@@ -611,6 +634,26 @@ textarea{min-height:80px;}
           <span class="profile-card-chevron">&#9660;</span>
         </div>
         <div class="profile-card-body" id="plan-body">
+          <div id="plan-goals-tiles" style="display:none;margin-bottom:16px">
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px">
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--accent)" id="plan-tile-protein">—</div>
+                <div style="font-size:11px;color:var(--muted)">protein/day</div>
+              </div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--blue)" id="plan-tile-water">—</div>
+                <div style="font-size:11px;color:var(--muted)">water/day</div>
+              </div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--amber)" id="plan-tile-carbs">—</div>
+                <div style="font-size:11px;color:var(--muted)">carb limit</div>
+              </div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--red)" id="plan-tile-cal">—</div>
+                <div style="font-size:11px;color:var(--muted)">cal limit</div>
+              </div>
+            </div>
+          </div>
           <div id="plan-text" style="font-size:13.5px;color:var(--text);line-height:1.8;white-space:pre-wrap"></div>
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.6">
             &#128172; Have questions about your plan or want to make changes? Chat with your <button onclick="showSection('chat')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font-body);padding:0;text-decoration:underline">Health Coach</button> any time — they know your full profile and can update your plan on the spot.
@@ -679,6 +722,33 @@ textarea{min-height:80px;}
           <input type="password" id="new-password2" placeholder="Confirm new password" style="margin-bottom:12px" autocomplete="new-password"/>
           <button class="btn btn-primary btn-sm" onclick="changePassword()">Update password</button>
           <div class="msg-box" id="password-msg" style="margin-top:10px"></div>
+        </div>
+      </div>
+
+      <!-- Display settings -->
+      <div class="card profile-card collapsed" id="pc-display">
+        <div class="profile-card-header" onclick="toggleProfileCard('pc-display')">
+          <div class="card-title" style="margin:0">&#128269; Display &amp; text size</div>
+          <span class="profile-card-chevron">&#9660;</span>
+        </div>
+        <div class="profile-card-body">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:14px;line-height:1.6">Adjust the text size if you find the default hard to read. Larger sizes also darken secondary text for easier reading.</div>
+          <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Text size</div>
+          <div style="display:flex;gap:8px;margin-bottom:12px">
+            <button class="text-size-btn active" id="ts-normal" onclick="setTextSize('normal')">
+              <div style="font-size:13px;font-weight:600">A</div>
+              <div style="font-size:11px;margin-top:2px">Normal</div>
+            </button>
+            <button class="text-size-btn" id="ts-large" onclick="setTextSize('large')">
+              <div style="font-size:16px;font-weight:600">A</div>
+              <div style="font-size:11px;margin-top:2px">Large</div>
+            </button>
+            <button class="text-size-btn" id="ts-xlarge" onclick="setTextSize('xlarge')">
+              <div style="font-size:20px;font-weight:600">A</div>
+              <div style="font-size:11px;margin-top:2px">Extra large</div>
+            </button>
+          </div>
+          <div style="font-size:12px;color:var(--muted);font-style:italic">Your preference is saved and will persist across visits.</div>
         </div>
       </div>
 
@@ -790,8 +860,16 @@ textarea{min-height:80px;}
             </div>
             <div class="prog-bar"><div class="prog-fill" id="food-prog-carb" style="width:0%;background:#a0782a"></div></div>
           </div>
+          <div class="prog-wrap" style="margin-top:10px">
+            <div class="prog-label">
+              <span>&#128293; Calories</span>
+              <span><span id="food-cal-total" style="color:var(--red);font-weight:600">0 kcal</span> <span id="food-cal-goal-label" style="color:var(--muted)">/ 2000 kcal limit</span></span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-cal" style="width:0%;background:rgba(192,57,43,0.6)"></div></div>
+          </div>
         </div>
         <div id="food-entries"><div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet today.</div></div>
+        <div id="calorie-adjust-note" style="display:none;margin-top:8px;font-size:12px;color:var(--amber);line-height:1.6"></div>
         <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="clearTodayFood()">Clear today's log</button>
       </div>
       <div class="card" id="daily-analysis-card" style="display:none">
@@ -968,6 +1046,7 @@ const auth = getAuth(fbApp);
 onAuthStateChanged(auth, async user => {
   if (user) {
     window._uid = user.uid;
+    loadTextSize();// apply saved text size preference
     // Stamp root user document so admin panel can enumerate users
     (async()=>{
       try{
@@ -1137,6 +1216,7 @@ async function ensureDateLoaded(date){
     fbGet('meds',date),
   ]);
   cache.food[date]=fd?(fd.entries||[]):[];
+  if(fd&&fd._adjustedCalGoal)cache.food[date]._adjustedCalGoal=fd._adjustedCalGoal;
   cache.fitness[date]=fi?(fi.done||{}):{};
   cache.meds[date]=fm?(fm.taken||{}):{};
 }
@@ -1396,6 +1476,26 @@ function showToast(msg,type='success'){
   document.body.appendChild(t);
   setTimeout(()=>t.remove(),3000);
 }
+function setTextSize(size){
+  document.body.classList.remove('text-large','text-xlarge');
+  if(size==='large')document.body.classList.add('text-large');
+  else if(size==='xlarge')document.body.classList.add('text-xlarge');
+  // Update button states
+  ['normal','large','xlarge'].forEach(s=>{
+    const btn=document.getElementById('ts-'+s);
+    if(btn)btn.classList.toggle('active',s===size);
+  });
+  // Persist to localStorage keyed by user
+  const uid=window._uid||'anon';
+  localStorage.setItem('wellpath_text_size_'+uid,size);
+}
+
+function loadTextSize(){
+  const uid=window._uid||'anon';
+  const saved=localStorage.getItem('wellpath_text_size_'+uid)||'normal';
+  setTextSize(saved);
+}
+
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
 
@@ -1435,11 +1535,11 @@ const OB_STEPS=[
    fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_dob',label:'Date of birth',type:'date',placeholder:''},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
   {id:'health',title:'Health conditions',sub:'Select any that apply.',
    multi:['Type 2 Diabetes','Type 1 Diabetes','High blood pressure','High cholesterol','Heart condition','Thyroid condition','PCOS','Anxiety / Depression','Chronic pain','None of the above']},
-  {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath? <span style="font-size:12px;color:var(--accent);display:block;margin-top:8px;line-height:1.6">&#128161; We recommend logging your medications — some (like diuretics, GLP-1s, and blood pressure meds) directly affect hydration, nutrition needs, and how your body responds to exercise. Logging them helps MyWellpath build a more accurate, personalized plan for you.</span>',
+  {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath?',subNote:'We recommend logging your medications — some (like diuretics, GLP-1s, and blood pressure meds) directly affect hydration, nutrition needs, and how your body responds to exercise. Logging them helps MyWellpath build a more accurate, personalized plan for you.',
    single_label:'',single:['Yes, I take medications I want to track','No, skip this for now'],
    fields_conditional:{condition:'medications_single',value:'Yes, I take medications I want to track',fields:[{id:'ob_meds_all',label:'Your medications & supplements (one per line)',type:'textarea',placeholder:'e.g.\nMetformin 1000mg, twice daily\nAtorvastatin 20mg, once at night\nVitamin D, once in morning\nMounjaro 15mg, once weekly\nFish oil, as needed'}]}},
   {id:'nutrition',title:'Your eating habits',sub:'Help us understand your preferences.',
-   fields:[{id:'ob_fav_foods',label:'Foods you love',type:'textarea',placeholder:'e.g. chicken, Greek yogurt, berries, wraps'},{id:'ob_avoid_foods',label:'Foods you avoid or dislike',type:'textarea',placeholder:'e.g. fish, mushrooms, spicy food'}],
+   fields:[{id:'ob_fav_foods',label:'Foods you love',type:'textarea',placeholder:'e.g. chicken, Greek yogurt, berries, wraps'},{id:'ob_avoid_foods',label:'Foods you avoid or dislike',type:'textarea',placeholder:'e.g. fish, mushrooms, spicy food'},{id:'ob_current_calories',label:'Roughly how many calories do you currently eat per day? (optional)',type:'number',placeholder:'e.g. 2500 — leave blank if you are not sure'}],
    multi_label:'Any dietary preferences?',multi:['No restrictions','Low carb / Keto','Vegetarian','Vegan','Gluten free','Dairy free','Low sodium']},
   {id:'fitness',title:'Your fitness level & goals',sub:"We'll build a personalized weekly workout plan around your answers.",
    single_label:'Current activity level',single:['Mostly sedentary','Lightly active (1-2x/week)','Moderately active (3-4x/week)','Very active (5+x/week)'],
@@ -1644,7 +1744,7 @@ async function generatePlan(){
 }
 
 function buildProfileFromObData(){
-  return{name:obData.ob_name||'Friend',dob:obData.ob_dob||null,age:computeAge(obData.ob_dob)||parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
+  return{name:obData.ob_name||'Friend',dob:obData.ob_dob||null,age:computeAge(obData.ob_dob)||parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,calorieGoal:2000,currentCalories:parseInt(obData.ob_current_calories)||null,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
 }
 
 function getDefaultWorkoutPlan(){
@@ -1685,6 +1785,7 @@ async function generateWellnessPlan(showModal=false){
   try{
     const plan=await callAI(
       'Create a clear, personalized wellness plan for:\n'+buildUserContext()
+      +(p.currentCalories?'\nCurrently consuming approximately '+p.currentCalories+' calories/day (user self-reported)':'')
       +'\n\nInclude these sections (use plain text, no markdown):\n'
       +'FOCUS FOODS: What foods to prioritize and why (5-7 items)\n'
       +'FOODS TO LIMIT: What to reduce or avoid and why (4-5 items)\n'
@@ -1818,7 +1919,7 @@ window.appInit=async function(){
   Promise.all([
     ..._last7.map(d=>ensureDateLoaded(d)),
     fbGetCol('journal').then(jc=>Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;})),
-  ]).then(()=>{renderProteinChart();renderWaterChart();renderCarbsChart();});
+  ]).then(()=>{renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();});
   setSyncStatus('synced');
   loadAvatar();// load early so avatar shows on dashboard
   updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
@@ -1871,7 +1972,7 @@ async function uploadAvatar(event){
 // ── DASHBOARD ──────────────────────────────────────────────
 let weightChart,proteinChart,waterChart,carbsChart;
 function refreshDashboard(){
-  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80,cg=p.carbGoal||100;
+  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80,cg=p.carbGoal||100,calg=p.calorieGoal||2000;
   // goalsDate = single selected day (or today for multi-day ranges)
   const _dashDays=getDashDays();
   const _isSingle=_dashDays.length===1;
@@ -1881,7 +1982,7 @@ function refreshDashboard(){
   if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
   const rawEntries=cache.food[goalsDate]||[];
   const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
   document.getElementById('dash-weight').textContent=cur+' lbs';
@@ -1892,6 +1993,8 @@ function refreshDashboard(){
   const _sl=document.getElementById('stat-protein-label');if(_sl)_sl.textContent=goalsDate===TODAY?'Protein Today':'Protein '+goalsDate.slice(5);
   const _wl=document.getElementById('stat-water-label');if(_wl)_wl.textContent=goalsDate===TODAY?'Water Today':'Water '+goalsDate.slice(5);
   const _cl=document.getElementById('stat-carbs-label');if(_cl)_cl.textContent=goalsDate===TODAY?'Carbs Today':'Carbs '+goalsDate.slice(5);
+  document.getElementById('dash-calories').textContent=Math.round(tcal)+' kcal';
+  const _call=document.getElementById('stat-calories-label');if(_call)_call.textContent=goalsDate===TODAY?'Calories Today':'Cal '+goalsDate.slice(5);
   document.getElementById('prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
   document.getElementById('prog-water').style.width=Math.min(100,(tw/wg)*100)+'%';
   // Carbs bar — turns red when over limit
@@ -1902,6 +2005,12 @@ function refreshDashboard(){
   document.getElementById('prog-protein-label').textContent=Math.round(tp)+' / '+pg+'g';
   document.getElementById('prog-water-label').textContent=Math.round(tw)+' / '+wg+' oz';
   document.getElementById('prog-carbs-label').textContent=Math.round(tc)+' / '+cg+'g'+(tc>cg?' ⚠':'');
+  // Get today's adjusted calorie goal (may be modified by extra workouts)
+  const _todayCalGoal=(cache.food[goalsDate]&&cache.food[goalsDate]._adjustedCalGoal)||calg;
+  const _calOver=tcal>_todayCalGoal;
+  document.getElementById('prog-cal').style.width=Math.min(100,(tcal/_todayCalGoal)*100)+'%';
+  document.getElementById('prog-cal').style.background=_calOver?'var(--red)':'rgba(192,57,43,0.6)';
+  document.getElementById('prog-cal-label').textContent=Math.round(tcal)+' / '+_todayCalGoal+' kcal'+(tcal>_todayCalGoal?' ⚠':'');
   const plan=(window._profile&&window._profile.workoutPlan)||[];
   const _gd=new Date(goalsDate+'T12:00:00');
   const _goalDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_gd.getDay()];
@@ -1930,7 +2039,7 @@ function refreshDashboard(){
     wh.innerHTML='<div style="margin-bottom:4px">Recent: '+rec+'</div>';
     if(cache.weights.length>1){const diff=+(cache.weights[cache.weights.length-1].val-cache.weights[cache.weights.length-2].val).toFixed(1);wh.innerHTML+='<div style="font-size:12px;color:'+(diff<0?'var(--green)':diff>0?'var(--red)':'var(--muted)')+'">vs last: '+(diff>0?'+':'')+diff+' lbs</div>';}
   }
-  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();
+  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();
   renderDashboardVitals();
   applyMedsVisibility();
 }
@@ -2099,6 +2208,24 @@ async function callAI(prompt,systemPrompt){
   const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await res.json();return d.content[0].text;
 }
+let calChart=null;
+function renderCalChart(){
+  const days=getDashDays(),goal=(window._profile||{}).calorieGoal||2000;
+  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.calories||0),0)));
+  const ctx=document.getElementById('cal-chart')?.getContext('2d');if(!ctx)return;
+  if(calChart)calChart.destroy();
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
+  calChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Calories',data,
+    backgroundColor:data.map(v=>v>goal?'rgba(192,57,43,0.75)':'rgba(192,57,43,0.45)'),
+    borderColor:data.map(v=>v>goal?'rgba(192,57,43,1)':'rgba(192,57,43,0.7)'),
+    borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Calories: '+ctx.raw+' kcal'+(ctx.raw>goal?' (over goal)':'')}}},
+    scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
+      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+100)}},
+    annotation:{annotations:{goalLine:{type:'line',yMin:goal,yMax:goal,borderColor:'rgba(192,57,43,0.4)',borderWidth:1.5,borderDash:[4,4],
+      label:{content:'Goal: '+goal+' kcal',display:true,position:'end',font:{size:10},color:'rgba(192,57,43,0.8)'}}}}}});
+}
+
 function renderCarbsChart(){
   const days=getDashDays(),goal=(window._profile||{}).carbGoal||100;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.carbs||0),0)));
@@ -2134,17 +2261,28 @@ async function logFood(){
   if(!cache.food[viewDate])cache.food[viewDate]=[];
   try{
     const itemList=items.length>0?items.join(', '):'Nothing food-wise, just water.';
+    // Ask AI for per-item breakdown as JSON array + feedback
     const res=await callAI(
-      'I just ate ('+mt.replace("Breakfast","Breakfast/Morning")+': '+itemList+(woz>0?' Also drank '+woz+' oz of water.':''),
-      'You are a nutrition coach. '+buildUserContext()+'\n\nEstimate TOTAL protein(g), net carbs(g), calories for all items combined. Give 2-3 sentences warm personalized feedback. End ONLY with: {"protein":30,"carbs":15,"calories":300}. Under 130 words total.'
+      'I just ate ('+mt+': '+itemList+')',
+      'You are a nutrition coach. '+buildUserContext()+'\n\nEstimate nutrition for each food item separately. Return a JSON array followed by 2-3 sentences of warm personalized feedback.\n\nFormat: [{"item":"chicken breast 3oz","protein":26,"carbs":0,"calories":140},{"item":"pita bread","protein":3,"carbs":28,"calories":165}]\n\nThen on a new line, your feedback text. Use realistic estimates. All values as integers.'
     );
-    let totalP=0,totalC=0,totalCal=0;
-    const jm=res.match(/\{"protein"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"carbs"\s*:\s*(\d+(?:\.\d+)?)\s*,\s*"calories"\s*:\s*(\d+(?:\.\d+)?)\}/);
-    if(jm){totalP=parseFloat(jm[1]);totalC=parseFloat(jm[2]);totalCal=parseFloat(jm[3]);}
-    const displayText=res.replace(/```json|```/g,'').replace(/\{[^}]*\}/,'').trim();
-    const perItem=items.length||1;
+    // Parse per-item JSON array
+    const arrMatch=res.match(/\[([\s\S]*?)\]/);
+    let parsedItems=[];
+    if(arrMatch){
+      try{parsedItems=JSON.parse('['+arrMatch[1]+']');}catch(e){
+        // Fallback: split totals evenly
+        const jm=res.match(/"protein"\s*:\s*(\d+)[^}]*"carbs"\s*:\s*(\d+)[^}]*"calories"\s*:\s*(\d+)/);
+        if(jm)parsedItems=items.map(it=>({item:it,protein:Math.round(parseFloat(jm[1])/items.length),carbs:Math.round(parseFloat(jm[2])/items.length),calories:Math.round(parseFloat(jm[3])/items.length)}));
+      }
+    }
+    // If parsing failed entirely, create zero entries
+    if(!parsedItems.length)parsedItems=items.map(it=>({item:it,protein:0,carbs:0,calories:0}));
+    const displayText=res.replace(/\[[\s\S]*?\]/,'').replace(/```json|```/g,'').trim();
+    // Map parsed items back to input items (by index, trimming to items.length)
     items.forEach((item,i)=>{
-      cache.food[viewDate].push({time:mt,text:item||'(water only)',protein:Math.round(totalP/perItem*10)/10,carbs:Math.round(totalC/perItem*10)/10,calories:Math.round(totalCal/perItem),water:i===0?woz:0,ts:Date.now()+i});
+      const pi=parsedItems[i]||parsedItems[parsedItems.length-1]||{protein:0,carbs:0,calories:0};
+      cache.food[viewDate].push({time:mt,text:item,protein:Math.round((pi.protein||0)*10)/10,carbs:Math.round((pi.carbs||0)*10)/10,calories:Math.round(pi.calories||0),water:i===0?woz:0,ts:Date.now()+i});
     });
     await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
     document.getElementById('food-input').value='';
@@ -2311,18 +2449,85 @@ function renderFoodEntries(){
   carbBar.style.width=carbPct+'%';
   carbBar.style.background=tc>cg?'var(--red)':'var(--amber)';
   // Update log title to reflect date
-  const logTitle=document.getElementById('food-log-title');
+    const logTitle=document.getElementById('food-log-title');
   if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
+
+  // Update food page progress bars (calories too)
+  const p2=window._profile||{};
+  const pg2=p2.proteinGoal||120,cg2=p2.carbGoal||100,wg2=p2.waterGoal||80;
+  const calg2=(cache.food[viewDate]&&cache.food[viewDate]._adjustedCalGoal)||p2.calorieGoal||2000;
+  const el2f=document.getElementById('food-prog-protein');if(el2f)el2f.style.width=Math.min(100,(tp/pg2)*100)+'%';
+  const el2c=document.getElementById('food-prog-carb');if(el2c){el2c.style.width=Math.min(100,(tc/cg2)*100)+'%';el2c.style.background=tc>cg2?'var(--red)':'var(--amber)';}  
+  const el2w=document.getElementById('food-prog-water');if(el2w)el2w.style.width=Math.min(100,(tw/wg2)*100)+'%';
+  const el2cal=document.getElementById('food-prog-cal');if(el2cal){el2cal.style.width=Math.min(100,(tcal/calg2)*100)+'%';el2cal.style.background=tcal>calg2?'var(--red)':'rgba(192,57,43,0.6)';}
+  const el2pl=document.getElementById('food-protein-total');if(el2pl)el2pl.textContent=Math.round(tp)+'g';
+  const el2cl=document.getElementById('food-carb-total');if(el2cl)el2cl.textContent=Math.round(tc)+'g';
+  const el2wl=document.getElementById('food-water-total');if(el2wl)el2wl.textContent=Math.round(tw)+' oz';
+  const el2call=document.getElementById('food-cal-total');if(el2call)el2call.textContent=Math.round(tcal)+' kcal';
+  // Calorie adjustment note
+  const adjNote=document.getElementById('calorie-adjust-note');
+  if(adjNote&&cache.food[viewDate]&&cache.food[viewDate]._adjustedCalGoal&&viewDate===TODAY){
+    adjNote.style.display='block';
+    adjNote.textContent='&#128293; Daily calorie goal adjusted to '+cache.food[viewDate]._adjustedCalGoal+' kcal based on your extra activity today.';
+  } else if(adjNote){adjNote.style.display='none';}
+
+  // Grouped meal rendering
+  const el=document.getElementById('food-entries');if(!el)return;
+  const isPast=viewDate<TODAY;
+  if(!entries.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet.</div>';renderDailyAnalysis();return;}
+
+  // Group entries by meal time
+  const mealGroups={};
+  entries.forEach(e=>{
+    if(!mealGroups[e.time])mealGroups[e.time]=[];
+    mealGroups[e.time].push(e);
+  });
+
+  let html='';
+  const checkSvg='<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+  MEAL_ORDER.forEach(mealTime=>{
+    const group=mealGroups[mealTime];
+    if(!group||!group.length)return;
+    const mtp=group.reduce((a,e)=>a+(e.protein||0),0);
+    const mtc=group.reduce((a,e)=>a+(e.carbs||0),0);
+    const mtcal=group.reduce((a,e)=>a+(e.calories||0),0);
+    const mtw=group.reduce((a,e)=>a+(e.water||0),0);
+    if(mealTime==='Water'){
+      html+='<div style="padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:4px">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between">'
+        +'<div style="font-weight:600;font-size:13px;color:var(--accent)">&#128167; Water</div>'
+        +'<div style="font-size:12px;color:var(--muted)">'+Math.round(mtw)+' oz</div></div>'
+        +'</div>';
+      return;
+    }
+    // Meal group header
+    html+='<div style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:2px solid var(--border2);margin-bottom:6px">'
+      +'<div style="font-weight:600;font-size:13px;color:var(--accent)">'+mealTime+'</div>'
+      +'<div style="display:flex;gap:10px;font-size:11px;color:var(--muted)">'
+      +(mtcal?'<span>'+Math.round(mtcal)+' kcal</span>':'')
+      +(mtp?'<span>'+Math.round(mtp)+'g pro</span>':'')
+      +(mtc?'<span>'+Math.round(mtc)+'g carbs</span>':'')
+      +'</div></div>';
+    // Individual items in this meal
+    group.forEach(e=>{
+      const delBtn=isPast?'':'<button data-ts="'+e.ts+'" onclick="deleteEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px" title="Remove">&#215;</button>';
+      const favBtn='<button data-ts="'+e.ts+'" data-date="'+viewDate+'" onclick="saveFavorite(parseInt(this.dataset.ts),this.dataset.date);event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px" title="Save to favorites">&#11088;</button>';
+      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(e.text)+'</div>'
+        +'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">'
+        +(e.calories?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.calories)+' kcal</span>':'')
+        +(e.protein?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g protein</span>':'')
+        +(e.carbs?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
+        +(e.water?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.water)+' oz water</span>':'')
+        +'</div></div>'
+        +(isPast?'':favBtn+delBtn)
+        +'</div>';
+    });
+    html+='</div>';
+  });
+  el.innerHTML=html||'<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet.</div>';
   renderDailyAnalysis();
-  const el=document.getElementById('food-entries');
-  const isPast=viewDate!==TODAY;
-  if(!entries.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">'+(isPast?'No food logged on this day.':'Nothing logged yet today.')+'</div>';return;}
-  el.innerHTML=entries.map((e,i)=>{
-    const macros=(e.protein?'<span class="pill pill-blue" style="font-size:11px">~'+Math.round(e.protein)+'g protein</span> ':'')+(e.carbs?'<span class="pill pill-amber" style="font-size:11px">~'+Math.round(e.carbs)+'g carbs</span> ':'')+(e.water?'<span class="pill pill-green" style="font-size:11px">'+e.water+' oz water</span>':'');
-    const favBtn='<button onclick="saveFavorite('+e.ts+',\''+viewDate+'\');event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px;transition:color 0.2s" title="Save to favorites" onmouseover="this.style.color=\'var(--amber)\'" onmouseout="this.style.color=\'var(--muted)\'">&#11088;</button>';
-    const delBtn=isPast?'':'<button onclick="deleteEntry('+e.ts+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px;transition:color 0.2s" title="Remove" onmouseover="this.style.color=\'var(--red)\'" onmouseout="this.style.color=\'var(--muted)\'">&#215;</button>';
-    return'<div class="food-entry"><div class="food-time">'+e.time+'</div><div style="flex:1"><div style="font-size:14px;color:var(--text)">'+escHtml(e.text)+'</div><div style="font-size:12px;margin-top:3px">'+macros+'</div></div><div style="display:flex;align-items:center;gap:2px">'+favBtn+delBtn+'</div></div>';
-  }).join('');
 }
 async function deleteEntry(ts){if(!cache.food[viewDate])return;cache.food[viewDate]=cache.food[viewDate].filter(e=>e.ts!==ts);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
 async function logWaterOnly(){
@@ -2365,14 +2570,28 @@ async function logExtraActivity(){
   await fbSet('fitness',viewDate,cache.fitness[viewDate]);
   document.getElementById('extra-activity-input').value='';
   renderExtraActivities();
-  // Get AI feedback
+  // Get AI feedback + calorie adjustment for today
   try{
     const res=await callAI(
-      'I just completed this activity: '+raw+'\nThis was on top of my regular workout plan.',
-      'You are a fitness coach. '+buildUserContext()+'. Give warm, encouraging feedback on this extra activity. Note any benefits for their specific goals. Under 80 words.'
+      'I just completed this extra activity: '+raw+'\nThis was on top of my regular workout plan for today.\nMy current calorie goal is '+(window._profile?.calorieGoal||2000)+' kcal/day.',
+      'You are a fitness coach. '+buildUserContext()+'. Give warm, encouraging feedback (2-3 sentences). If this was a strenuous activity (>200 calories burned), estimate calories burned and suggest an adjusted daily calorie goal for TODAY ONLY by ending with: CALORIE_ADJUST:{"burned":250,"newGoal":2400}. Only include the tag if the activity was genuinely strenuous. Under 100 words total.'
     );
+    // Check for calorie adjustment
+    const adjMatch=res.match(/CALORIE_ADJUST:\{[^}]+\}/);
+    if(adjMatch&&viewDate===TODAY){
+      try{
+        const adj=JSON.parse(adjMatch[0].replace('CALORIE_ADJUST:',''));
+        if(adj.newGoal&&adj.newGoal>0){
+          if(!cache.food[TODAY])cache.food[TODAY]=[];
+          cache.food[TODAY]._adjustedCalGoal=adj.newGoal;
+          await fbSet('food',TODAY,{entries:cache.food[TODAY]||[],date:TODAY,_adjustedCalGoal:adj.newGoal});
+          renderFoodEntries();refreshDashboard();
+        }
+      }catch(e){}
+    }
+    const displayText=res.replace(/CALORIE_ADJUST:\{[^}]+\}/,'').trim();
     const fb=document.getElementById('extra-activity-feedback');
-    if(fb)fb.innerHTML=aiFeedbackHTML('&#127939;','Activity feedback',escHtml(res.replace(/```/g,'')));
+    if(fb)fb.innerHTML=aiFeedbackHTML('&#127939;','Activity feedback',escHtml(displayText.replace(/```/g,'')));
   }catch(e){}
   btn.disabled=false;btn.textContent='Log & get feedback';
 }
@@ -3096,6 +3315,15 @@ function renderProfile(){
     if(planDate)planDate.textContent='Updated '+p.wellnessPlan.updatedAt;
     const genBtn=document.getElementById('plan-generate-btn');
     if(genBtn)genBtn.remove();
+    // Populate goal tiles
+    const tilesEl=document.getElementById('plan-goals-tiles');
+    if(tilesEl&&(p.proteinGoal||p.calorieGoal)){
+      tilesEl.style.display='block';
+      const tp=document.getElementById('plan-tile-protein');if(tp)tp.textContent=(p.proteinGoal||'—')+'g';
+      const tw=document.getElementById('plan-tile-water');if(tw)tw.textContent=(p.waterGoal||'—')+' oz';
+      const tc=document.getElementById('plan-tile-carbs');if(tc)tc.textContent=(p.carbGoal||'—')+'g';
+      const tcal=document.getElementById('plan-tile-cal');if(tcal)tcal.textContent=(p.calorieGoal||'—')+' kcal';
+    }
   }else{
     if(planCard){planCard.style.display='block';planCard.classList.add('collapsed');}
     if(planEl)planEl.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7">Your personalized plan covers the foods to focus on, what to limit, your workout approach, daily habits to build, and anything specific to watch for given your health profile.</div>'
