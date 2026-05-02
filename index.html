@@ -1612,20 +1612,25 @@ window.appInit=async function(){
   document.getElementById('dash-date').textContent=formatDate(TODAY);
   document.getElementById('meds-date-label').textContent=formatDate(TODAY);
 
-  // Rotating motivational sub-messages
-  const lostSoFar=p.currentWeight&&cache.weights.length>0?+(p.currentWeight-cache.weights[cache.weights.length-1].val).toFixed(1):0;
-  const toGo=p.goalWeight&&cache.weights.length>0?+(cache.weights[cache.weights.length-1].val-p.goalWeight).toFixed(1):+(p.currentWeight-p.goalWeight).toFixed(1);
-  const subMessages=[
-    'Every step counts. You\'re working toward '+p.goalWeight+' lbs and a healthier, more energized life.',
-    lostSoFar>0?'You\'ve already lost '+lostSoFar+' lbs. Keep that momentum going!':'Your journey of a thousand miles starts with a single step. Let\'s go!',
-    toGo>0?'Just '+toGo+' lbs to your goal. You\'ve got this!':'You\'re making incredible progress every single day.',
-    'Small consistent actions beat big sporadic ones every time. Log today!',
-    'Your future self is cheering you on. Make them proud today.',
-    'Health is built one good decision at a time. You\'re here — that counts.',
-    'Progress, not perfection. Every logged meal and workout adds up.',
-  ];
+  // Rotating motivational sub-messages — use latest logged weight, never starting weight
+  const _latestW=cache.weights.length?cache.weights[cache.weights.length-1].val:null;
+  const lostSoFar=(_latestW&&p.currentWeight)?+(p.currentWeight-_latestW).toFixed(1):0;
+  const toGo=(_latestW&&p.goalWeight)?+(_latestW-p.goalWeight).toFixed(1):null;
+  // Build message pool based on what data we actually have
+  const subMessages=[];
+  subMessages.push('Every step counts. You\'re working toward '+p.goalWeight+' lbs and a healthier, more energized life.');
+  if(lostSoFar>0)subMessages.push('You\'ve already lost '+lostSoFar+' lbs. Keep that momentum going!');
+  else subMessages.push('Your journey starts now. Every logged day is a win.');
+  if(toGo!==null&&toGo>0)subMessages.push('Just '+toGo.toFixed(1)+' lbs to your goal. You\'ve got this!');
+  else if(toGo!==null&&toGo<=0)subMessages.push('You\'ve hit your goal weight! Now let\'s maintain that incredible progress.');
+  subMessages.push('Small consistent actions beat big sporadic ones every time. Log today!');
+  subMessages.push('Your future self is cheering you on. Make them proud today.');
+  subMessages.push('Health is built one good decision at a time. You\'re here — that counts.');
+  subMessages.push('Progress, not perfection. Every logged meal and workout adds up.');
+  // Rotate by day but use a hash so it feels less predictable
+  const _dayHash=(new Date().getFullYear()*1000+new Date().getMonth()*31+new Date().getDate())%subMessages.length;
   document.getElementById('welcome-title').textContent='My Wellpath';
-  document.getElementById('welcome-sub').textContent=subMessages[new Date().getDate()%subMessages.length];
+  document.getElementById('welcome-sub').textContent=subMessages[_dayHash];
   document.getElementById('chat-welcome').textContent='Hey '+p.name+'! I\'m your personal health coach. I know your goals, your plan, and your preferences. Ask me anything — recipes, exercise form, grocery help, or to update your workout plan!';
 
   // Quote of the day (rotates daily)
