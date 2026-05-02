@@ -1510,14 +1510,15 @@ const USDA_KEY='JVgSbW6qH3avDh2UYtxcY8eepEmrubBc93qBBuav';
 // ── OPEN FOOD FACTS LOOKUP ─────────────────────────────────────
 async function lookupOpenFoodFacts(query){
   try{
-    const url='https://world.openfoodfacts.org/api/v2/search?'
-      +'categories_tags=&fields=product_name,brands,nutriments,serving_size,serving_quantity'
-      +'&search_terms='+encodeURIComponent(query)
-      +'&page_size=5';
-    const res=await fetch(url);
-    if(!res.ok){console.warn('[OFF] HTTP',res.status);return null;}
+    // Proxy through Cloudflare Worker to avoid CORS issues
+    const res=await fetch(API,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'food_lookup',query})
+    });
+    if(!res.ok){console.warn('[OFF] Worker HTTP',res.status);return null;}
     const data=await res.json();
-    const products=(data.products||data.hits||[]).filter(p=>p.nutriments);
+    const products=(data.products||[]).filter(p=>p.nutriments);
     if(!products.length)return null;
 
     // Score results by name match
