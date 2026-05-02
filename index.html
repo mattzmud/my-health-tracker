@@ -412,12 +412,14 @@ textarea{min-height:80px;}
         <div class="stat-card"><div class="stat-num" id="dash-lbs-lost" style="color:var(--amber)">&#8212;</div><div class="stat-label">Lbs Lost</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-protein" style="color:var(--blue)">&#8212;</div><div class="stat-label" id="stat-protein-label">Protein Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-water-label">Water Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-carbs" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-carbs-label">Carbs Today</div></div>
       </div>
       <div class="grid2">
         <div class="card">
           <div class="card-title" id="goals-card-title">Today's goals</div>
           <div class="prog-wrap"><div class="prog-label"><span>Protein</span><span id="prog-protein-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-protein" style="width:0%;background:var(--accent)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Net carbs</span><span id="prog-carbs-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-carbs" style="width:0%;background:var(--amber)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
           <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px;display:none"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
         </div>
@@ -455,6 +457,10 @@ textarea{min-height:80px;}
         <div class="card">
           <div class="card-title" id="water-chart-title" style="margin-bottom:14px">Water</div>
           <canvas id="water-chart" height="160"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title" id="carbs-chart-title" style="margin-bottom:14px">Net carbs</div>
+          <canvas id="carbs-chart" height="160"></canvas>
         </div>
       </div>
       <!-- BADGES -->
@@ -1688,7 +1694,7 @@ window.appInit=async function(){
   Promise.all([
     ..._last7.map(d=>ensureDateLoaded(d)),
     fbGetCol('journal').then(jc=>Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;})),
-  ]).then(()=>{renderProteinChart();renderWaterChart();});
+  ]).then(()=>{renderProteinChart();renderWaterChart();renderCarbsChart();});
   setSyncStatus('synced');
   loadAvatar();// load early so avatar shows on dashboard
   updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
@@ -1751,19 +1757,27 @@ function refreshDashboard(){
   if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
   const rawEntries=cache.food[goalsDate]||[];
   const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
   document.getElementById('dash-weight').textContent=cur+' lbs';
   document.getElementById('dash-lbs-lost').textContent=lost>0?'-'+lost+' lbs':'0 lbs';
   document.getElementById('dash-protein').textContent=Math.round(tp)+'g';
   document.getElementById('dash-water').textContent=Math.round(tw)+' oz';
+  document.getElementById('dash-carbs').textContent=Math.round(tc)+'g';
   const _sl=document.getElementById('stat-protein-label');if(_sl)_sl.textContent=goalsDate===TODAY?'Protein Today':'Protein '+goalsDate.slice(5);
   const _wl=document.getElementById('stat-water-label');if(_wl)_wl.textContent=goalsDate===TODAY?'Water Today':'Water '+goalsDate.slice(5);
+  const _cl=document.getElementById('stat-carbs-label');if(_cl)_cl.textContent=goalsDate===TODAY?'Carbs Today':'Carbs '+goalsDate.slice(5);
   document.getElementById('prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
   document.getElementById('prog-water').style.width=Math.min(100,(tw/wg)*100)+'%';
+  // Carbs bar — turns red when over limit
+  const _carbPct=Math.min(110,(tc/cg)*100);
+  const _carbOver=tc>cg;
+  document.getElementById('prog-carbs').style.width=Math.min(100,_carbPct)+'%';
+  document.getElementById('prog-carbs').style.background=_carbOver?'var(--red)':'var(--amber)';
   document.getElementById('prog-protein-label').textContent=Math.round(tp)+' / '+pg+'g';
   document.getElementById('prog-water-label').textContent=Math.round(tw)+' / '+wg+' oz';
+  document.getElementById('prog-carbs-label').textContent=Math.round(tc)+' / '+cg+'g'+(tc>cg?' ⚠':'');
   const plan=(window._profile&&window._profile.workoutPlan)||[];
   const _gd=new Date(goalsDate+'T12:00:00');
   const _goalDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_gd.getDay()];
@@ -1792,7 +1806,7 @@ function refreshDashboard(){
     wh.innerHTML='<div style="margin-bottom:4px">Recent: '+rec+'</div>';
     if(cache.weights.length>1){const diff=+(cache.weights[cache.weights.length-1].val-cache.weights[cache.weights.length-2].val).toFixed(1);wh.innerHTML+='<div style="font-size:12px;color:'+(diff<0?'var(--green)':diff>0?'var(--red)':'var(--muted)')+'">vs last: '+(diff>0?'+':'')+diff+' lbs</div>';}
   }
-  renderWeightChart();renderProteinChart();renderWaterChart();
+  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();
   renderDashboardVitals();
   applyMedsVisibility();
 }
@@ -1961,6 +1975,25 @@ async function callAI(prompt,systemPrompt){
   const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
   const d=await res.json();return d.content[0].text;
 }
+let carbsChart=null;
+function renderCarbsChart(){
+  const days=getDashDays(),goal=(window._profile||{}).carbGoal||100;
+  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.carbs||0),0)));
+  const ctx=document.getElementById('carbs-chart').getContext('2d');if(carbsChart)carbsChart.destroy();
+  if(!ctx)return;
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
+  carbsChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Net carbs',data,
+    backgroundColor:data.map(v=>v>goal?'rgba(192,57,43,0.7)':'rgba(138,106,26,0.6)'),
+    borderColor:data.map(v=>v>goal?'rgba(192,57,43,0.9)':'rgba(138,106,26,0.8)'),
+    borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Carbs: '+ctx.raw+'g'+(ctx.raw>goal?' (over limit)':'')}}},
+    scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
+      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},
+        suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+10)}},
+    annotation:{annotations:{goalLine:{type:'line',yMin:goal,yMax:goal,borderColor:'rgba(138,106,26,0.5)',borderWidth:1.5,borderDash:[4,4],
+      label:{content:'Goal: '+goal+'g',display:true,position:'end',font:{size:10},color:'rgba(138,106,26,0.8)'}}}}}});
+}
+
 function buildUserContext(){
   const p=window._profile||{};
   return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs';
