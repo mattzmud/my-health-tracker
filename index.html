@@ -1550,7 +1550,21 @@ async function lookupUSDA(query){
     // Scale from per-100g to per-serving for Branded foods
     const servingG=best.servingSize||100;
     const unit=(best.servingSizeUnit||'g').toLowerCase();
-    const scale=(best.dataType==='Branded'&&(unit==='g'||unit==='grm'||unit==='gram'||unit==='grams'))?servingG/100:1;
+    // Scale from per-100 units to per-serving
+    const isGram=unit==='g'||unit==='grm'||unit==='gram'||unit==='grams';
+    const isML=unit==='ml'||unit==='mlt'||unit==='milliliter'||unit==='milliliters';
+    const scale=(best.dataType==='Branded'&&(isGram||isML))?servingG/100:1;
+
+    // Brand sanity check — if query mentions a brand and it doesn't match, reject
+    const brandLower=(best.brandOwner||best.brandName||'').toLowerCase();
+    const brandWords=brandLower.split(/\s+/).filter(w=>w.length>2);
+    const queryMentionsBrand=brandWords.some(w=>qLower.includes(w));
+    // If brand words exist but none appear in query, lower confidence threshold
+    const effectiveScore=brandWords.length>0&&!queryMentionsBrand?bestScore*0.6:bestScore;
+    if(effectiveScore<0.5){
+      console.log('[USDA] Rejected "'+best.description+'" — brand mismatch ('+best.brandOwner+'), effective score='+effectiveScore.toFixed(2));
+      return null;
+    }
 
     const calories=Math.round((raw.calories||0)*scale);
     const protein=Math.round((raw.protein||0)*scale*10)/10;
