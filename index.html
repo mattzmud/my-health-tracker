@@ -1525,7 +1525,7 @@ function showSection(name){
   const _run=(fn,label)=>{try{fn();}catch(e){console.error('showSection '+label+' error:',e.message,e.stack);}};
   if(name==='dashboard')_run(()=>refreshDashboard(),'dashboard');
   if(name==='food'){_run(()=>renderFoodEntries(),'renderFoodEntries');_run(()=>renderFavorites(),'renderFavorites');}
-  if(name==='fitness')_run(()=>renderFitness(),'renderFitness');
+  if(name==='fitness'){_run(()=>renderFitness(),'renderFitness');_run(()=>renderExtraActivities(),'renderExtraActivities');}
   if(name==='meds')_run(()=>renderMeds(),'renderMeds');
   if(name==='grocery')_run(()=>renderGroceryList(),'renderGroceryList');
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
@@ -1905,6 +1905,7 @@ window.appInit=async function(){
   cache.weights=Object.entries(wCol).map(([id,d])=>({date:id,val:d.val})).sort((a,b)=>a.date.localeCompare(b.date));
   cache.food[TODAY]=tf?(tf.entries||[]):[];
   cache.fitness[TODAY]=tfi?(tfi.done||{}):{};;
+  if(tfi&&tfi.extras)cache.fitness[TODAY].extras=tfi.extras;
   cache.meds[TODAY]=tm?(tm.taken||{}):{};;
   cache.medsList=ml?(ml.meds||{}):{};;
   cache.favorites=fv?(fv.items||[]):[];
@@ -1928,7 +1929,7 @@ window.appInit=async function(){
   loadAvatar();// load early so avatar shows on dashboard
   updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
   selectedFitnessDay=getActiveFitnessDay();
-  renderFitness();renderMeds();renderGroceryList();
+  renderFitness();renderExtraActivities();renderMeds();renderGroceryList();
   // initChat deferred — loads lazily when user opens chat tab
   applyMedsVisibility();
   await checkAndAwardBadges();
@@ -2259,7 +2260,10 @@ async function logFood(){
   const woz=0;// water now logged separately
   const mt=document.getElementById('meal-time').value;
   if(!rawText){alert('Please describe what you ate.');return;}
-  const items=rawText.split(',').map(s=>s.trim()).filter(Boolean);
+  // Split on comma OR newline, whichever produces more items
+  const byComma=rawText.split(',').map(s=>s.trim()).filter(Boolean);
+  const byLine=rawText.split('\n').map(s=>s.trim()).filter(Boolean);
+  const items=byLine.length>byComma.length?byLine:byComma;
   const btn=document.getElementById('log-food-btn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing...';
   document.getElementById('food-feedback').innerHTML='';
   if(!cache.food[viewDate])cache.food[viewDate]=[];
@@ -2267,26 +2271,46 @@ async function logFood(){
     const itemList=items.length>0?items.join(', '):'Nothing food-wise, just water.';
     // Ask AI for per-item breakdown as JSON array + feedback
     const res=await callAI(
-      'I just ate ('+mt+': '+itemList+')',
-      'You are a nutrition coach. '+buildUserContext()+'\n\nEstimate nutrition for each food item separately. Return a JSON array followed by 2-3 sentences of warm personalized feedback.\n\nFormat: [{"item":"chicken breast 3oz","protein":26,"carbs":0,"calories":140},{"item":"pita bread","protein":3,"carbs":28,"calories":165}]\n\nThen on a new line, your feedback text. Use realistic estimates. All values as integers.'
+      'Meal: '+mt+'\nItems logged:\n'+items.map((it,i)=>(i+1)+'. '+it).join('\n'),
+      'You are a nutrition coach. '+buildUserContext()+'\n\nYou MUST return a JSON array with EXACTLY '+items.length+' objects, one per item in the order listed. Then a blank line. Then 2-3 sentences of feedback.\n\nEXACT format required:\n[\n{"item":"item name","protein":26,"carbs":0,"calories":140},\n{"item":"item name","protein":3,"carbs":28,"calories":165}\n]\n\nFeedback text here.\n\nRules:\n- Each object MUST have realistic individual estimates (not split evenly)\n- protein, carbs, calories are integers\n- Match items in the EXACT order listed\n- Do NOT combine items'
     );
-    // Parse per-item JSON array
-    const arrMatch=res.match(/\[([\s\S]*?)\]/);
+    // Parse per-item JSON array — use greedy match to capture full array
     let parsedItems=[];
-    if(arrMatch){
-      try{parsedItems=JSON.parse('['+arrMatch[1]+']');}catch(e){
-        // Fallback: split totals evenly
-        const jm=res.match(/"protein"\s*:\s*(\d+)[^}]*"carbs"\s*:\s*(\d+)[^}]*"calories"\s*:\s*(\d+)/);
-        if(jm)parsedItems=items.map(it=>({item:it,protein:Math.round(parseFloat(jm[1])/items.length),carbs:Math.round(parseFloat(jm[2])/items.length),calories:Math.round(parseFloat(jm[3])/items.length)}));
+    let displayText=res;
+    try{
+      // Find the outermost [ ... ] in the response
+      const start=res.indexOf('[');
+      const end=res.lastIndexOf(']');
+      if(start>=0&&end>start){
+        const jsonStr=res.slice(start,end+1);
+        parsedItems=JSON.parse(jsonStr);
+        displayText=res.slice(end+1).replace(/```json|```/g,'').trim();
       }
+    }catch(e){
+      // Fallback: extract individual objects
+      const objMatches=[...res.matchAll(/\{[^{}]*"item"[^{}]*\}/g)];
+      if(objMatches.length){
+        try{parsedItems=objMatches.map(m=>JSON.parse(m[0]));}catch(e2){}
+      }
+      displayText=res.replace(/\[.*\]/s,'').replace(/```json|```/g,'').trim();
     }
-    // If parsing failed entirely, create zero entries
-    if(!parsedItems.length)parsedItems=items.map(it=>({item:it,protein:0,carbs:0,calories:0}));
-    const displayText=res.replace(/\[[\s\S]*?\]/,'').replace(/```json|```/g,'').trim();
-    // Map parsed items back to input items (by index, trimming to items.length)
+    // Ensure we have one entry per item — pad with estimates if AI returned fewer
+    if(!parsedItems.length){
+      parsedItems=items.map(it=>({item:it,protein:0,carbs:0,calories:0}));
+    }
+    // Store EACH item as its own independent cache entry with its own macros
     items.forEach((item,i)=>{
-      const pi=parsedItems[i]||parsedItems[parsedItems.length-1]||{protein:0,carbs:0,calories:0};
-      cache.food[viewDate].push({time:mt,text:item,protein:Math.round((pi.protein||0)*10)/10,carbs:Math.round((pi.carbs||0)*10)/10,calories:Math.round(pi.calories||0),water:i===0?woz:0,ts:Date.now()+i});
+      // Match by index — AI should return in same order
+      const pi=parsedItems[i]||{protein:0,carbs:0,calories:0};
+      cache.food[viewDate].push({
+        time:mt,
+        text:item,
+        protein:Math.round((pi.protein||0)*10)/10,
+        carbs:Math.round((pi.carbs||0)*10)/10,
+        calories:Math.round(pi.calories||0),
+        water:0,
+        ts:Date.now()+i
+      });
     });
     await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
     document.getElementById('food-input').value='';
@@ -2513,28 +2537,21 @@ function renderFoodEntries(){
       +'<div class="meal-items">';
     // Individual items
     group.forEach(e=>{
-      // Legacy entries: if text contains comma or newline, display as sub-items
-      const subItems=e.text.includes(',')
-        ?e.text.split(',').map(s=>s.trim()).filter(Boolean)
-        :(e.text.includes('\n')?e.text.split('\n').map(s=>s.trim()).filter(Boolean):[e.text]);
-      const perItemP=subItems.length>1?Math.round((e.protein||0)/subItems.length*10)/10:(e.protein||0);
-      const perItemC=subItems.length>1?Math.round((e.carbs||0)/subItems.length*10)/10:(e.carbs||0);
-      const perItemCal=subItems.length>1?Math.round((e.calories||0)/subItems.length):(e.calories||0);
+      // Each entry is its own item with its own macros
       const delBtn=isPast?'':'<button data-ts="'+e.ts+'" onclick="deleteEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px" title="Remove">&#215;</button>';
       const favBtn='<button data-ts="'+e.ts+'" data-date="'+viewDate+'" onclick="saveFavorite(parseInt(this.dataset.ts),this.dataset.date);event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px" title="Save to favorites">&#11088;</button>';
-      subItems.forEach((sub,si)=>{
-        const showActions=si===subItems.length-1;// only show del/fav on last sub-item
+      {
         html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
           +'<div style="flex:1;min-width:0">'
-          +'<div style="font-size:13.5px;color:var(--text)">'+escHtml(sub)+'</div>'
+          +'<div style="font-size:13.5px;color:var(--text)">'+escHtml(e.text)+'</div>'
           +'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">'
-          +(perItemCal||perItemCal===0?'<span style="font-size:11px;color:var(--muted)">~'+perItemCal+' kcal</span>':'')
-          +(perItemP||perItemP===0?'<span style="font-size:11px;color:var(--muted)">~'+Math.round(perItemP)+'g pro</span>':'')
-          +(perItemC||perItemC===0?'<span style="font-size:11px;color:var(--muted)">~'+Math.round(perItemC)+'g carbs</span>':'')
+          +(e.calories!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.calories)+' kcal</span>':'')
+          +(e.protein!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g pro</span>':'')
+          +(e.carbs!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
           +'</div></div>'
-          +(showActions&&!isPast?favBtn+delBtn:'')
+          +(!isPast?favBtn+delBtn:'')
           +'</div>';
-      });
+      }
     });
     html+='</div></div>';
   });
