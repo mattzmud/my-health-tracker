@@ -1545,42 +1545,49 @@ async function lookupOpenFoodFacts(query){
       (typeof best.serving_size==='number'?best.serving_size:0)||
       (typeof best.serving_size==='string'?parseFloat(best.serving_size):0)||100);
 
-    // If no serving size from search, fetch full product detail via barcode
+    // If no serving size, try product detail lookups across top results until we find complete data
     let resolvedServingG=servingG;
-    if(resolvedServingG===100&&best.code){
-      try{
-        const detailRes=await fetch(API,{method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({action:'food_detail',code:best.code})});
-        if(detailRes.ok){
+    let resolvedNutriments=n;
+    if(resolvedServingG===100){
+      // Try each result's barcode until we find one with serving data
+      const codes=products.slice(0,5).map(p=>p.code).filter(Boolean);
+      for(const code of codes){
+        try{
+          const detailRes=await fetch(API,{method:'POST',
+            headers:{'Content-Type':'application/json'},
+            body:JSON.stringify({action:'food_detail',code})});
+          if(!detailRes.ok)continue;
           const detail=await detailRes.json();
-          const sq=detail.serving_quantity||detail.product?.serving_quantity;
-          if(sq&&parseFloat(sq)>0){
-            resolvedServingG=parseFloat(sq);
-            console.log('[OFF] Got serving size from detail:',resolvedServingG+'g');
+          const sq=parseFloat(detail.serving_quantity||0);
+          if(sq>0&&detail.nutriments){
+            resolvedServingG=sq;
+            resolvedNutriments=detail.nutriments;
+            console.log('[OFF] Got complete data from barcode',code,'serving='+sq+'g');
+            break;
           }
-        }
-      }catch(e){}
+        }catch(e){}
+      }
     }
+    const n2=resolvedNutriments;
 
     // Prefer _serving fields; fall back to scaling _100g values
     let calories,protein,carbs;
-    if(n['energy-kcal_serving']||n['proteins_serving']){
-      calories=Math.round(n['energy-kcal_serving']||0);
-      protein=Math.round((n['proteins_serving']||0)*10)/10;
-      carbs=Math.round((n['carbohydrates_serving']||0)*10)/10;
-      console.log('[OFF] Using _serving fields');
+    if(n2['energy-kcal_serving']||n2['proteins_serving']){
+      calories=Math.round(n2['energy-kcal_serving']||0);
+      protein=Math.round((n2['proteins_serving']||0)*10)/10;
+      carbs=Math.round((n2['carbohydrates_serving']||0)*10)/10;
+      console.log('[OFF] Using _serving fields → '+calories+'kcal '+protein+'pro '+carbs+'carbs');
     } else {
       const scale=resolvedServingG/100;
-      calories=Math.round((n['energy-kcal_100g']||0)*scale);
-      protein=Math.round((n['proteins_100g']||0)*scale*10)/10;
-      carbs=Math.round((n['carbohydrates_100g']||0)*scale*10)/10;
-      console.log('[OFF] Scaling _100g by '+scale.toFixed(2)+' (serving='+resolvedServingG+'g)');
+      calories=Math.round((n2['energy-kcal_100g']||0)*scale);
+      protein=Math.round((n2['proteins_100g']||0)*scale*10)/10;
+      carbs=Math.round((n2['carbohydrates_100g']||0)*scale*10)/10;
+      console.log('[OFF] Scaling _100g by '+scale.toFixed(2)+' → '+calories+'kcal '+protein+'pro '+carbs+'carbs');
     }
 
     // Calculate missing calories from macros
     if(!calories&&protein){
-      const fat=n['fat_serving']||n['fat_100g']*(servingG/100)||0;
+      const fat=n2['fat_serving']||n2['fat_100g']*(resolvedServingG/100)||0;
       calories=Math.round(protein*4+carbs*4+fat*9);
     }
 
