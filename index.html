@@ -1625,6 +1625,14 @@ function showApp(){document.getElementById('app-screen').style.display='block';}
 // ── CACHE ──────────────────────────────────────────────────
 let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:{},bs:{}},vitalSettings:{trackBP:false,trackBS:false},trackMeds:true,groceryAnalysis:''};
 
+async function triggerGeneratePlan(btn){
+  if(btn){btn.disabled=true;btn.textContent='Generating your plan...';}
+  const planEl=document.getElementById('plan-text');
+  if(planEl)planEl.innerHTML='<div style="font-size:13px;color:var(--muted)">Building your personalized plan — this takes about 15 seconds...</div>';
+  await generateWellnessPlan(false);
+  // generateWellnessPlan will update the plan-card contents when done
+}
+
 async function generateWellnessPlan(showModal=false){
   const p=window._profile;if(!p)return;
   try{
@@ -2681,18 +2689,24 @@ async function analyzeGroceryList(){
   document.getElementById('grocery-feedback').innerHTML='';
   try{
     const items=cache.grocery.map(i=>i.text).join(', ');
+    const recipeItems=cache.grocery.filter(g=>g.fromRecipe).map(g=>g.text);
+    const generalItems=cache.grocery.filter(g=>!g.fromRecipe).map(g=>g.text);
+    const contextNote=recipeItems.length
+      ?'\n\nNOTE: These items were added for a specific recipe and should NOT be suggested for swaps: '+recipeItems.join(', ')+'. Only suggest swaps for the general grocery items: '+generalItems.join(', ')+'. If a recipe item has a lighter version worth knowing about, mention it briefly in the summary as an optional tip only — not as a swap recommendation.'
+      :'';
     const res=await callAI(
       'Here is my grocery list: '+items
       +'\n\nAnalyze this list for someone with these health goals: '+buildUserContext()
+      +contextNote
       +'\n\nReturn ONLY valid JSON in this exact format, no other text:'
       +'{'
-      +'"summary":"2-3 sentence overall assessment of the list",'
+      +'"summary":"2-3 sentence overall assessment of the list. If any recipe items have lighter optional versions, mention them here briefly.",'
       +'"strengths":["what this list does well (1-2 items)"],'
       +'"additions":[{"item":"specific item to add","reason":"why it helps","category":"vegetable/protein/fruit/etc"}],'
       +'"swaps":[{"remove":"exact item name from list","add":"specific replacement","reason":"why this swap helps"}]'
       +'}'
       +'\n\nFor additions: be specific (say "broccoli" not "vegetables", "Greek yogurt" not "dairy"). Include 3-5 additions.'
-      +'\n\nFor swaps: only suggest swapping items that are actually on the list. Be specific about the replacement. Include 2-4 swaps.',
+      +'\n\nFor swaps: ONLY suggest swapping general grocery items, never recipe ingredients. Include 2-4 swaps max.',
       'You are a nutrition coach. Return ONLY valid JSON, nothing else.'
     );
     const cleaned=res.replace(/```json|```/g,'').trim();
@@ -2787,7 +2801,15 @@ function renderGroceryList(){
   const el=document.getElementById('grocery-list');
   if(!cache.grocery.length){el.innerHTML='<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Your list is empty. Add items above!</div>';return;}
   const ri=i=>cache.grocery.indexOf(i);
-  const renderItem=item=>'<div class="grocery-item '+(item.checked?'checked':'')+'"><div class="ex-done-box '+(item.checked?'done':'')+'" onclick="toggleGroceryItem('+ri(item)+')" style="flex-shrink:0">'+(item.checked?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f1117" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':'')+'</div><div class="grocery-name">'+escHtml(item.text)+'</div><div class="grocery-del" onclick="deleteGroceryItem('+ri(item)+')">&#10005;</div></div>';
+  const renderItem=item=>{
+    const recipeTag=item.fromRecipe?'<span style="font-size:10px;color:var(--muted);margin-left:6px;background:var(--surface2);padding:2px 5px;border-radius:3px">from recipe</span>':'';
+    const check=item.checked?'<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0f1117" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>':'';
+    return '<div class="grocery-item '+(item.checked?'checked':'')+'">'
+      +'<div class="ex-done-box '+(item.checked?'done':'')+'" onclick="toggleGroceryItem('+ri(item)+')" style="flex-shrink:0">'+check+'</div>'
+      +'<div class="grocery-name">'+escHtml(item.text)+recipeTag+'</div>'
+      +'<div class="grocery-del" onclick="deleteGroceryItem('+ri(item)+')">&#10005;</div>'
+      +'</div>';
+  };
   const unchecked=cache.grocery.filter(i=>!i.checked),checked=cache.grocery.filter(i=>i.checked);
   el.innerHTML=[...unchecked,...checked].map(renderItem).join('');
 }
@@ -2799,7 +2821,7 @@ async function addRecipeToGrocery(ingredients,btn){
   items.forEach(item=>{
     const text=typeof item==='string'?item:item.text||item.name||String(item);
     if(text&&!cache.grocery.find(g=>g.text.toLowerCase()===text.toLowerCase())){
-      cache.grocery.push({text,checked:false,id:Date.now()+Math.random()});
+      cache.grocery.push({text,checked:false,id:Date.now()+Math.random(),fromRecipe:true});
     }
   });
   await fbSet('grocery','list',{items:cache.grocery});
@@ -3013,7 +3035,7 @@ function renderProfile(){
   document.getElementById('profile-name').textContent=p.name||'—';
   const cbMeds=document.getElementById('toggle-meds');
   if(cbMeds)cbMeds.checked=cache.trackMeds!==false;
-  // Show wellness plan if exists
+  // Show wellness plan if exists, or offer to generate it
   const planCard=document.getElementById('plan-card');
   const planEl=document.getElementById('plan-text');
   const planDate=document.getElementById('plan-updated-date');
@@ -3021,8 +3043,15 @@ function renderProfile(){
     if(planCard)planCard.style.display='block';
     if(planEl)planEl.textContent=p.wellnessPlan.text;
     if(planDate)planDate.textContent='Updated '+p.wellnessPlan.updatedAt;
+    // Remove generate button if plan exists
+    const genBtn=document.getElementById('plan-generate-btn');
+    if(genBtn)genBtn.style.display='none';
   }else{
-    if(planCard)planCard.style.display='none';
+    // Show card but with generate button instead of text
+    if(planCard)planCard.style.display='block';
+    if(planEl)planEl.innerHTML='<div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.7">Your personalized plan covers the foods to focus on, what to limit, your workout approach, daily habits to build, and anything specific to watch for given your health profile.</div>'
+      +'<button id="plan-generate-btn" class="btn btn-primary" onclick="triggerGeneratePlan(this)">&#127807; See my Wellpath plan</button>';
+    if(planDate)planDate.textContent='';
   }
   document.getElementById('profile-email').textContent=auth_user.email||'—';
   const _age=p.dob?computeAge(p.dob):p.age;
