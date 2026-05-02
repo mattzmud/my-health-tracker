@@ -1542,7 +1542,7 @@ async function lookupUSDA(query){
     (best.foodNutrients||[]).forEach(n=>{
       const name=(n.nutrientName||'').toLowerCase();
       const val=n.value||0;
-      if(name.includes('energy')&&!name.includes('alcohol'))raw.calories=val;
+      if(name.includes('energy')||name==='calories'||name.includes('atwater'))raw.calories=val;
       if(name==='protein')raw.protein=val;
       if(name.includes('carbohydrate, by difference'))raw.carbs=val;
     });
