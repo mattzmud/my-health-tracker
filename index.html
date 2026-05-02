@@ -1552,11 +1552,30 @@ async function lookupUSDA(query){
     // Scale from per-100g to per-serving for Branded foods
     const servingG=best.servingSize||100;
     const unit=(best.servingSizeUnit||'g').toLowerCase();
-    // Only scale Branded entries (per 100g) — SR Legacy/Foundation are already per-serving
+    // Determine scale factor
+    // USDA Branded entries are inconsistent — some store per-100g, some per-serving
+    // Heuristic: if raw calories scaled would exceed 1200 kcal, values are likely already per-serving
     const isGram=unit==='g'||unit==='grm'||unit==='gram'||unit==='grams';
     const isML=unit==='ml'||unit==='mlt'||unit==='milliliter'||unit==='milliliters';
     const isBranded=best.dataType==='Branded';
-    const scale=(isBranded&&(isGram||isML))?servingG/100:1;
+    let scale=(isBranded&&(isGram||isML))?servingG/100:1;
+    // Sanity check: if scaling raw calories produces an implausible result, use scale=1
+    if(scale!==1&&raw.calories){
+      const scaledCal=(raw.calories||0)*scale;
+      if(scaledCal>1200||(scaledCal<10&&raw.calories>30)){
+        console.log('[USDA] Scale sanity check failed ('+scale.toFixed(2)+'×'+raw.calories+'='+scaledCal.toFixed(0)+'), using scale=1');
+        scale=1;
+      }
+    }
+    // Also use scale=1 if raw values already look like reasonable per-serving amounts
+    if(scale!==1&&raw.protein&&raw.protein<50&&raw.calories&&raw.calories<600&&servingG>50){
+      // Raw values already look like a single serving — check if scaling makes them implausible
+      const scaledProtein=(raw.protein||0)*scale;
+      if(scaledProtein>80){
+        console.log('[USDA] Protein sanity check failed — using scale=1');
+        scale=1;
+      }
+    }
 
     // Brand sanity check — reject if matched brand not mentioned in query
     const brandLower=(best.brandOwner||best.brandName||'').toLowerCase();
