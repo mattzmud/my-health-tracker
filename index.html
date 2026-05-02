@@ -1539,10 +1539,12 @@ async function lookupUSDA(query){
 
     // Extract raw nutrient values (USDA Branded = per 100g)
     const raw={};
+    console.log('[USDA] Nutrients for',best.description,':',
+      (best.foodNutrients||[]).map(n=>n.nutrientName+'='+n.value).join(' | '));
     (best.foodNutrients||[]).forEach(n=>{
       const name=(n.nutrientName||'').toLowerCase();
       const val=n.value||0;
-      if(name.includes('energy')||name==='calories'||name.includes('atwater'))raw.calories=val;
+      if(name.includes('energy')||name==='calories'||name.includes('atwater')||name.includes('kcal'))raw.calories=val;
       if(name==='protein')raw.protein=val;
       if(name.includes('carbohydrate, by difference'))raw.carbs=val;
     });
