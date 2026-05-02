@@ -2583,6 +2583,7 @@ async function logFood(){
     });
     await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
     document.getElementById('food-input').value='';
+    console.log('[logFood] displayText:',displayText?displayText.slice(0,80):'EMPTY');
     if(displayText){const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));}
     renderFoodEntries();// update log entries
   }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
