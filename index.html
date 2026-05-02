@@ -870,7 +870,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         </div>
         <div id="food-entries"><div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet today.</div></div>
         <div id="calorie-adjust-note" style="display:none;margin-top:8px;font-size:12px;color:var(--amber);line-height:1.6"></div>
-        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="clearTodayFood()">Clear today's log</button>
+        <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="clearTodayFood()" id="clear-food-btn">Clear today's log</button>
       </div>
       <div class="card" id="daily-analysis-card" style="display:none">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
@@ -1217,7 +1217,7 @@ async function ensureDateLoaded(date){
   ]);
   cache.food[date]=fd?(fd.entries||[]):[];
   if(fd&&fd._adjustedCalGoal)cache.food[date]._adjustedCalGoal=fd._adjustedCalGoal;
-  cache.fitness[date]=fi?(fi.done||{}):{};
+  cache.fitness[date]=fi?(fi.done||{}):{};if(fi&&fi.extras)cache.fitness[date].extras=fi.extras;
   cache.meds[date]=fm?(fm.taken||{}):{};
 }
 
@@ -2442,6 +2442,8 @@ function renderFoodEntries(){
   // Update log title
   const logTitle=document.getElementById('food-log-title');
   if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
+  const clearBtn=document.getElementById('clear-food-btn');
+  if(clearBtn)clearBtn.textContent=viewDate===TODAY?"Clear today's log":"Clear this log";
   // Update all progress bars and totals (single pass)
   const calg2=(cache.food[viewDate]&&cache.food[viewDate]._adjustedCalGoal)||p.calorieGoal||2000;
   document.getElementById('food-protein-total').textContent=Math.round(tp)+'g';
@@ -2495,35 +2497,59 @@ function renderFoodEntries(){
         +'</div>';
       return;
     }
-    // Meal group header
-    html+='<div style="margin-bottom:12px"><div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:2px solid var(--border2);margin-bottom:6px">'
+    // Meal group — collapsible
+    const mealId='meal-'+mealTime.replace(/\s+/g,'-').toLowerCase();
+    html+='<div style="margin-bottom:12px">'
+      +'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:2px solid var(--border2);margin-bottom:6px;cursor:pointer;user-select:none" onclick="toggleMealGroup(this)">'
       +'<div style="font-weight:600;font-size:13px;color:var(--accent)">'+mealTime+'</div>'
-      +'<div style="display:flex;gap:10px;font-size:11px;color:var(--muted)">'
+      +'<div style="display:flex;align-items:center;gap:10px">'
+      +'<div style="display:flex;gap:8px;font-size:11px;color:var(--muted)">'
       +(mtcal?'<span>'+Math.round(mtcal)+' kcal</span>':'')
       +(mtp?'<span>'+Math.round(mtp)+'g pro</span>':'')
       +(mtc?'<span>'+Math.round(mtc)+'g carbs</span>':'')
-      +'</div></div>';
-    // Individual items in this meal
+      +'</div>'
+      +'<span style="font-size:12px;color:var(--muted);transition:transform 0.2s" class="meal-chevron">&#9660;</span>'
+      +'</div></div>'
+      +'<div class="meal-items">';
+    // Individual items
     group.forEach(e=>{
+      // Legacy entries: if text contains comma or newline, display as sub-items
+      const subItems=e.text.includes(',')
+        ?e.text.split(',').map(s=>s.trim()).filter(Boolean)
+        :(e.text.includes('\n')?e.text.split('\n').map(s=>s.trim()).filter(Boolean):[e.text]);
+      const perItemP=subItems.length>1?Math.round((e.protein||0)/subItems.length*10)/10:(e.protein||0);
+      const perItemC=subItems.length>1?Math.round((e.carbs||0)/subItems.length*10)/10:(e.carbs||0);
+      const perItemCal=subItems.length>1?Math.round((e.calories||0)/subItems.length):(e.calories||0);
       const delBtn=isPast?'':'<button data-ts="'+e.ts+'" onclick="deleteEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px" title="Remove">&#215;</button>';
       const favBtn='<button data-ts="'+e.ts+'" data-date="'+viewDate+'" onclick="saveFavorite(parseInt(this.dataset.ts),this.dataset.date);event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px" title="Save to favorites">&#11088;</button>';
-      html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
-        +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:13.5px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+escHtml(e.text)+'</div>'
-        +'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">'
-        +(e.calories?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.calories)+' kcal</span>':'')
-        +(e.protein?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g protein</span>':'')
-        +(e.carbs?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
-        +(e.water?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.water)+' oz water</span>':'')
-        +'</div></div>'
-        +(isPast?'':favBtn+delBtn)
-        +'</div>';
+      subItems.forEach((sub,si)=>{
+        const showActions=si===subItems.length-1;// only show del/fav on last sub-item
+        html+='<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="font-size:13.5px;color:var(--text)">'+escHtml(sub)+'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:2px;flex-wrap:wrap">'
+          +(perItemCal||perItemCal===0?'<span style="font-size:11px;color:var(--muted)">~'+perItemCal+' kcal</span>':'')
+          +(perItemP||perItemP===0?'<span style="font-size:11px;color:var(--muted)">~'+Math.round(perItemP)+'g pro</span>':'')
+          +(perItemC||perItemC===0?'<span style="font-size:11px;color:var(--muted)">~'+Math.round(perItemC)+'g carbs</span>':'')
+          +'</div></div>'
+          +(showActions&&!isPast?favBtn+delBtn:'')
+          +'</div>';
+      });
     });
-    html+='</div>';
+    html+='</div></div>';
   });
   el.innerHTML=html||'<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet.</div>';
   renderDailyAnalysis();
 }
+function toggleMealGroup(header){
+  const items=header.nextElementSibling;
+  const chevron=header.querySelector('.meal-chevron');
+  if(!items)return;
+  const collapsed=items.style.display==='none';
+  items.style.display=collapsed?'':'none';
+  if(chevron)chevron.style.transform=collapsed?'rotate(0deg)':'rotate(-90deg)';
+}
+
 async function deleteEntry(ts){if(!cache.food[viewDate])return;cache.food[viewDate]=cache.food[viewDate].filter(e=>e.ts!==ts);await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});renderFoodEntries();}
 async function logWaterOnly(){
   const woz=parseFloat(document.getElementById('water-log').value)||0;
@@ -2557,7 +2583,6 @@ async function logExtraActivity(){
   if(!raw){alert('Please describe the activity.');return;}
   const btn=document.getElementById('log-extra-btn');
   btn.disabled=true;btn.textContent='Logging...';
-  // Save to fitness cache under 'extras' array
   if(!cache.fitness[viewDate])cache.fitness[viewDate]={};
   if(!cache.fitness[viewDate].extras)cache.fitness[viewDate].extras=[];
   const entry={text:raw,ts:Date.now(),date:viewDate};
@@ -2565,15 +2590,47 @@ async function logExtraActivity(){
   await fbSet('fitness',viewDate,cache.fitness[viewDate]);
   document.getElementById('extra-activity-input').value='';
   renderExtraActivities();
-  // Get AI feedback + calorie adjustment for today
   try{
+    // Check if any planned exercises have been checked off today
+    const donePlan=Object.values(cache.fitness[viewDate]||{}).filter(v=>v===true).length;
+    const plannedExercises=((window._profile&&window._profile.workoutPlan)||[])
+      .find(d=>d.day===getActiveFitnessDay());
+    const plannedDesc=plannedExercises&&!plannedExercises.rest
+      ?(plannedExercises.exercises||[]).map(e=>e.name).join(', ')
+      :'rest day';
+    const hasCheckedPlan=donePlan>0;
     const res=await callAI(
-      'I just completed this extra activity: '+raw+'\nThis was on top of my regular workout plan for today.\nMy current calorie goal is '+(window._profile?.calorieGoal||2000)+' kcal/day.',
-      'You are a fitness coach. '+buildUserContext()+'. Give warm, encouraging feedback (2-3 sentences). If this was a strenuous activity (>200 calories burned), estimate calories burned and suggest an adjusted daily calorie goal for TODAY ONLY by ending with: CALORIE_ADJUST:{"burned":250,"newGoal":2400}. Only include the tag if the activity was genuinely strenuous. Under 100 words total.'
+      'I just logged this activity: "'+raw+'"\n'
+      +'My planned workout for today is: '+plannedDesc+'\n'
+      +'I have '+(hasCheckedPlan?'already checked off some planned exercises today':'NOT checked off any planned exercises yet today')+'\n'
+      +'My current base calorie goal is '+(window._profile?.calorieGoal||2000)+' kcal/day.',
+      'You are a fitness coach. '+buildUserContext()+'\n\n'
+      +'Give warm, encouraging feedback (2-3 sentences).\n\n'
+      +'IMPORTANT calorie adjustment rules:\n'
+      +'- Only suggest CALORIE_ADJUST if the logged activity is genuinely strenuous (>200 cal burned)\n'
+      +'- If the user has NOT checked off any planned exercises yet, DO NOT adjust calories — they may still do their planned workout. In this case, ask if this replaces their planned workout or is additional.\n'
+      +'- If the user HAS checked off planned exercises, you may adjust calories if the extra activity is strenuous.\n'
+      +'- If this activity is comparable to their planned workout, end with: SWAP_OFFER:{"msg":"This looks similar to your planned workout. Would you like to swap it in?"}'
+      +'\n- If adjusting calories: CALORIE_ADJUST:{"burned":250,"newGoal":2400}\n'
+      +'Under 120 words total. Only include tags when relevant.'
     );
-    // Check for calorie adjustment
+    // Handle swap offer
+    const swapMatch=res.match(/SWAP_OFFER:\{[^}]+\}/);
+    let swapNote='';
+    if(swapMatch){
+      try{
+        const sw=JSON.parse(swapMatch[0].replace('SWAP_OFFER:',''));
+        swapNote=sw.msg||'This looks similar to your planned workout. Would you like to swap it in?';
+        // Add swap offer to the entry
+        entry.swapOffered=true;entry.swapNote=swapNote;
+        cache.fitness[viewDate].extras[cache.fitness[viewDate].extras.length-1]=entry;
+        await fbSet('fitness',viewDate,cache.fitness[viewDate]);
+        renderExtraActivities();
+      }catch(e){}
+    }
+    // Handle calorie adjustment — only if no planned exercises pending OR user already did plan
     const adjMatch=res.match(/CALORIE_ADJUST:\{[^}]+\}/);
-    if(adjMatch&&viewDate===TODAY){
+    if(adjMatch&&viewDate===TODAY&&(hasCheckedPlan||plannedDesc==='rest day')){
       try{
         const adj=JSON.parse(adjMatch[0].replace('CALORIE_ADJUST:',''));
         if(adj.newGoal&&adj.newGoal>0){
@@ -2584,10 +2641,15 @@ async function logExtraActivity(){
         }
       }catch(e){}
     }
-    const displayText=res.replace(/CALORIE_ADJUST:\{[^}]+\}/,'').trim();
+    const displayText=res.replace(/CALORIE_ADJUST:\{[^}]+\}/,'').replace(/SWAP_OFFER:\{[^}]+\}/,'').trim();
+    // Save feedback to entry
+    entry.feedback=displayText;
+    cache.fitness[viewDate].extras[cache.fitness[viewDate].extras.length-1]=entry;
+    await fbSet('fitness',viewDate,cache.fitness[viewDate]);
+    renderExtraActivities();
     const fb=document.getElementById('extra-activity-feedback');
     if(fb)fb.innerHTML=aiFeedbackHTML('&#127939;','Activity feedback',escHtml(displayText.replace(/```/g,'')));
-  }catch(e){}
+  }catch(e){console.error('logExtraActivity error:',e);}
   btn.disabled=false;btn.textContent='Log & get feedback';
 }
 
@@ -2596,16 +2658,16 @@ function renderExtraActivities(){
   const extras=(cache.fitness[viewDate]&&cache.fitness[viewDate].extras)||[];
   if(!extras.length){el.innerHTML='';return;}
   el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">Other activities logged</div>'
-    +extras.slice().reverse().map(e=>'<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-      +'<div style="flex:1;font-size:13px;color:var(--text)">'+escHtml(e.text)+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);flex-shrink:0">'+new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
-      +'<div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)">'
-      +'<div style="flex:1;font-size:13px;color:var(--text)">'+escHtml(e.text)+'</div>'
-      +'<div style="font-size:11px;color:var(--muted);flex-shrink:0">'+new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
-      +'<button data-ts="'+e.ts+'" onclick="deleteExtraActivity(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px">&#215;</button>'
-      +'</div>'
-      +'</div>'
-    ).join('');
+    +extras.slice().reverse().map(e=>{
+      const swapNote=e.swapOffered?'<div style="font-size:11px;color:var(--amber);margin-top:2px">'+escHtml(e.swapNote||'')+'</div>':'';
+      const aiNote=e.feedback?'<div style="font-size:11px;color:var(--muted);margin-top:2px;font-style:italic">'+escHtml(e.feedback.slice(0,80))+'...</div>':'';
+      return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:flex-start;gap:10px">'
+        +'<div style="flex:1;font-size:13px;color:var(--text)">'+escHtml(e.text)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);flex-shrink:0">'+new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
+        +'<button data-ts="'+e.ts+'" onclick="deleteExtraActivity(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px">&#215;</button>'
+        +'</div>'+swapNote+'</div>';
+    }).join('');
 }
 
 async function deleteExtraActivity(ts){
