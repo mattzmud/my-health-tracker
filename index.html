@@ -567,6 +567,17 @@ textarea{min-height:80px;}
         </div>
       </div>
 
+      <!-- DOB entry — only shown if no DOB on file -->
+      <div class="card" id="dob-entry-card" style="display:none">
+        <div class="card-title">&#127874; Date of birth</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Enter your date of birth so MyWellpath can calculate your age automatically. This can only be set once.</div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+          <input type="date" id="dob-input" style="flex:1;min-width:160px;max-width:220px" max=""/>
+          <button class="btn btn-primary btn-sm" onclick="saveDOB()">Save</button>
+        </div>
+        <div id="dob-error" style="font-size:13px;color:var(--red);margin-top:8px;display:none"></div>
+      </div>
+
       <!-- Badges -->
       <div class="card">
         <div class="card-title">&#127942; My badges</div>
@@ -1306,6 +1317,16 @@ function showInstallInstructions(){
   document.body.appendChild(modal);
 }
 
+function computeAge(dob){
+  if(!dob)return null;
+  const today=new Date(),birth=new Date(dob);
+  if(isNaN(birth))return null;
+  let age=today.getFullYear()-birth.getFullYear();
+  const m=today.getMonth()-birth.getMonth();
+  if(m<0||(m===0&&today.getDate()<birth.getDate()))age--;
+  return age;
+}
+
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
 
@@ -1342,7 +1363,7 @@ function showSection(name){
 // ── ONBOARDING ──────────────────────────────────────────────
 const OB_STEPS=[
   {id:'basics',title:'Tell us about yourself',sub:'This helps us personalize your nutrition goals, workout plan, and coaching.',
-   fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_age',label:'Age',type:'number',placeholder:'e.g. 35'},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
+   fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_dob',label:'Date of birth',type:'date',placeholder:''},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
   {id:'health',title:'Health conditions',sub:'Select any that apply.',
    multi:['Type 2 Diabetes','Type 1 Diabetes','High blood pressure','High cholesterol','Heart condition','Thyroid condition','PCOS','Anxiety / Depression','Chronic pain','None of the above']},
   {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath?',
@@ -1499,12 +1520,12 @@ async function generatePlan(){
   window._profile=profile;
   // Run nutrition goals + workout plan in parallel — both independent
   const nutritionPromise=callAI(
-    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80}\nProtein in grams, water in oz, net carbs in grams. Be specific to this person.',
+    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80}\nProtein in grams, water in oz, net carbs in grams. Be specific to this person.',
     'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
   ).catch(()=>null);
 
   const workoutPromise=callAI(
-    'You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+profile.age+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.'
+    'You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.'
   ).catch(()=>null);
 
   // Await both with a shared 25s timeout
@@ -1552,7 +1573,7 @@ async function generatePlan(){
 }
 
 function buildProfileFromObData(){
-  return{name:obData.ob_name||'Friend',age:parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
+  return{name:obData.ob_name||'Friend',dob:obData.ob_dob||null,age:computeAge(obData.ob_dob)||parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
 }
 
 function getDefaultWorkoutPlan(){
@@ -1937,7 +1958,7 @@ async function callAI(prompt,systemPrompt){
 }
 function buildUserContext(){
   const p=window._profile||{};
-  return'User profile:\nName: '+p.name+', Age: '+p.age+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs';
+  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs';
 }
 
 // ── FOOD DIARY ──────────────────────────────────────────────
@@ -2679,6 +2700,27 @@ function hexToRgbStr(hex){
   return r+','+g+','+b;
 }
 
+async function saveDOB(){
+  const val=document.getElementById('dob-input').value;
+  const errEl=document.getElementById('dob-error');
+  if(!val){errEl.textContent='Please enter your date of birth.';errEl.style.display='block';return;}
+  // Validate — must be in the past and reasonable
+  const dob=new Date(val+'T12:00:00');
+  const today=new Date();
+  const age=computeAge(val);
+  if(dob>=today){errEl.textContent='Date of birth must be in the past.';errEl.style.display='block';return;}
+  if(age<13||age>120){errEl.textContent='Please enter a valid date of birth.';errEl.style.display='block';return;}
+  // Save to profile
+  if(!window._profile)return;
+  window._profile.dob=val;
+  window._profile.age=age;// keep age in sync for legacy fallback
+  await fbSet('profile','survey',window._profile);
+  // Hide the card — locked forever
+  document.getElementById('dob-entry-card').style.display='none';
+  // Update the display
+  renderProfile();
+}
+
 function renderProfile(){
   const p=window._profile||{};
   const auth_user=window._authUser||{};
@@ -2686,7 +2728,17 @@ function renderProfile(){
   const cbMeds=document.getElementById('toggle-meds');
   if(cbMeds)cbMeds.checked=cache.trackMeds!==false;
   document.getElementById('profile-email').textContent=auth_user.email||'—';
-  document.getElementById('profile-age-weight').textContent='Age '+p.age+' · '+p.currentWeight+' lbs starting · Goal: '+p.goalWeight+' lbs';
+  const _age=p.dob?computeAge(p.dob):p.age;
+  const _dobStr=p.dob?(' · Born '+new Date(p.dob+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})):'';
+  document.getElementById('profile-age-weight').textContent=(_age?'Age '+_age:'')+(p.dob?_dobStr:'')+' · '+p.currentWeight+' lbs starting · Goal: '+p.goalWeight+' lbs';
+  // Show DOB entry card only if no DOB on file
+  const dobCard=document.getElementById('dob-entry-card');
+  if(dobCard){
+    dobCard.style.display=p.dob?'none':'block';
+    // Set max date to today
+    const dobInput=document.getElementById('dob-input');
+    if(dobInput)dobInput.max=new Date().toISOString().split('T')[0];
+  }
   // Sync avatar
   // Load avatar fresh for profile page
   fbGet('profile','avatar').then(data=>{
