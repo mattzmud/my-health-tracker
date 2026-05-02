@@ -1528,18 +1528,22 @@ async function lookupOpenFoodFacts(query){
     let best=null,bestScore=0;
     for(const p of products){
       const name=(p.product_name||'').toLowerCase();
-      // brands can be array or string in new API
       const brandRaw=Array.isArray(p.brands)?p.brands.join(' '):(p.brands||'');
       const brand=brandRaw.toLowerCase();
       const combined=name+' '+brand;
       const matchCount=qWords.filter(w=>combined.includes(w)).length;
-      const score=matchCount/Math.max(qWords.length,1);
+      // Bonus for words matching specifically in the product name (not just brand)
+      const nameMatchCount=qWords.filter(w=>name.includes(w)).length;
+      const score=(matchCount/Math.max(qWords.length,1))+(nameMatchCount/Math.max(qWords.length,1)*0.5);
       if(score>bestScore){bestScore=score;best=p;}
     }
-    if(bestScore<0.4||!best)return null;
+    if(bestScore<0.5||!best)return null;
 
     const n=best.nutriments;
-    const servingG=best.serving_quantity||best.serving_size||100;
+    // Try multiple field names for serving size
+    const servingG=parseFloat(best.serving_quantity||best.serving_size_g||
+      (typeof best.serving_size==='number'?best.serving_size:0)||
+      (typeof best.serving_size==='string'?parseFloat(best.serving_size):0)||100);
 
     // Prefer _serving fields; fall back to scaling _100g values
     let calories,protein,carbs;
