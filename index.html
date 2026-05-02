@@ -1569,6 +1569,7 @@ async function lookupUSDA(query){
     return null;
   }
 }
+window.lookupUSDA=lookupUSDA;// expose for debugging
 
 function escHtml(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/\n/g,'<br>');}
 function showMsg(id,text,type){const el=document.getElementById(id);el.textContent=text;el.className='msg-box '+type;el.style.display='block';}
@@ -2385,7 +2386,9 @@ async function logFood(){
     const itemList=items.length>0?items.join(', '):'Nothing food-wise, just water.';
     // Ask AI for per-item breakdown as JSON array + feedback
     // ── Step 1: Try USDA database for each item in parallel ──
+    console.log('[USDA] Looking up',items.length,'items:',items);
     const usdaResults=await Promise.all(items.map(item=>lookupUSDA(item)));
+    console.log('[USDA] Results:',usdaResults.map((r,i)=>items[i]+':'+(r?'FOUND('+r.calories+'kcal,'+r.protein+'pro,'+r.carbs+'carbs)':'null')));
     const itemsNeedingAI=items.filter((_,i)=>!usdaResults[i]);
 
     // ── Step 2: AI estimates only for items not found in USDA ──
