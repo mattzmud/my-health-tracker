@@ -4069,7 +4069,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nIf the user asks about their recommended daily nutrition goals (protein, water, carbs), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":140,"waterGoal":96,"carbGoal":80}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":140,"waterGoal":96,"carbGoal":80,"calorieGoal":1850}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
@@ -4078,7 +4078,14 @@ async function sendChat(){
     let ingredients=null;
     if(reply.includes('RECIPE_INGREDIENTS:')){try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}}
     let suggestedGoals=null;
-    if(reply.includes('GOALS_SUGGESTION:')){try{const m=reply.match(/GOALS_SUGGESTION:(\{[^}]+\})/);if(m)suggestedGoals=JSON.parse(m[1]);}catch(e){}}
+    if(reply.includes('GOALS_SUGGESTION:')){
+      try{
+        const gsIdx=reply.indexOf('GOALS_SUGGESTION:');
+        const gsStart=reply.indexOf('{',gsIdx);
+        const gsEnd=reply.indexOf('}',gsStart);
+        if(gsStart>=0&&gsEnd>gsStart)suggestedGoals=JSON.parse(reply.slice(gsStart,gsEnd+1));
+      }catch(e){}
+    }
     let suggestedDOB=null;
     if(reply.includes('DOB_UPDATE:')){try{const m=reply.match(/DOB_UPDATE:(\{[^}]+\})/);if(m)suggestedDOB=JSON.parse(m[1]);}catch(e){}}
     // Regenerate plan whenever coach discusses/confirms goals or plan
@@ -4101,7 +4108,7 @@ function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null,suggestedD
     extra+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)"><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">'+ingredients.length+' ingredients in this recipe</div><button data-enc="'+encIngr+'" onclick="addRecipeToGrocery(this.dataset.enc,this)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(126,184,164,0.2);color:var(--accent);border:1px solid rgba(126,184,164,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10133; Add ingredients to grocery list</button></div>';
   }
   if(role==='ai'&&suggestedGoals){
-    const p=suggestedGoals.proteinGoal,w=suggestedGoals.waterGoal,c=suggestedGoals.carbGoal;
+    const p=suggestedGoals.proteinGoal,w=suggestedGoals.waterGoal,c=suggestedGoals.carbGoal,cal=suggestedGoals.calorieGoal;
     const sg=encodeURIComponent(JSON.stringify(suggestedGoals));
     extra+='<div id="goal-suggestion-card" style="margin-top:12px;padding:12px;background:rgba(85,107,47,0.15);border:1px solid rgba(85,107,47,0.3);border-radius:8px">'
       +'<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:8px">&#127919; Suggested daily goals:</div>'
@@ -4109,6 +4116,7 @@ function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null,suggestedD
       +(p?'<div style="font-size:13px;color:#fff"><strong>'+p+'g</strong> protein</div>':'')
       +(w?'<div style="font-size:13px;color:#fff"><strong>'+w+' oz</strong> water</div>':'')
       +(c?'<div style="font-size:13px;color:#fff"><strong>'+c+'g</strong> net carbs</div>':'')
+      +(cal?'<div style="font-size:13px;color:#fff"><strong>'+cal+' kcal</strong> calories</div>':'')
       +'</div>'
       +'<div style="display:flex;gap:8px">'
       +'<button onclick="applyGoalSuggestion(\''+sg+'\')" style="flex:1;padding:7px;background:rgba(85,107,47,0.6);color:#fff;border:1px solid rgba(85,107,47,0.8);border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10003; Yes, update my goals</button>'
