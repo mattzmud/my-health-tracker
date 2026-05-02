@@ -1261,6 +1261,8 @@ async function pageJumpDate(page,when,btn){
   vitalsRangeMode=false;vitalsRangeStart=null;vitalsRangeEnd=null;
   const date=when==='today'?TODAY:getYesterday();
   viewDate=date;
+  // Force fresh load when user explicitly navigates to a date
+  _loadedDates.delete(date);
   await ensureDateLoaded(viewDate);
   if(page==='vitals')await ensureVitalsLoaded(viewDate);
   const label=when==='today'?'Today':'Yesterday';
@@ -1295,6 +1297,8 @@ async function applyPageDate(page){
   if(!val||val>TODAY)return;
   vitalsRangeMode=false;
   viewDate=val;
+  // Force fresh load for explicitly picked dates
+  _loadedDates.delete(val);
   await ensureDateLoaded(viewDate);
   if(page==='vitals')await ensureVitalsLoaded(viewDate);
   updateDateNav();
@@ -2432,38 +2436,29 @@ function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML='';
   const entries=cache.food[viewDate]||[];
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0);
   const p=window._profile||{};
   const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100;
+  // Update log title
+  const logTitle=document.getElementById('food-log-title');
+  if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
+  // Update all progress bars and totals (single pass)
+  const calg2=(cache.food[viewDate]&&cache.food[viewDate]._adjustedCalGoal)||p.calorieGoal||2000;
   document.getElementById('food-protein-total').textContent=Math.round(tp)+'g';
   document.getElementById('food-water-total').textContent=Math.round(tw)+' oz';
   document.getElementById('food-carb-total').textContent=Math.round(tc)+'g';
+  document.getElementById('food-cal-total').textContent=Math.round(tcal)+' kcal';
   document.getElementById('food-protein-goal-label').textContent='/ '+pg+'g goal';
   document.getElementById('food-water-goal-label').textContent='/ '+wg+' oz goal';
   document.getElementById('food-carb-goal-label').textContent='/ '+cg+'g limit';
+  document.getElementById('food-cal-goal-label').textContent='/ '+calg2+' kcal limit';
   document.getElementById('food-prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
   document.getElementById('food-prog-water').style.width=Math.min(100,(tw/wg)*100)+'%';
-  // Carb bar turns red if over limit
-  const carbPct=Math.min(100,(tc/cg)*100);
   const carbBar=document.getElementById('food-prog-carb');
-  carbBar.style.width=carbPct+'%';
+  carbBar.style.width=Math.min(100,(tc/cg)*100)+'%';
   carbBar.style.background=tc>cg?'var(--red)':'var(--amber)';
-  // Update log title to reflect date
-    const logTitle=document.getElementById('food-log-title');
-  if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
-
-  // Update food page progress bars (calories too)
-  const p2=window._profile||{};
-  const pg2=p2.proteinGoal||120,cg2=p2.carbGoal||100,wg2=p2.waterGoal||80;
-  const calg2=(cache.food[viewDate]&&cache.food[viewDate]._adjustedCalGoal)||p2.calorieGoal||2000;
-  const el2f=document.getElementById('food-prog-protein');if(el2f)el2f.style.width=Math.min(100,(tp/pg2)*100)+'%';
-  const el2c=document.getElementById('food-prog-carb');if(el2c){el2c.style.width=Math.min(100,(tc/cg2)*100)+'%';el2c.style.background=tc>cg2?'var(--red)':'var(--amber)';}  
-  const el2w=document.getElementById('food-prog-water');if(el2w)el2w.style.width=Math.min(100,(tw/wg2)*100)+'%';
-  const el2cal=document.getElementById('food-prog-cal');if(el2cal){el2cal.style.width=Math.min(100,(tcal/calg2)*100)+'%';el2cal.style.background=tcal>calg2?'var(--red)':'rgba(192,57,43,0.6)';}
-  const el2pl=document.getElementById('food-protein-total');if(el2pl)el2pl.textContent=Math.round(tp)+'g';
-  const el2cl=document.getElementById('food-carb-total');if(el2cl)el2cl.textContent=Math.round(tc)+'g';
-  const el2wl=document.getElementById('food-water-total');if(el2wl)el2wl.textContent=Math.round(tw)+' oz';
-  const el2call=document.getElementById('food-cal-total');if(el2call)el2call.textContent=Math.round(tcal)+' kcal';
+  const calBar=document.getElementById('food-prog-cal');
+  if(calBar){calBar.style.width=Math.min(100,(tcal/calg2)*100)+'%';calBar.style.background=tcal>calg2?'var(--red)':'rgba(192,57,43,0.6)';}
   // Calorie adjustment note
   const adjNote=document.getElementById('calorie-adjust-note');
   if(adjNote&&cache.food[viewDate]&&cache.food[viewDate]._adjustedCalGoal&&viewDate===TODAY){
