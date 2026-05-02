@@ -2526,13 +2526,13 @@ async function logFood(){
         calories:macros.calories,
         water:0,
         ts:Date.now()+i,
-        source:usda?'usda':'ai',
+        source:usda?(usda.source||'usda'):'ai',
       });
     });
     await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
     document.getElementById('food-input').value='';
-    renderFoodEntries();// update log entries first
-    document.getElementById('food-feedback').innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));// set AFTER render so it isn't cleared
+    renderFoodEntries();// update log entries
+    if(displayText)setTimeout(()=>{const fb=document.getElementById('food-feedback');if(fb)fb.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));},50);
   }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
 }
