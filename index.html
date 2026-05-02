@@ -2608,27 +2608,41 @@ async function logExtraActivity(){
   document.getElementById('extra-activity-input').value='';
   renderExtraActivities();
   try{
-    // Check if any planned exercises have been checked off today
-    const donePlan=Object.values(cache.fitness[viewDate]||{}).filter(v=>v===true).length;
     const plannedExercises=((window._profile&&window._profile.workoutPlan)||[])
       .find(d=>d.day===getActiveFitnessDay());
     const plannedDesc=plannedExercises&&!plannedExercises.rest
       ?(plannedExercises.exercises||[]).map(e=>e.name).join(', ')
       :'rest day';
-    const hasCheckedPlan=donePlan>0;
+    // Check if a previous extra was already swapped in — if so, planned work is "covered"
+    const existingExtras=(cache.fitness[viewDate]&&cache.fitness[viewDate].extras)||[];
+    const alreadySwapped=existingExtras.some(e=>e.swappedIn);
+    // Only count manual checkboxes that exist BEFORE this entry was added
+    // (exclude auto-checked boxes from a swap)
+    const autoSwapped=!!(cache.fitness[viewDate]&&cache.fitness[viewDate]._autoSwapped);
+    // Only count manually checked boxes — exclude auto-filled ones from a swap
+    const manuallyChecked=!alreadySwapped&&!autoSwapped&&Object.entries(cache.fitness[viewDate]||{})
+      .filter(([k,v])=>k!=='extras'&&k!=='_autoSwapped'&&v===true).length>0;
+    const planStatus=alreadySwapped
+      ?'A previous extra activity was already swapped in for the planned workout — planned workout is covered.'
+      :autoSwapped
+        ?'The user swapped a previous extra activity in for their planned workout — do NOT count those auto-checked boxes as separate completed workouts. Treat as if planned workout is covered by the swap only.'
+        :manuallyChecked
+          ?'The user has manually checked off planned exercises today.'
+          :'The user has NOT completed their planned workout yet today.';
     const res=await callAI(
-      'I just logged this activity: "'+raw+'"\n'
-      +'My planned workout for today is: '+plannedDesc+'\n'
-      +'I have '+(hasCheckedPlan?'already checked off some planned exercises today':'NOT checked off any planned exercises yet today')+'\n'
-      +'My current base calorie goal is '+(window._profile?.calorieGoal||2000)+' kcal/day.',
+      'I just logged this extra activity: "'+raw+'"\n'
+      +'My planned workout for today: '+plannedDesc+'\n'
+      +planStatus+'\n'
+      +'My base calorie goal: '+(window._profile?.calorieGoal||2000)+' kcal/day.',
       'You are a fitness coach. '+buildUserContext()+'\n\n'
       +'Give warm, encouraging feedback (2-3 sentences).\n\n'
       +'IMPORTANT calorie adjustment rules:\n'
-      +'- Only suggest CALORIE_ADJUST if the logged activity is genuinely strenuous (>200 cal burned)\n'
-      +'- If the user has NOT checked off any planned exercises yet, DO NOT adjust calories — they may still do their planned workout. In this case, ask if this replaces their planned workout or is additional.\n'
-      +'- If the user HAS checked off planned exercises, you may adjust calories if the extra activity is strenuous.\n'
-      +'- If this activity is comparable to their planned workout, end with: SWAP_OFFER:{"msg":"This looks similar to your planned workout. Would you like to swap it in?"}'
-      +'\n- If adjusting calories: CALORIE_ADJUST:{"burned":250,"newGoal":2400}\n'
+      +'- Only suggest CALORIE_ADJUST if the activity is genuinely strenuous (>200 cal burned) AND the planned workout is already covered (swapped or manually checked).\n'
+      +'- If the planned workout is NOT yet done and this looks like it could replace it, offer a swap instead of adjusting calories.\n'
+      +'- If a swap was already done earlier today, treat the plan as covered — this is truly extra work.\n'
+      +'- NEVER double-count: if a swap already happened, do not suggest another calorie adjustment for the same planned workout.\n'
+      +'- If this looks comparable to the planned workout AND no swap has happened yet: SWAP_OFFER:{"msg":"This looks similar to your planned workout. Would you like to swap it in?"}\n'
+      +'- If adjusting calories: CALORIE_ADJUST:{"burned":250,"newGoal":2400}\n'
       +'Under 120 words total. Only include tags when relevant.'
     );
     // Handle swap offer
@@ -2647,7 +2661,9 @@ async function logExtraActivity(){
     }
     // Handle calorie adjustment — only if no planned exercises pending OR user already did plan
     const adjMatch=res.match(/CALORIE_ADJUST:\{[^}]+\}/);
-    if(adjMatch&&viewDate===TODAY&&(hasCheckedPlan||plannedDesc==='rest day')){
+    // Never adjust calories just because of auto-checked boxes from a swap
+    const planCovered=alreadySwapped||manuallyChecked||plannedDesc==='rest day';
+    if(adjMatch&&viewDate===TODAY&&planCovered&&!autoSwapped){
       try{
         const adj=JSON.parse(adjMatch[0].replace('CALORIE_ADJUST:',''));
         if(adj.newGoal&&adj.newGoal>0){
@@ -2658,8 +2674,12 @@ async function logExtraActivity(){
         }
       }catch(e){}
     }
-    const displayText=res.replace(/CALORIE_ADJUST:\{[^}]+\}/,'').replace(/SWAP_OFFER:\{[^}]+\}/,'').trim();
-    // Save feedback to entry
+    // Strip tags and the swap question from stored feedback
+    const displayText=res
+      .replace(/CALORIE_ADJUST:\{[^}]+\}/,'')
+      .replace(/SWAP_OFFER:\{[^}]+\}/,'')
+      .replace(/would you like (to )?swap.*?\?/gi,'')
+      .trim();
     entry.feedback=displayText;
     cache.fitness[viewDate].extras[cache.fitness[viewDate].extras.length-1]=entry;
     await fbSet('fitness',viewDate,cache.fitness[viewDate]);
@@ -2674,17 +2694,71 @@ function renderExtraActivities(){
   const el=document.getElementById('extra-activity-history');if(!el)return;
   const extras=(cache.fitness[viewDate]&&cache.fitness[viewDate].extras)||[];
   if(!extras.length){el.innerHTML='';return;}
-  el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:8px">Other activities logged</div>'
+  el.innerHTML='<div style="font-size:13px;font-weight:500;color:var(--text);margin-bottom:12px">Other activities logged</div>'
     +extras.slice().reverse().map(e=>{
-      const swapNote=e.swapOffered?'<div style="font-size:11px;color:var(--amber);margin-top:2px">'+escHtml(e.swapNote||'')+'</div>':'';
-      const aiNote=e.feedback?'<div style="font-size:11px;color:var(--muted);margin-top:2px;font-style:italic">'+escHtml(e.feedback.slice(0,80))+'...</div>':'';
-      return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'
+      // Feedback: full text, but strip the swap question since we handle that with buttons
+      const cleanFeedback=(e.feedback||'')
+        .replace(/would you like (to )?swap.*?\?/gi,'')
+        .replace(/\s{2,}/g,' ').trim();
+
+      // Status line — shows after swap is resolved
+      let statusHtml='';
+      if(e.swappedIn){
+        statusHtml='<div style="font-size:12px;color:var(--accent);margin-top:8px;padding:6px 10px;background:rgba(85,107,47,0.08);border-radius:6px">&#10003; This activity was swapped in for your planned workout.</div>';
+      } else if(e.markedAdditional){
+        statusHtml='<div style="font-size:12px;color:var(--muted);margin-top:8px;padding:6px 10px;background:var(--surface2);border-radius:6px">&#10133; This was recorded as an extra activity.</div>';
+      } else if(e.swapOffered){
+        // Still pending — show swap buttons
+        statusHtml='<div style="margin-top:10px;padding:10px;background:rgba(138,106,26,0.08);border:1px solid rgba(138,106,26,0.2);border-radius:8px">'
+          +'<div style="font-size:12px;color:var(--amber);margin-bottom:8px">&#127919; This looks similar to your planned workout. What would you like to do?</div>'
+          +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+          +'<button data-ts="'+e.ts+'" onclick="handleSwapDecision(parseInt(this.dataset.ts),true)" style="flex:1;padding:7px 12px;background:rgba(85,107,47,0.1);border:1px solid rgba(85,107,47,0.3);border-radius:6px;font-size:12px;font-weight:600;color:var(--accent);cursor:pointer;font-family:var(--font-body)">&#10003; Swap in for planned workout</button>'
+          +'<button data-ts="'+e.ts+'" onclick="handleSwapDecision(parseInt(this.dataset.ts),false)" style="flex:1;padding:7px 12px;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;font-size:12px;color:var(--text);cursor:pointer;font-family:var(--font-body)">&#10133; Keep as extra</button>'
+          +'</div></div>';
+      }
+
+      return '<div style="padding:12px 0;border-bottom:1px solid var(--border)">'
         +'<div style="display:flex;align-items:flex-start;gap:10px">'
-        +'<div style="flex:1;font-size:13px;color:var(--text)">'+escHtml(e.text)+'</div>'
-        +'<div style="font-size:11px;color:var(--muted);flex-shrink:0">'+new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
-        +'<button data-ts="'+e.ts+'" onclick="deleteExtraActivity(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px">&#215;</button>'
-        +'</div>'+swapNote+'</div>';
+        +'<div style="flex:1">'
+        +'<div style="font-size:13.5px;font-weight:500;color:var(--text)">'+escHtml(e.text)+'</div>'
+        +'<div style="font-size:11px;color:var(--muted);margin-top:2px">'+new Date(e.ts).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})+'</div>'
+        +(cleanFeedback?'<div style="font-size:13px;color:var(--muted);margin-top:6px;line-height:1.6">'+escHtml(cleanFeedback)+'</div>':'')
+        +statusHtml
+        +'</div>'
+        +'<button data-ts="'+e.ts+'" onclick="deleteExtraActivity(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 2px;flex-shrink:0">&#215;</button>'
+        +'</div></div>';
     }).join('');
+}
+
+async function handleSwapDecision(ts, doSwap){
+  const extras=cache.fitness[viewDate]&&cache.fitness[viewDate].extras;
+  if(!extras)return;
+  const entry=extras.find(e=>e.ts===ts);
+  if(!entry)return;
+
+  if(doSwap){
+    entry.swappedIn=true;entry.swapOffered=false;
+    // Auto-check off all planned exercises for this day
+    const plan=(window._profile&&window._profile.workoutPlan)||[];
+    const dayPlan=plan.find(d=>d.day===getActiveFitnessDay());
+    if(dayPlan&&dayPlan.exercises&&dayPlan.exercises.length){
+      dayPlan.exercises.forEach(ex=>{
+        const key='ex-'+ex.name.replace(/\s+/g,'-').toLowerCase();
+        if(!cache.fitness[viewDate])cache.fitness[viewDate]={};
+        cache.fitness[viewDate][key]=true;
+      });
+      // Mark that checkboxes were auto-filled by a swap — not manually done
+      cache.fitness[viewDate]._autoSwapped=true;
+    }
+  } else {
+    entry.markedAdditional=true;entry.swapOffered=false;
+  }
+
+  // Save and re-render
+  await fbSet('fitness',viewDate,cache.fitness[viewDate]);
+  renderExtraActivities();
+  renderFitnessDay();// update checkboxes
+  refreshDashboard();// update fitness progress bar
 }
 
 async function deleteExtraActivity(ts){
