@@ -895,6 +895,21 @@ const auth = getAuth(fbApp);
 onAuthStateChanged(auth, async user => {
   if (user) {
     window._uid = user.uid;
+    // Stamp root user document so admin panel can enumerate users
+    (async()=>{
+      try{
+        const _ua2=navigator.userAgent;
+        const _dev2=/iPhone/.test(_ua2)?'iPhone':/iPad/.test(_ua2)?'iPad':/Android/.test(_ua2)?'Android':/Mac/.test(_ua2)?'Mac':/Windows/.test(_ua2)?'Windows':'Unknown';
+        const _brw2=/CriOS|Chrome/.test(_ua2)?'Chrome':/Safari/.test(_ua2)?'Safari':/Firefox/.test(_ua2)?'Firefox':/Edg/.test(_ua2)?'Edge':'Unknown';
+        const _tok=await user.getIdToken();
+        const _now=new Date().toISOString().split('T')[0];
+        await fetch(`https://firestore.googleapis.com/v1/projects/my-health-tracker-d8d0d/databases/(default)/documents/users/${user.uid}?updateMask.fieldPaths=lastSeen&updateMask.fieldPaths=device&updateMask.fieldPaths=browser`,{
+          method:'PATCH',
+          headers:{'Authorization':'Bearer '+_tok,'Content-Type':'application/json'},
+          body:JSON.stringify({fields:{lastSeen:{stringValue:_now},device:{stringValue:_dev2},browser:{stringValue:_brw2}}})
+        });
+      }catch(e){}
+    })();
     // Save last login timestamp + device/browser info
     const _ua=navigator.userAgent;
     const _dev=/iPhone/.test(_ua)?'iPhone':/iPad/.test(_ua)?'iPad':/Android/.test(_ua)?'Android':/Mac/.test(_ua)?'Mac':/Windows/.test(_ua)?'Windows':'Unknown';

@@ -329,7 +329,8 @@ window.loadUsers=async function(){
 
 async function loadUserData(uid){
   try{
-    const[sData,vData,lData,aData]=await Promise.all([
+    const[rootData,sData,vData,lData,aData]=await Promise.all([
+      fsGet(`users/${uid}`).then(d=>fsFields(d)).catch(()=>({})),
       fsGet(`users/${uid}/profile/survey`).then(d=>fsFields(d)).catch(()=>({})),
       fsGet(`users/${uid}/vitals/settings`).then(d=>fsFields(d)).catch(()=>({})),
       fsGet(`users/${uid}/profile/lastLogin`).then(d=>fsFields(d)).catch(()=>({})),
@@ -340,8 +341,10 @@ async function loadUserData(uid){
       createdAt:sData.createdAt||null,
       trackMeds:sData.trackMeds!==false,
       trackBP:vData.trackBP||false,trackBS:vData.trackBS||false,
-      lastLoginDate:lData.date||null,lastLoginTs:lData.ts||null,
-      device:lData.device||null,browser:lData.browser||null,
+      lastLoginDate:lData.date||rootData.lastSeen||null,
+      lastLoginTs:lData.ts||null,
+      device:lData.device||rootData.device||null,
+      browser:lData.browser||rootData.browser||null,
       avatarImg:aData.img||null};
   }catch(e){console.error('loadUserData error for',uid,e.message);return null;}
 }
