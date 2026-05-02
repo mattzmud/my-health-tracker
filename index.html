@@ -3261,7 +3261,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nIf the user asks about their recommended daily nutrition goals (protein, water, carbs), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":140,"waterGoal":96,"carbGoal":80}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nIf the user asks about their recommended daily nutrition goals (protein, water, carbs), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":140,"waterGoal":96,"carbGoal":80}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
@@ -3271,16 +3271,18 @@ async function sendChat(){
     if(reply.includes('RECIPE_INGREDIENTS:')){try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}}
     let suggestedGoals=null;
     if(reply.includes('GOALS_SUGGESTION:')){try{const m=reply.match(/GOALS_SUGGESTION:(\{[^}]+\})/);if(m)suggestedGoals=JSON.parse(m[1]);}catch(e){}}
+    let suggestedDOB=null;
+    if(reply.includes('DOB_UPDATE:')){try{const m=reply.match(/DOB_UPDATE:(\{[^}]+\})/);if(m)suggestedDOB=JSON.parse(m[1]);}catch(e){}}
     chatHistory.push({role:'assistant',content:reply});
     await saveMessageToSession('assistant',reply);
     document.getElementById(tid)?.remove();
-    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').trim();
-    addChatMsgDOM('ai',cleanReply,ingredients,suggestedGoals);
+    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').replace(/DOB_UPDATE:\{[^}]+\}/,'').trim();
+    addChatMsgDOM('ai',cleanReply,ingredients,suggestedGoals,suggestedDOB);
   }catch(e){document.getElementById(tid)?.remove();addChatMsgDOM('ai','Sorry, connection issue. Please try again!');}
   btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 }
 
-function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null){
+function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null,suggestedDOB=null){
   const ca=document.getElementById('chat-area');
   let extra='';
   if(role==='ai'&&ingredients&&ingredients.length){
@@ -3302,6 +3304,20 @@ function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null){
       +'<button onclick="document.getElementById(\'goal-suggestion-card\').remove()" style="flex:1;padding:7px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--font-body)">No thanks</button>'
       +'</div></div>';
   }
+  if(role==='ai'&&suggestedDOB&&suggestedDOB.dob){
+    const dob=suggestedDOB.dob;
+    const formatted=new Date(dob+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+    const age=computeAge(dob);
+    const enc=encodeURIComponent(dob);
+    extra+='<div id="dob-confirm-card" style="margin-top:12px;padding:12px;background:rgba(85,107,47,0.15);border:1px solid rgba(85,107,47,0.3);border-radius:8px">'
+      +'<div style="font-size:12px;color:rgba(255,255,255,0.7);margin-bottom:8px">&#127874; Confirm date of birth</div>'
+      +'<div style="font-size:15px;font-weight:600;color:#fff;margin-bottom:4px">'+formatted+'</div>'
+      +'<div style="font-size:12px;color:rgba(255,255,255,0.6);margin-bottom:10px">Age: '+age+'</div>'
+      +'<div style="display:flex;gap:8px">'
+      +'<button data-dob="'+enc+'" onclick="applyDOBUpdate(this.dataset.dob)" style="flex:1;padding:7px;background:rgba(85,107,47,0.6);color:#fff;border:1px solid rgba(85,107,47,0.8);border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10003; Yes, that&#39;s correct</button>'
+      +'<button data-id="dob-confirm-card" onclick="document.getElementById(this.dataset.id).remove()" style="flex:1;padding:7px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--font-body)">Not quite</button>'
+      +'</div></div>';
+  }
   ca.innerHTML+='<div class="msg '+role+'"><div class="msg-avatar">'+(role==='ai'?'&#127807;':'&#128100;')+'</div><div class="msg-bubble">'+escHtml(text)+extra+'</div></div>';
   ca.scrollTop=ca.scrollHeight;
 }
@@ -3309,6 +3325,22 @@ function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null){
 function addChatMsg(role,text,ingredients=null,goals=null){addChatMsgDOM(role,text,ingredients,goals);}
 function chatKeydown(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
 function quickPrompt(t){document.getElementById('chat-input').value=t;sendChat();showSection('chat');}
+
+async function applyDOBUpdate(encodedDob){
+  if(!window._profile)return;
+  const dob=decodeURIComponent(encodedDob);
+  const age=computeAge(dob);
+  if(!age||age<13||age>120){alert('Invalid date of birth.');return;}
+  window._profile.dob=dob;
+  window._profile.age=age;
+  await fbSet('profile','survey',window._profile);
+  const card=document.getElementById('dob-confirm-card');
+  const formatted=new Date(dob+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'});
+  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);text-align:center;padding:4px">&#10003; Date of birth updated to '+formatted+'</div>';
+  // Hide the profile entry card since DOB is now set
+  const dobCard=document.getElementById('dob-entry-card');
+  if(dobCard)dobCard.style.display='none';
+}
 
 async function applyGoalSuggestion(encoded){
   if(!window._profile)return;
