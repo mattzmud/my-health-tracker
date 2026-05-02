@@ -1552,25 +1552,41 @@ async function lookupUSDA(query){
     // Scale from per-100g to per-serving for Branded foods
     const servingG=best.servingSize||100;
     const unit=(best.servingSizeUnit||'g').toLowerCase();
-    // Scale from per-100 units to per-serving
+    // Only scale Branded entries (per 100g) — SR Legacy/Foundation are already per-serving
     const isGram=unit==='g'||unit==='grm'||unit==='gram'||unit==='grams';
     const isML=unit==='ml'||unit==='mlt'||unit==='milliliter'||unit==='milliliters';
-    const scale=(best.dataType==='Branded'&&(isGram||isML))?servingG/100:1;
+    const isBranded=best.dataType==='Branded';
+    const scale=(isBranded&&(isGram||isML))?servingG/100:1;
 
-    // Brand sanity check — if query mentions a brand and it doesn't match, reject
+    // Brand sanity check — reject if matched brand not mentioned in query
     const brandLower=(best.brandOwner||best.brandName||'').toLowerCase();
     const brandWords=brandLower.split(/\s+/).filter(w=>w.length>2);
     const queryMentionsBrand=brandWords.some(w=>qLower.includes(w));
-    // If brand words exist but none appear in query, lower confidence threshold
-    const effectiveScore=brandWords.length>0&&!queryMentionsBrand?bestScore*0.6:bestScore;
+    // Strong brand signals — if these appear in query, brand MUST match
+    const strongBrands=['starbucks','mcdonald','chipotle','subway','dunkin','chick-fil','taco bell','panera'];
+    const queryHasStrongBrand=strongBrands.some(b=>qLower.includes(b));
+    const strongBrandMatch=queryHasStrongBrand&&brandWords.some(w=>qLower.includes(w));
+    if(queryHasStrongBrand&&!strongBrandMatch){
+      console.log('[USDA] Rejected — strong brand in query not matched by',best.brandOwner);
+      return null;
+    }
+    const effectiveScore=isBranded&&brandWords.length>0&&!queryMentionsBrand?bestScore*0.6:bestScore;
     if(effectiveScore<0.5){
       console.log('[USDA] Rejected "'+best.description+'" — brand mismatch ('+best.brandOwner+'), effective score='+effectiveScore.toFixed(2));
       return null;
     }
 
-    const calories=Math.round((raw.calories||0)*scale);
+    let calories=Math.round((raw.calories||0)*scale);
     const protein=Math.round((raw.protein||0)*scale*10)/10;
     const carbs=Math.round((raw.carbs||0)*scale*10)/10;
+
+    // If calories missing, estimate from macros (4/4/9 kcal per g protein/carbs/fat)
+    if(!calories&&protein){
+      const rawFat=(best.foodNutrients||[]).find(n=>(n.nutrientName||'').toLowerCase().includes('total lipid'));
+      const fat=Math.round(((rawFat?.value||0)*scale)*10)/10;
+      calories=Math.round(protein*4+carbs*4+fat*9);
+      console.log('[USDA] Calculated calories from macros:',calories);
+    }
 
     if(!calories&&!protein)return null;
 
