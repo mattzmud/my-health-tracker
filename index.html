@@ -658,6 +658,10 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border);font-size:12px;color:var(--muted);line-height:1.6">
             &#128172; Have questions about your plan or want to make changes? Chat with your <button onclick="showSection('chat')" style="background:none;border:none;color:var(--accent);cursor:pointer;font-size:12px;font-family:var(--font-body);padding:0;text-decoration:underline">Health Coach</button> any time — they know your full profile and can update your plan on the spot.
           </div>
+          <div id="plan-history-section" style="display:none;margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+            <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:10px">Plan history</div>
+            <div id="plan-history-list"></div>
+          </div>
         </div>
       </div>
 
@@ -1785,9 +1789,12 @@ async function triggerGeneratePlan(btn){
   // generateWellnessPlan will update the plan-card contents when done
 }
 
-async function generateWellnessPlan(showModal=false){
+async function generateWellnessPlan(showModal=false,reason='Plan updated'){
   const p=window._profile;if(!p)return;
   try{
+    const prevPlan=p.wellnessPlan;
+    const prevGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000};
+
     const plan=await callAI(
       'Create a clear, personalized wellness plan for:\n'+buildUserContext()
       +(p.currentCalories?'\nCurrently consuming approximately '+p.currentCalories+' calories/day (user self-reported)':'')
@@ -1801,17 +1808,48 @@ async function generateWellnessPlan(showModal=false){
       'You are a health coach creating a personalized wellness plan. Be specific and encouraging.'
     );
     const cleaned=plan.replace(/```/g,'').trim();
-    const record={text:cleaned,updatedAt:new Date().toISOString().split('T')[0]};
+
+    // Build change summary
+    const currGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000};
+    let changeSummary='Initial plan created.';
+    if(prevPlan&&prevPlan.text){
+      const diffs=[];
+      if(currGoals.protein!==prevGoals.protein)diffs.push('Protein '+prevGoals.protein+'g→'+currGoals.protein+'g');
+      if(currGoals.water!==prevGoals.water)diffs.push('Water '+prevGoals.water+'oz→'+currGoals.water+'oz');
+      if(currGoals.carbs!==prevGoals.carbs)diffs.push('Carbs '+prevGoals.carbs+'g→'+currGoals.carbs+'g');
+      if(currGoals.calories!==prevGoals.calories)diffs.push('Calories '+prevGoals.calories+'→'+currGoals.calories+' kcal');
+      try{
+        const synopsis=await callAI(
+          'Old goals: protein '+prevGoals.protein+'g, water '+prevGoals.water+' oz, carbs '+prevGoals.carbs+'g, calories '+prevGoals.calories+' kcal\n'
+          +'New goals: protein '+currGoals.protein+'g, water '+currGoals.water+' oz, carbs '+currGoals.carbs+'g, calories '+currGoals.calories+' kcal\n'
+          +'Reason: '+reason+'\n'
+          +(diffs.length?'Changes: '+diffs.join(', '):'No numeric changes.')
+          +'\nWrite ONE sentence max 20 words summarizing what changed and why.',
+          'Concise health coach. One sentence, no preamble.'
+        );
+        changeSummary=(diffs.length?diffs.join(' · ')+' — ':'')+synopsis.replace(/```/g,'').trim();
+      }catch(e){changeSummary=diffs.length?diffs.join(' · '):reason;}
+    }
+
+    const now=new Date().toISOString();
+    const record={text:cleaned,updatedAt:now.split('T')[0],updatedTs:now,reason,changeSummary};
     window._profile.wellnessPlan=record;
+
+    // Rolling history max 10
+    if(!window._profile.planHistory)window._profile.planHistory=[];
+    window._profile.planHistory.unshift(record);
+    if(window._profile.planHistory.length>10)window._profile.planHistory.splice(10);
+
     await fbSet('profile','survey',window._profile);
-    // Update profile display if visible
+    // Update profile display
     const planEl=document.getElementById('plan-text');
     const planDate=document.getElementById('plan-updated-date');
     const planCard=document.getElementById('plan-card');
-    const planBody=document.getElementById('plan-body');
     if(planEl)planEl.textContent=cleaned;
     if(planDate)planDate.textContent='Updated '+record.updatedAt;
     if(planCard)planCard.style.display='block';
+    // Refresh history section if profile is visible
+    if(document.getElementById('plan-history-list'))renderProfile();
     // Show modal on first load
     if(showModal){
       const modal=document.createElement('div');
@@ -3464,6 +3502,22 @@ function renderProfile(){
     if(planCard){planCard.style.display='block';planCard.classList.add('collapsed');}
     if(planEl)planEl.textContent=p.wellnessPlan.text;
     if(planDate)planDate.textContent='Updated '+p.wellnessPlan.updatedAt;
+    const histSection=document.getElementById('plan-history-section');
+    const histList=document.getElementById('plan-history-list');
+    const history=(p.planHistory||[]).slice(1);// skip current — already shown above
+    if(histSection&&histList&&history.length){
+      histSection.style.display='block';
+      histList.innerHTML=history.map(h=>'<div style="padding:10px 0;border-bottom:1px solid var(--border)">'
+        +'<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">'
+        +'<div style="font-size:12px;font-weight:600;color:var(--text)">'+(h.updatedAt||'')+'</div>'
+        +'<div style="font-size:11px;color:var(--muted)">'+escHtml(h.reason||'')+'</div>'
+        +'</div>'
+        +(h.changeSummary?'<div style="font-size:12px;color:var(--accent);margin-bottom:6px;line-height:1.5">'+escHtml(h.changeSummary)+'</div>':'')
+        +'<details style="margin-top:2px"><summary style="font-size:12px;color:var(--muted);cursor:pointer;user-select:none">View full plan text</summary>'
+        +'<div style="font-size:12px;color:var(--text);line-height:1.7;margin-top:8px;white-space:pre-wrap;padding:8px;background:var(--surface2);border-radius:6px">'+escHtml(h.text||'')+'</div>'
+        +'</details></div>'
+      ).join('');
+    }else if(histSection){histSection.style.display='none';}
     const genBtn=document.getElementById('plan-generate-btn');
     if(genBtn)genBtn.remove();
     // Populate goal tiles
@@ -4019,7 +4073,7 @@ async function sendChat(){
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
-      try{const m=reply.match(/WORKOUT_UPDATE:(\{[\s\S]*?\})\s*(?=RECIPE|$)/);if(m){const p=JSON.parse(m[1]);if(p.plan){window._profile.workoutPlan=p.plan;await fbSet('profile','survey',window._profile);renderFitness();generateWellnessPlan(false);}}}catch(e){}
+      try{const m=reply.match(/WORKOUT_UPDATE:(\{[\s\S]*?\})\s*(?=RECIPE|$)/);if(m){const p=JSON.parse(m[1]);if(p.plan){window._profile.workoutPlan=p.plan;await fbSet('profile','survey',window._profile);renderFitness();generateWellnessPlan(false,'Workout plan updated');}}}catch(e){}
     }
     let ingredients=null;
     if(reply.includes('RECIPE_INGREDIENTS:')){try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}}
@@ -4028,7 +4082,7 @@ async function sendChat(){
     let suggestedDOB=null;
     if(reply.includes('DOB_UPDATE:')){try{const m=reply.match(/DOB_UPDATE:(\{[^}]+\})/);if(m)suggestedDOB=JSON.parse(m[1]);}catch(e){}}
     // Regenerate plan whenever coach discusses/confirms goals or plan
-    if(reply.includes('PLAN_REFRESH:true')){generateWellnessPlan(false);}
+    if(reply.includes('PLAN_REFRESH:true')){generateWellnessPlan(false,'Goals reviewed with coach');}
     chatHistory.push({role:'assistant',content:reply});
     await saveMessageToSession('assistant',reply);
     document.getElementById(tid)?.remove();

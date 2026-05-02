@@ -11,12 +11,13 @@
 *{box-sizing:border-box;margin:0;padding:0;}
 :root{
   --bg:#f5f0e8;--surface:#faf7f2;--surface2:#ede8de;
-  --nav-bg:#e8e0d0;--border:#d4cbba;--border2:#c8bfaa;
+  --border:#d4cbba;--border2:#c8bfaa;
   --text:#2c2416;--muted:#7a6f5e;
-  --accent:#556b2f;--accent-light:#7a9a3a;
+  --accent:#556b2f;--accent2:#7a9a3a;
   --red:#c0392b;--amber:#8a6a1a;--blue:#2a5a8a;--purple:#5a3a8a;
-  --green:#556b2f;
-  --font-display:'DM Serif Display',serif;--font-body:'DM Sans',sans-serif;--font-mono:'DM Mono',monospace;
+  --font-display:'DM Serif Display',serif;
+  --font-body:'DM Sans',sans-serif;
+  --font-mono:'DM Mono',monospace;
   --radius:12px;--radius-sm:8px;
   --shadow:0 2px 12px rgba(85,107,47,0.08);
 }
@@ -27,45 +28,38 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
   background:radial-gradient(ellipse at 30% 20%,rgba(85,107,47,0.07) 0%,transparent 60%),var(--bg);}
 .login-card{width:380px;padding:48px 40px;background:var(--surface);border:1px solid var(--border);
   border-radius:var(--radius);box-shadow:var(--shadow);}
-.login-logo{font-family:var(--font-display);font-size:32px;font-weight:400;color:var(--accent);margin-bottom:4px;}
+.login-logo{font-family:var(--font-display);font-size:32px;color:var(--accent);margin-bottom:4px;}
 .login-sub{font-size:13px;color:var(--muted);margin-bottom:36px;}
 .login-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;display:block;margin-bottom:8px;}
 .login-input{width:100%;padding:12px 14px;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm);
   color:var(--text);font-family:var(--font-body);font-size:14px;margin-bottom:16px;transition:border-color 0.2s;}
 .login-input:focus{outline:none;border-color:var(--accent);}
 .login-btn{width:100%;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);
-  font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s,transform 0.1s;}
-.login-btn:hover{background:var(--accent-light);}
-.login-btn:active{transform:scale(0.98);}
+  font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;transition:background 0.2s;}
+.login-btn:hover{background:var(--accent2);}
 .login-error{font-size:13px;color:var(--red);margin-top:12px;text-align:center;min-height:20px;}
 .login-forgot{font-size:12px;color:var(--muted);text-align:center;margin-top:14px;cursor:pointer;text-decoration:underline;}
-.login-forgot:hover{color:var(--accent);}
 
-/* NOT AUTHORIZED */
 #not-authorized{display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:40px;}
-.na-title{font-family:var(--font-display);font-size:24px;color:var(--red);margin-bottom:12px;}
-.na-sub{font-size:14px;color:var(--muted);margin-bottom:24px;}
 
-/* MAIN PANEL */
+/* TOPBAR */
 #admin-panel{display:none;}
 .topbar{position:sticky;top:0;z-index:100;background:rgba(232,224,208,0.95);backdrop-filter:blur(12px);
   border-bottom:1px solid var(--border);padding:0 32px;height:64px;
-  display:flex;align-items:center;justify-content:space-between;
-  box-shadow:0 1px 8px rgba(85,107,47,0.08);}
+  display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 8px rgba(85,107,47,0.08);}
 .topbar-logo{font-family:var(--font-display);font-size:22px;color:var(--accent);}
-.topbar-logo span{color:var(--muted);font-family:var(--font-body);font-weight:400;font-size:13px;margin-left:8px;}
+.topbar-logo span{color:var(--muted);font-family:var(--font-body);font-size:13px;margin-left:8px;}
 .topbar-right{display:flex;align-items:center;gap:16px;}
 .admin-email{font-size:13px;color:var(--muted);}
 .signout-link{font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline;background:none;border:none;font-family:var(--font-body);}
-.signout-link:hover{color:var(--red);}
 
-.main{padding:32px;max-width:960px;margin:0 auto;}
-.page-title{font-family:var(--font-display);font-size:30px;font-weight:400;color:var(--text);margin-bottom:6px;}
+.main{padding:32px;max-width:1000px;margin:0 auto;}
+.page-title{font-family:var(--font-display);font-size:30px;color:var(--text);margin-bottom:6px;}
 .page-sub{font-size:14px;color:var(--muted);margin-bottom:28px;}
 
 .stats-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:28px;}
-.stat-pill{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 20px;box-shadow:var(--shadow);}
-.stat-pill-val{font-family:var(--font-display);font-size:28px;font-weight:400;}
+.stat-pill{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px 20px;}
+.stat-pill-val{font-family:var(--font-display);font-size:28px;}
 .stat-pill-label{font-size:12px;color:var(--muted);margin-top:2px;}
 
 .search-bar{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
@@ -74,76 +68,100 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .search-input:focus{outline:none;border-color:var(--accent);}
 .search-input::placeholder{color:var(--muted);}
 .refresh-btn{padding:10px 18px;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--radius-sm);
-  color:var(--text);font-size:13px;cursor:pointer;white-space:nowrap;font-family:var(--font-body);transition:all 0.2s;}
+  color:var(--text);font-size:13px;cursor:pointer;font-family:var(--font-body);transition:all 0.2s;}
 .refresh-btn:hover{border-color:var(--accent);color:var(--accent);}
 
-.users-grid{display:flex;flex-direction:column;gap:12px;}
-.user-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;
+.users-grid{display:flex;flex-direction:column;gap:10px;}
+.user-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  display:flex;align-items:center;gap:14px;padding:14px 18px;cursor:pointer;
   transition:box-shadow 0.2s,border-color 0.2s;box-shadow:var(--shadow);}
 .user-card:hover{border-color:var(--border2);box-shadow:0 4px 16px rgba(85,107,47,0.12);}
-.user-card-header{display:flex;align-items:center;gap:16px;padding:18px 20px;cursor:pointer;flex-wrap:wrap;}
-.user-avatar{width:48px;height:48px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);
-  flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;}
+.user-avatar{width:44px;height:44px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);
+  flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:18px;}
 .user-avatar img{width:100%;height:100%;object-fit:cover;}
-.user-info{flex:1;min-width:160px;}
-.user-name{font-weight:600;font-size:15px;color:var(--text);}
-.user-email{font-size:13px;color:var(--muted);margin-top:1px;}
-.user-uid{font-family:var(--font-mono);font-size:11px;color:var(--muted);margin-top:3px;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:240px;}
-.user-meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
-.pill{display:inline-flex;align-items:center;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:500;}
+.user-info{flex:1;min-width:0;}
+.user-name{font-weight:600;font-size:14px;color:var(--text);}
+.user-email{font-size:12px;color:var(--muted);}
+.user-uid{font-family:var(--font-mono);font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.user-meta{display:flex;gap:6px;flex-wrap:wrap;}
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:500;}
 .pill-green{background:rgba(85,107,47,0.1);color:var(--accent);}
 .pill-red{background:rgba(192,57,43,0.1);color:var(--red);}
 .pill-amber{background:rgba(138,106,26,0.1);color:var(--amber);}
 .pill-muted{background:rgba(122,111,94,0.1);color:var(--muted);}
-.expand-icon{color:var(--muted);font-size:14px;transition:transform 0.2s;flex-shrink:0;margin-left:auto;}
-.user-card.expanded .expand-icon{transform:rotate(180deg);}
-.user-card-body{display:none;padding:0 20px 20px;border-top:1px solid var(--border);}
-.user-card.expanded .user-card-body{display:block;}
+.arrow-icon{color:var(--muted);font-size:16px;flex-shrink:0;}
 
-.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin:16px 0;}
-.detail-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:4px;}
-.detail-val{font-size:13px;color:var(--text);}
-.detail-val.mono{font-family:var(--font-mono);font-size:12px;word-break:break-all;color:var(--muted);}
+.empty-state{text-align:center;padding:60px 20px;color:var(--muted);}
+.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);
+  border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px;}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-.actions-row{display:flex;gap:10px;flex-wrap:wrap;padding-top:14px;border-top:1px solid var(--border);}
-.action-btn{padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;
-  font-family:var(--font-body);transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;border:1px solid;}
+/* SLIDE-IN PANEL */
+.panel-overlay{position:fixed;inset:0;background:rgba(44,36,22,0.4);z-index:200;
+  opacity:0;transition:opacity 0.25s;pointer-events:none;}
+.panel-overlay.open{opacity:1;pointer-events:all;}
+.side-panel{position:fixed;top:0;right:-100%;width:min(680px,100vw);height:100vh;
+  background:var(--surface);border-left:1px solid var(--border);z-index:201;
+  overflow-y:auto;transition:right 0.3s cubic-bezier(0.4,0,0.2,1);
+  box-shadow:-8px 0 32px rgba(85,107,47,0.1);}
+.side-panel.open{right:0;}
+.panel-header{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--border);
+  padding:18px 24px;display:flex;align-items:center;gap:14px;z-index:10;}
+.panel-avatar{width:48px;height:48px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);
+  flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;}
+.panel-avatar img{width:100%;height:100%;object-fit:cover;}
+.panel-close{margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:4px;}
+.panel-body{padding:24px;}
+
+.panel-section{margin-bottom:24px;}
+.panel-section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
+  letter-spacing:0.08em;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
+.detail-item .detail-label{font-size:11px;color:var(--muted);margin-bottom:3px;}
+.detail-item .detail-val{font-size:13px;color:var(--text);}
+.detail-item .detail-val.mono{font-family:var(--font-mono);font-size:11px;word-break:break-all;}
+
+.action-btn{padding:8px 14px;border-radius:var(--radius-sm);font-size:12px;font-weight:500;cursor:pointer;
+  font-family:var(--font-body);display:inline-flex;align-items:center;gap:6px;border:1px solid;transition:all 0.15s;}
 .action-btn-blue{background:rgba(42,90,138,0.08);border-color:rgba(42,90,138,0.25);color:var(--blue);}
 .action-btn-blue:hover{background:rgba(42,90,138,0.15);}
 .action-btn-red{background:rgba(192,57,43,0.08);border-color:rgba(192,57,43,0.25);color:var(--red);}
 .action-btn-red:hover{background:rgba(192,57,43,0.15);}
 
-.empty-state{text-align:center;padding:60px 20px;color:var(--muted);font-size:14px;}
-.spinner{width:32px;height:32px;border:3px solid var(--border2);border-top-color:var(--accent);
-  border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px;}
-@keyframes spin{to{transform:rotate(360deg)}}
+/* History entries */
+.history-entry{padding:12px 0;border-bottom:1px solid var(--border);}
+.history-date{font-size:12px;font-weight:600;color:var(--text);}
+.history-reason{font-size:11px;color:var(--muted);}
+.history-change{font-size:12px;color:var(--accent);margin-top:4px;line-height:1.5;}
+.history-text{font-size:12px;color:var(--text);line-height:1.7;white-space:pre-wrap;
+  margin-top:8px;padding:8px;background:var(--surface2);border-radius:6px;display:none;}
+.history-toggle{font-size:11px;color:var(--muted);cursor:pointer;margin-top:6px;user-select:none;}
+.history-toggle:hover{color:var(--accent);}
+.history-del{background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0;}
+.history-del:hover{color:var(--red);}
+
+/* Food/fitness/vitals data tables */
+.data-table{width:100%;border-collapse:collapse;font-size:12px;}
+.data-table th{text-align:left;color:var(--muted);font-weight:500;padding:4px 8px;border-bottom:1px solid var(--border);}
+.data-table td{padding:5px 8px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:top;}
+.data-table tr:last-child td{border-bottom:none;}
 
 .toast{position:fixed;bottom:24px;right:24px;padding:12px 18px;background:var(--surface);
   border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;color:var(--text);
-  box-shadow:0 8px 24px rgba(85,107,47,0.15);z-index:999;animation:slideUp 0.2s ease;max-width:320px;}
-.toast.error{border-color:rgba(192,57,43,0.4);color:var(--red);}
-@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  box-shadow:0 4px 16px rgba(85,107,47,0.15);z-index:999;animation:slideUp 0.2s ease;max-width:320px;}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 
 .modal-overlay{position:fixed;inset:0;background:rgba(44,36,22,0.5);display:flex;align-items:center;
-  justify-content:center;z-index:500;backdrop-filter:blur(4px);}
+  justify-content:center;z-index:500;}
 .modal-card{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);
-  padding:32px;max-width:420px;width:90%;box-shadow:0 16px 48px rgba(85,107,47,0.15);}
-.modal-title{font-family:var(--font-display);font-size:22px;font-weight:400;margin-bottom:10px;color:var(--red);}
-.modal-body{font-size:14px;color:var(--muted);line-height:1.7;margin-bottom:24px;}
-.modal-actions{display:flex;gap:10px;}
-.modal-cancel{flex:1;padding:11px;background:var(--surface2);border:1px solid var(--border);
-  border-radius:var(--radius-sm);color:var(--muted);font-family:var(--font-body);font-size:14px;cursor:pointer;}
-.modal-cancel:hover{border-color:var(--border2);}
-.modal-confirm{flex:2;padding:11px;background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.3);
-  border-radius:var(--radius-sm);color:var(--red);font-family:var(--font-body);font-size:14px;font-weight:600;cursor:pointer;}
-.modal-confirm:hover{background:rgba(192,57,43,0.18);}
+  padding:32px;max-width:420px;width:90%;}
+.modal-actions{display:flex;gap:10px;margin-top:20px;}
+.modal-cancel{flex:1;padding:10px;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);color:var(--muted);font-family:var(--font-body);font-size:13px;cursor:pointer;}
+.modal-confirm{flex:2;padding:10px;background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.3);
+  border-radius:var(--radius-sm);color:var(--red);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;}
 
-@media(max-width:600px){
-  .main{padding:16px;}
-  .topbar{padding:0 16px;}
-  .user-uid{max-width:160px;}
-}
+@media(max-width:600px){.main{padding:16px;}.topbar{padding:0 16px;}}
 </style>
 </head>
 <body>
@@ -151,9 +169,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">wp</div>
-    <div class="login-sub">Admin panel — sign in with your admin account</div>
+    <div class="login-sub">Admin panel — authorized access only</div>
     <label class="login-label">Email</label>
-    <input type="email" class="login-input" id="admin-email" placeholder="admin@example.com" onkeydown="if(event.key==='Enter')document.getElementById('admin-pass').focus()"/>
+    <input type="email" class="login-input" id="admin-email-input" placeholder="admin@example.com" onkeydown="if(event.key==='Enter')document.getElementById('admin-pass').focus()"/>
     <label class="login-label">Password</label>
     <input type="password" class="login-input" id="admin-pass" placeholder="Password" onkeydown="if(event.key==='Enter')doAdminLogin()"/>
     <button class="login-btn" onclick="doAdminLogin()" id="login-btn">Sign in →</button>
@@ -162,9 +180,9 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
   </div>
 </div>
 
-<div id="not-authorized">
-  <div class="na-title">Access denied</div>
-  <div class="na-sub">This account does not have admin privileges.<br>Contact the site owner to request access.</div>
+<div id="not-authorized" style="display:none;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;text-align:center;padding:40px;">
+  <div style="font-family:var(--font-display);font-size:24px;color:var(--red);margin-bottom:12px;">Access denied</div>
+  <div style="font-size:14px;color:var(--muted);margin-bottom:24px;">This account does not have admin privileges.</div>
   <button class="login-btn" style="width:200px" onclick="doSignOut()">Sign out</button>
 </div>
 
@@ -178,7 +196,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
   </div>
   <div class="main">
     <div class="page-title">User management</div>
-    <div class="page-sub">View and manage all MyWellpath accounts.</div>
+    <div class="page-sub">View and manage all MyWellpath accounts. Click any user to see full details.</div>
     <div class="stats-row" id="stats-row"></div>
     <div class="search-bar">
       <input class="search-input" id="search-input" placeholder="Search by name, email, or user ID…" oninput="filterUsers()"/>
@@ -187,6 +205,24 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
     <div class="users-grid" id="users-grid">
       <div class="empty-state"><div class="spinner"></div>Loading users…</div>
     </div>
+  </div>
+</div>
+
+<!-- Panel overlay -->
+<div class="panel-overlay" id="panel-overlay" onclick="closePanel()"></div>
+
+<!-- Slide-in detail panel -->
+<div class="side-panel" id="side-panel">
+  <div class="panel-header" id="panel-header">
+    <div class="panel-avatar" id="panel-avatar">👤</div>
+    <div>
+      <div style="font-weight:600;font-size:16px;color:var(--text)" id="panel-name">—</div>
+      <div style="font-size:13px;color:var(--muted)" id="panel-email-label">—</div>
+    </div>
+    <button class="panel-close" onclick="closePanel()">✕</button>
+  </div>
+  <div class="panel-body" id="panel-body">
+    <div class="empty-state"><div class="spinner"></div>Loading…</div>
   </div>
 </div>
 
@@ -203,75 +239,49 @@ const firebaseConfig={
   messagingSenderId:"655023693628",
   appId:"1:655023693628:web:11936ef434649233998839"
 };
-
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
 
 let allUsers=[];
 const PROJECT='my-health-tracker-d8d0d';
-const FS_BASE=`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+const FS=`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+
+async function tok(){return auth.currentUser.getIdToken();}
 
 async function fsGet(path){
-  const token=await auth.currentUser.getIdToken();
-  const r=await fetch(`${FS_BASE}/${path}`,{headers:{Authorization:'Bearer '+token}});
-  if(!r.ok)throw new Error('Firestore GET failed: '+r.status);
+  const r=await fetch(`${FS}/${path}`,{headers:{Authorization:'Bearer '+await tok()}});
+  if(!r.ok)return null;
   return r.json();
 }
-
 async function fsList(path){
-  const token=await auth.currentUser.getIdToken();
-  const r=await fetch(`${FS_BASE}/${path}`,{headers:{Authorization:'Bearer '+token}});
-  if(!r.ok)throw new Error('Firestore LIST failed: '+r.status+' '+await r.text());
-  const data=await r.json();
-  return data.documents||[];
+  const r=await fetch(`${FS}/${path}`,{headers:{Authorization:'Bearer '+await tok()}});
+  if(!r.ok)return[];
+  const d=await r.json();return d.documents||[];
 }
-
 async function fsDelete(path){
-  const token=await auth.currentUser.getIdToken();
-  const r=await fetch(`${FS_BASE}/${path}`,{method:'DELETE',headers:{Authorization:'Bearer '+token}});
-  return r.ok;
+  await fetch(`${FS}/${path}`,{method:'DELETE',headers:{Authorization:'Bearer '+await tok()}});
 }
-
-function fsVal(field){
-  if(!field)return null;
-  if(field.stringValue!==undefined)return field.stringValue;
-  if(field.booleanValue!==undefined)return field.booleanValue;
-  if(field.integerValue!==undefined)return parseInt(field.integerValue);
-  if(field.timestampValue!==undefined)return field.timestampValue;
+function fv(f){
+  if(!f)return null;
+  if(f.stringValue!==undefined)return f.stringValue;
+  if(f.booleanValue!==undefined)return f.booleanValue;
+  if(f.integerValue!==undefined)return parseInt(f.integerValue);
+  if(f.doubleValue!==undefined)return parseFloat(f.doubleValue);
+  if(f.timestampValue!==undefined)return f.timestampValue;
+  if(f.arrayValue)return(f.arrayValue.values||[]).map(fv);
+  if(f.mapValue)return ff(f.mapValue.fields||{});
   return null;
 }
+function ff(fields){const o={};Object.entries(fields||{}).forEach(([k,v])=>o[k]=fv(v));return o;}
+function docId(d){return d.name.split('/').pop();}
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
-function fsFields(doc){
-  const f=doc.fields||{};
-  const out={};
-  Object.entries(f).forEach(([k,v])=>out[k]=fsVal(v));
-  return out;
-}
-
-function docId(doc){
-  return doc.name.split('/').pop();
-}
-
-// ── AUTH STATE ──
+// ── AUTH ──
 onAuthStateChanged(auth,async user=>{
-  if(!user){
-    show('login-screen');return;
-  }
-  console.log('Auth user:', user.uid, user.email);
-  // Check if this user is in the admins collection
-  try{
-    const adminSnap=await getDoc(doc(db,'admins',user.uid));
-    console.log('Admin doc exists:', adminSnap.exists());
-    if(!adminSnap.exists()){
-      show('not-authorized');
-      document.getElementById('admin-email-display').textContent=user.email;
-      return;
-    }
-  }catch(e){
-    console.error('Admin check error:',e.code,e.message);
-  }
-  // Authorized admin
+  if(!user){show('login-screen');return;}
+  const adminSnap=await getDoc(doc(db,'admins',user.uid));
+  if(!adminSnap.exists()){show('not-authorized');return;}
   show('admin-panel');
   document.getElementById('admin-email-display').textContent=user.email;
   loadUsers();
@@ -279,88 +289,64 @@ onAuthStateChanged(auth,async user=>{
 
 function show(id){
   ['login-screen','not-authorized','admin-panel'].forEach(s=>{
-    const el=document.getElementById(s);
-    el.style.display=s===id?(s==='not-authorized'?'flex':s==='login-screen'?'flex':'block'):'none';
+    document.getElementById(s).style.display=s===id?(s==='admin-panel'?'block':'flex'):'none';
   });
 }
 
-// ── LOGIN ──
 window.doAdminLogin=async function(){
-  const email=document.getElementById('admin-email').value.trim();
+  const email=document.getElementById('admin-email-input').value.trim();
   const pass=document.getElementById('admin-pass').value;
   const err=document.getElementById('login-error');
   const btn=document.getElementById('login-btn');
   if(!email||!pass){err.textContent='Please enter email and password.';return;}
   btn.textContent='Signing in…';btn.disabled=true;err.textContent='';
-  try{
-    await signInWithEmailAndPassword(auth,email,pass);
-    // onAuthStateChanged will handle the rest
-  }catch(e){
-    const msgs={'auth/invalid-credential':'Incorrect email or password.','auth/user-not-found':'No account found with that email.','auth/wrong-password':'Incorrect password.','auth/invalid-email':'Please enter a valid email address.'};
+  try{await signInWithEmailAndPassword(auth,email,pass);}
+  catch(e){
+    const msgs={'auth/invalid-credential':'Incorrect email or password.','auth/user-not-found':'No account with that email.','auth/wrong-password':'Incorrect password.'};
     err.textContent=msgs[e.code]||e.message;
   }finally{btn.textContent='Sign in →';btn.disabled=false;}
 };
-
 window.doPasswordReset=async function(){
-  const email=document.getElementById('admin-email').value.trim();
-  if(!email){document.getElementById('login-error').textContent='Enter your email address above first.';return;}
-  try{
-    await sendPasswordResetEmail(auth,email);
-    document.getElementById('login-error').style.color='var(--accent)';
-    document.getElementById('login-error').textContent='Password reset email sent!';
-  }catch(e){
-    document.getElementById('login-error').style.color='var(--red)';
-    document.getElementById('login-error').textContent=e.message;
-  }
+  const email=document.getElementById('admin-email-input').value.trim();
+  if(!email){document.getElementById('login-error').textContent='Enter your email first.';return;}
+  try{await sendPasswordResetEmail(auth,email);document.getElementById('login-error').style.color='var(--accent)';document.getElementById('login-error').textContent='Reset email sent!';}
+  catch(e){document.getElementById('login-error').textContent=e.message;}
 };
-
-window.doSignOut=async function(){
-  await signOut(auth);
-};
+window.doSignOut=async function(){await signOut(auth);};
 
 // ── LOAD USERS ──
 window.loadUsers=async function(){
   document.getElementById('users-grid').innerHTML='<div class="empty-state"><div class="spinner"></div>Loading users…</div>';
   try{
-    const userDocs=await fsList('users');
-    console.log('users found:',userDocs.length);
-    const promises=userDocs.map(d=>loadUserData(docId(d)));
+    const docs=await fsList('users');
+    const promises=docs.map(d=>loadUserSummary(docId(d)));
     allUsers=(await Promise.all(promises)).filter(Boolean).sort((a,b)=>(a.name||'').localeCompare(b.name||''));
-    renderStats();
-    renderUsers(allUsers);
-  }catch(e){
-    console.error('loadUsers error:',e.message);
-    document.getElementById('users-grid').innerHTML=`<div class="empty-state">Error loading users: ${e.message}</div>`;
-  }
+    renderStats();renderUsers(allUsers);
+  }catch(e){document.getElementById('users-grid').innerHTML=`<div class="empty-state">Error: ${e.message}</div>`;}
 };
 
-async function loadUserData(uid){
+async function loadUserSummary(uid){
   try{
-    const[rootData,sData,vData,lData,aData]=await Promise.all([
-      fsGet(`users/${uid}`).then(d=>fsFields(d)).catch(()=>({})),
-      fsGet(`users/${uid}/profile/survey`).then(d=>fsFields(d)).catch(()=>({})),
-      fsGet(`users/${uid}/vitals/settings`).then(d=>fsFields(d)).catch(()=>({})),
-      fsGet(`users/${uid}/profile/lastLogin`).then(d=>fsFields(d)).catch(()=>({})),
-      fsGet(`users/${uid}/profile/avatar`).then(d=>fsFields(d)).catch(()=>({})),
+    const[sData,vsData,lData,aData]=await Promise.all([
+      fsGet(`users/${uid}/profile/survey`).then(d=>d?ff(d.fields):{}),
+      fsGet(`users/${uid}/vitals/settings`).then(d=>d?ff(d.fields):{}),
+      fsGet(`users/${uid}/profile/lastLogin`).then(d=>d?ff(d.fields):{}),
+      fsGet(`users/${uid}/profile/avatar`).then(d=>d?ff(d.fields):{}),
     ]);
-    return{uid,
-      name:sData.name||rootData.name||'—',email:sData.email||rootData.email||'—',age:sData.age||null,
-      createdAt:sData.createdAt||null,
-      trackMeds:sData.trackMeds!==false,
-      trackBP:vData.trackBP||false,trackBS:vData.trackBS||false,
-      lastLoginDate:lData.date||rootData.lastSeen||null,
-      lastLoginTs:lData.ts||null,
-      device:lData.device||rootData.device||null,
-      browser:lData.browser||rootData.browser||null,
-      avatarImg:aData.img||null};
-  }catch(e){console.error('loadUserData error for',uid,e.message);return null;}
+    return{uid,name:sData.name||'—',email:sData.email||lData.email||'—',
+      dob:sData.dob||null,age:sData.age||null,createdAt:sData.createdAt||null,
+      trackMeds:sData.trackMeds!==false,trackBP:vsData.trackBP||false,trackBS:vsData.trackBS||false,
+      lastLoginDate:lData.date||null,lastLoginTs:lData.ts||null,
+      device:lData.device||null,browser:lData.browser||null,avatarImg:aData.img||null,
+      proteinGoal:sData.proteinGoal||null,waterGoal:sData.waterGoal||null,
+      carbGoal:sData.carbGoal||null,calorieGoal:sData.calorieGoal||null,
+    };
+  }catch(e){return null;}
 }
 
-// ── RENDER ──
 function renderStats(){
-  const t=allUsers.length;
   const pills=[
-    ['Total users',t,'var(--accent)'],
+    ['Total users',allUsers.length,'var(--accent)'],
     ['Tracking meds',allUsers.filter(u=>u.trackMeds).length,'var(--purple)'],
     ['Tracking BP',allUsers.filter(u=>u.trackBP).length,'var(--red)'],
     ['Tracking sugar',allUsers.filter(u=>u.trackBS).length,'var(--amber)'],
@@ -377,68 +363,246 @@ window.filterUsers=function(){
 
 function renderUsers(users){
   if(!users.length){document.getElementById('users-grid').innerHTML='<div class="empty-state">No users found.</div>';return;}
-  document.getElementById('users-grid').innerHTML=users.map(renderUserCard).join('');
-}
-
-function renderUserCard(u){
-  const av=u.avatarImg?`<img src="${u.avatarImg}" alt=""/>`:`<span>👤</span>`;
-  const statusPills=[
-    u.trackMeds?'<span class="pill pill-green">✓ Meds</span>':'<span class="pill pill-muted">— Meds</span>',
-    u.trackBP?'<span class="pill pill-red">✓ Blood pressure</span>':'<span class="pill pill-muted">— Blood pressure</span>',
-    u.trackBS?'<span class="pill pill-amber">✓ Blood sugar</span>':'<span class="pill pill-muted">— Blood sugar</span>',
-  ].join('');
-  const lastLogin=u.lastLoginTs?new Date(u.lastLoginTs).toLocaleString():(u.lastLoginDate||'—');
-  const deviceStr=u.device?(u.device+(u.browser?' · '+u.browser:'')):'Not yet recorded';
-  return`<div class="user-card" id="card-${u.uid}">
-    <div class="user-card-header" onclick="toggleCard('${u.uid}')">
+  document.getElementById('users-grid').innerHTML=users.map(u=>{
+    const av=u.avatarImg?`<img src="${u.avatarImg}" alt=""/>`:'👤';
+    const pills=[
+      u.trackMeds?'<span class="pill pill-green">Meds</span>':'<span class="pill pill-muted">No meds</span>',
+      u.trackBP?'<span class="pill pill-red">BP</span>':'',
+      u.trackBS?'<span class="pill pill-amber">Sugar</span>':'',
+    ].filter(Boolean).join('');
+    return`<div class="user-card" onclick="openPanel('${u.uid}')">
       <div class="user-avatar">${av}</div>
       <div class="user-info">
         <div class="user-name">${esc(u.name)}</div>
         <div class="user-email">${esc(u.email)}</div>
-        <div class="user-uid" title="${u.uid}">${u.uid}</div>
+        <div class="user-uid">${u.uid}</div>
       </div>
-      <div class="user-meta">${statusPills}</div>
-      <div class="expand-icon">▼</div>
-    </div>
-    <div class="user-card-body">
-      <div class="detail-grid">
-        <div><div class="detail-label">Firebase UID</div><div class="detail-val mono">${u.uid}</div></div>
-        <div><div class="detail-label">Email</div><div class="detail-val">${esc(u.email)}</div></div>
-        <div><div class="detail-label">Account created</div><div class="detail-val">${u.createdAt||'—'}</div></div>
-        <div><div class="detail-label">Last login</div><div class="detail-val">${lastLogin}</div></div>
-        <div><div class="detail-label">Device / browser</div><div class="detail-val">${deviceStr}</div></div>
-        <div><div class="detail-label">Age</div><div class="detail-val">${u.age||'—'}</div></div>
-      </div>
-      <div class="detail-label" style="margin-bottom:8px">Feature tracking</div>
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px">${statusPills}</div>
-      <div class="actions-row">
-        <button class="action-btn action-btn-blue" onclick="doSendReset('${esc(u.email)}','${esc(u.name)}')">✉ Send password reset</button>
-        <button class="action-btn action-btn-red" onclick="confirmWipe('${u.uid}','${esc(u.name)}')">⚠ Reset all data</button>
-      </div>
-    </div>
-  </div>`;
+      <div class="user-meta">${pills}</div>
+      <div class="arrow-icon">›</div>
+    </div>`;
+  }).join('');
 }
 
-window.toggleCard=function(uid){document.getElementById('card-'+uid)?.classList.toggle('expanded');};
+// ── SLIDE-IN PANEL ──
+let currentPanelUid=null;
+
+window.openPanel=async function(uid){
+  currentPanelUid=uid;
+  const u=allUsers.find(u=>u.uid===uid)||{uid};
+  // Set header
+  document.getElementById('panel-name').textContent=u.name||'—';
+  document.getElementById('panel-email-label').textContent=u.email||'—';
+  document.getElementById('panel-avatar').innerHTML=u.avatarImg?`<img src="${u.avatarImg}" alt=""/>`:'👤';
+  document.getElementById('panel-body').innerHTML='<div class="empty-state"><div class="spinner"></div>Loading all data…</div>';
+  // Open panel
+  document.getElementById('panel-overlay').classList.add('open');
+  document.getElementById('side-panel').classList.add('open');
+  document.body.style.overflow='hidden';
+  // Load full data
+  const data=await loadFullUserData(uid);
+  renderPanelBody(uid,data);
+};
+
+window.closePanel=function(){
+  document.getElementById('panel-overlay').classList.remove('open');
+  document.getElementById('side-panel').classList.remove('open');
+  document.body.style.overflow='';
+  currentPanelUid=null;
+};
+
+async function loadFullUserData(uid){
+  const cols=['food','fitness','meds','weights','journal','vitals','badges','chats'];
+  const[sData,vsData,lData,medsListData,...colData]=await Promise.all([
+    fsGet(`users/${uid}/profile/survey`).then(d=>d?ff(d.fields):{}),
+    fsGet(`users/${uid}/vitals/settings`).then(d=>d?ff(d.fields):{}),
+    fsGet(`users/${uid}/profile/lastLogin`).then(d=>d?ff(d.fields):{}),
+    fsGet(`users/${uid}/medications/list`).then(d=>d?ff(d.fields):{}),
+    ...cols.map(c=>fsList(`users/${uid}/${c}`).then(docs=>({col:c,docs})))
+  ]);
+  const colMap={};
+  colData.forEach(({col,docs})=>{
+    colMap[col]=docs.map(d=>({id:docId(d),...ff(d.fields)}));
+  });
+  return{survey:sData,vitalSettings:vsData,lastLogin:lData,medsList:medsListData,...colMap};
+}
+
+function renderPanelBody(uid,d){
+  const s=d.survey||{};
+  const l=d.lastLogin||{};
+  const computeAge=dob=>{if(!dob)return null;const t=new Date(),b=new Date(dob);let a=t.getFullYear()-b.getFullYear();const m=t.getMonth()-b.getMonth();if(m<0||(m===0&&t.getDate()<b.getDate()))a--;return a;};
+  const age=s.dob?computeAge(s.dob):(s.age||'—');
+  const lastLogin=l.ts?new Date(l.ts).toLocaleString():(l.date||'—');
+
+  let html='';
+
+  // ── ACCOUNT INFO ──
+  html+=section('Account info',`
+    <div class="detail-grid">
+      ${di('Firebase UID',`<span class="mono">${uid}</span>`)}
+      ${di('Email',esc(s.email||'—'))}
+      ${di('Name',esc(s.name||'—'))}
+      ${di('Date of birth',s.dob?new Date(s.dob+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'—')}
+      ${di('Age',''+age)}
+      ${di('Account created',s.createdAt||'—')}
+      ${di('Last login',lastLogin)}
+      ${di('Device / browser',(l.device||'—')+(l.browser?' · '+l.browser:''))}
+    </div>
+    <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap">
+      <button class="action-btn action-btn-blue" onclick="doSendReset('${esc(s.email||'')}')">✉ Send password reset</button>
+      <button class="action-btn action-btn-red" onclick="confirmWipe('${uid}','${esc(s.name||'')}')">⚠ Reset all data</button>
+    </div>`);
+
+  // ── NUTRITION GOALS ──
+  html+=section('Nutrition goals',`
+    <div class="detail-grid">
+      ${di('Protein goal',(s.proteinGoal||'—')+'g')}
+      ${di('Water goal',(s.waterGoal||'—')+' oz')}
+      ${di('Carb limit',(s.carbGoal||'—')+'g')}
+      ${di('Calorie goal',(s.calorieGoal||'—')+' kcal')}
+      ${di('Current intake (reported)',(s.currentCalories||'—')+' kcal')}
+    </div>`);
+
+  // ── HEALTH PROFILE ──
+  const conditions=(s.conditions||[]).join(', ')||'None';
+  const meds=d.medsList&&d.medsList.meds?Object.values(d.medsList.meds).filter(m=>!m.deletedDate).map(m=>m.name+(m.dose?' '+m.dose:'')).join(', '):'None';
+  html+=section('Health profile',`
+    <div class="detail-grid">
+      ${di('Conditions',conditions)}
+      ${di('Current weight',(s.currentWeight||'—')+' lbs')}
+      ${di('Goal weight',(s.goalWeight||'—')+' lbs')}
+      ${di('Height',s.height||'—')}
+      ${di('Activity level',s.activityLevel||'—')}
+      ${di('Fitness goals',(s.fitnessGoals||[]).join(', ')||'—')}
+      ${di('Equipment',s.equipment||'—')}
+      ${di('Session time',s.sessionTime||'—')}
+    </div>
+    <div style="margin-top:10px">${di('Active medications',meds)}</div>
+    <div style="margin-top:6px">${di('Tracking','Meds: '+(s.trackMeds?'✓':'✗')+' · BP: '+(d.vitalSettings?.trackBP?'✓':'✗')+' · Blood sugar: '+(d.vitalSettings?.trackBS?'✓':'✗'))}</div>`);
+
+  // ── WELLPATH PLAN ──
+  const plan=s.wellnessPlan;
+  const history=s.planHistory||[];
+  if(plan&&plan.text){
+    let planHtml=`<div style="font-size:12px;color:var(--muted);margin-bottom:8px">Current plan · Updated ${plan.updatedAt||'—'}</div>`;
+    planHtml+=`<div style="font-size:12px;color:var(--text);line-height:1.7;white-space:pre-wrap;padding:10px;background:var(--surface2);border-radius:6px;margin-bottom:14px">${esc(plan.text)}</div>`;
+    if(history.length>1){
+      planHtml+=`<div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Plan history (${history.length-1} prior versions)</div>`;
+      history.slice(1).forEach((h,i)=>{
+        planHtml+=`<div class="history-entry">
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div><span class="history-date">${h.updatedAt||'—'}</span> <span class="history-reason">${esc(h.reason||'')}</span></div>
+            <button class="history-del" onclick="confirmDeleteHistory('${uid}',${i+1})" title="Delete this entry">🗑</button>
+          </div>
+          ${h.changeSummary?`<div class="history-change">${esc(h.changeSummary)}</div>`:''}
+          <div class="history-toggle" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='none'?'block':'none';this.textContent=this.textContent.includes('▶')?'▼ Hide plan text':'▶ View full plan text'">▶ View full plan text</div>
+          <div class="history-text">${esc(h.text||'')}</div>
+        </div>`;
+      });
+    }else{
+      planHtml+='<div style="font-size:12px;color:var(--muted)">No prior history yet.</div>';
+    }
+    html+=section('MyWellpath plan',planHtml);
+  }
+
+  // ── RECENT WEIGHT ──
+  const weights=(d.weights||[]).sort((a,b)=>(b.id||'').localeCompare(a.id||'')).slice(0,10);
+  if(weights.length){
+    html+=section('Weight log (last 10)',`<table class="data-table">
+      <tr><th>Date</th><th>Weight</th></tr>
+      ${weights.map(w=>`<tr><td>${w.id||w.date||'—'}</td><td>${w.val||'—'} lbs</td></tr>`).join('')}
+    </table>`);
+  }
+
+  // ── RECENT FOOD ──
+  const foodDays=(d.food||[]).sort((a,b)=>(b.id||'').localeCompare(a.id||'')).slice(0,5);
+  if(foodDays.length){
+    let foodHtml='';
+    foodDays.forEach(day=>{
+      const entries=day.entries||[];
+      if(!entries.length)return;
+      const totalCal=entries.reduce((a,e)=>a+(e.calories||0),0);
+      foodHtml+=`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">${day.id||'—'} <span style="color:var(--muted);font-weight:400">${Math.round(totalCal)} kcal</span></div>
+        <table class="data-table"><tr><th>Item</th><th>Meal</th><th>Cal</th><th>Pro</th><th>Carbs</th></tr>
+        ${entries.map(e=>`<tr><td>${esc(e.text||'')}</td><td>${esc(e.time||'')}</td><td>${Math.round(e.calories||0)}</td><td>${Math.round(e.protein||0)}g</td><td>${Math.round(e.carbs||0)}g</td></tr>`).join('')}
+        </table></div>`;
+    });
+    html+=section('Recent food logs (last 5 days)',foodHtml||'<div style="font-size:12px;color:var(--muted)">No data.</div>');
+  }
+
+  // ── RECENT FITNESS ──
+  const fitDays=(d.fitness||[]).sort((a,b)=>(b.id||'').localeCompare(a.id||'')).slice(0,5);
+  if(fitDays.length){
+    let fitHtml='';
+    fitDays.forEach(day=>{
+      const done=Object.entries(day.done||{}).filter(([k,v])=>v===true&&k!=='_autoSwapped');
+      const extras=(day.extras||[]);
+      fitHtml+=`<div style="margin-bottom:8px"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:3px">${day.id||'—'}</div>
+        ${done.length?`<div style="font-size:11px;color:var(--muted)">Completed: ${done.map(([k])=>k).join(', ')}</div>`:''}
+        ${extras.length?`<div style="font-size:11px;color:var(--muted)">Extra: ${extras.map(e=>e.text).join(', ')}</div>`:''}
+        ${!done.length&&!extras.length?'<div style="font-size:11px;color:var(--muted)">No activity logged</div>':''}
+      </div>`;
+    });
+    html+=section('Recent fitness (last 5 days)',fitHtml);
+  }
+
+  // ── VITALS ──
+  const vitalDays=(d.vitals||[]).filter(v=>v.id!=='settings').sort((a,b)=>(b.id||'').localeCompare(a.id||'')).slice(0,7);
+  if(vitalDays.length){
+    let vHtml='<table class="data-table"><tr><th>Date</th><th>Type</th><th>Reading</th><th>Context</th></tr>';
+    vitalDays.forEach(day=>{
+      (day.bp||[]).forEach(r=>vHtml+=`<tr><td>${day.id}</td><td>BP</td><td>${r.systolic}/${r.diastolic} mmHg</td><td>${r.time||'—'}</td></tr>`);
+      (day.bs||[]).forEach(r=>vHtml+=`<tr><td>${day.id}</td><td>Blood sugar</td><td>${r.value} mg/dL</td><td>${r.context||'—'}</td></tr>`);
+    });
+    vHtml+='</table>';
+    html+=section('Recent vitals (last 7 days)',vHtml);
+  }
+
+  // ── MEDICATIONS ──
+  if(d.medsList&&d.medsList.meds){
+    const meds=Object.values(d.medsList.meds);
+    html+=section('Medications',`<table class="data-table">
+      <tr><th>Name</th><th>Dose</th><th>Times</th><th>Added</th><th>Deleted</th></tr>
+      ${meds.map(m=>`<tr><td>${esc(m.name||'')}</td><td>${esc(m.dose||'—')}</td><td>${(m.times||[]).join(', ')}</td><td>${m.addedDate||'—'}</td><td style="color:${m.deletedDate?'var(--red)':'var(--muted)'}">${m.deletedDate||'Active'}</td></tr>`).join('')}
+    </table>`);
+  }
+
+  // ── JOURNAL ──
+  const journals=(d.journal||[]).sort((a,b)=>(b.id||'').localeCompare(a.id||'')).slice(0,5);
+  if(journals.length){
+    html+=section('Recent journal entries',journals.map(j=>
+      `<div style="margin-bottom:10px;padding-bottom:10px;border-bottom:1px solid var(--border)">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px">${j.id||'—'}</div>
+        <div style="font-size:12px;color:var(--text);line-height:1.6">${esc((j.text||'').slice(0,200))}${(j.text||'').length>200?'…':''}</div>
+      </div>`
+    ).join(''));
+  }
+
+  document.getElementById('panel-body').innerHTML=html;
+}
+
+function section(title,body){
+  return`<div class="panel-section"><div class="panel-section-title">${title}</div>${body}</div>`;
+}
+function di(label,val){
+  return`<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-val">${val}</div></div>`;
+}
 
 // ── ACTIONS ──
-window.doSendReset=async function(email,name){
-  if(!email||email==='—'){showToast('No email address on file.');return;}
+window.doSendReset=async function(email){
+  if(!email||email==='—'){showToast('No email on file.');return;}
   try{await sendPasswordResetEmail(auth,email);showToast('✓ Password reset sent to '+email);}
   catch(e){showToast('Error: '+e.message,'error');}
 };
 
 window.confirmWipe=function(uid,name){
-  const m=document.createElement('div');
-  m.className='modal-overlay';
+  const m=document.createElement('div');m.className='modal-overlay';
   m.innerHTML=`<div class="modal-card">
-    <div class="modal-title" style="color:var(--red)">⚠ Reset account data</div>
-    <div class="modal-body">This will permanently delete all health data for <strong>${esc(name)}</strong> — food logs, vitals, fitness, medications, badges, journal entries, chat sessions, and weight logs.<br><br>Their login credentials stay intact. On next login they will complete the intake survey again.<br><br><strong>This cannot be undone.</strong></div>
+    <div style="font-family:var(--font-display);font-size:20px;color:var(--red);margin-bottom:10px">⚠ Reset account data</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.7">Permanently delete all health data for <strong>${esc(name)}</strong>. Login stays intact. Cannot be undone.</div>
     <div class="modal-actions">
       <button class="modal-cancel" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
-      <button class="modal-confirm" onclick="doWipe('${uid}');this.closest('.modal-overlay').remove()">Yes, reset all data</button>
-    </div>
-  </div>`;
+      <button class="modal-confirm" onclick="doWipe('${uid}');this.closest('.modal-overlay').remove()">Reset all data</button>
+    </div></div>`;
   m.addEventListener('click',e=>{if(e.target===m)m.remove();});
   document.body.appendChild(m);
 };
@@ -448,31 +612,57 @@ window.doWipe=async function(uid){
   try{
     const cols=['food','fitness','meds','weights','favorites','grocery','journal','badges','chats','vitals'];
     for(const col of cols){
-      const docs=await fsList(`users/${uid}/${col}`).catch(()=>[]);
-      for(const d of docs){
-        await fsDelete(d.name.replace(`projects/${PROJECT}/databases/(default)/documents/`,'')).catch(()=>{});
-      }
+      const docs=await fsList(`users/${uid}/${col}`);
+      for(const d of docs)await fsDelete(d.name.replace(`projects/${PROJECT}/databases/(default)/documents/`,''));
     }
-    for(const pd of['survey','avatar','lastLogin']){
-      await fsDelete(`users/${uid}/profile/${pd}`).catch(()=>{});
-    }
+    for(const pd of['survey','avatar','lastLogin'])await fsDelete(`users/${uid}/profile/${pd}`).catch(()=>{});
     await fsDelete(`users/${uid}/medications/list`).catch(()=>{});
-    showToast('✓ Data wiped. User will redo onboarding on next login.');
+    showToast('✓ Data wiped. User will redo onboarding.');
+    closePanel();
     setTimeout(loadUsers,1800);
   }catch(e){showToast('Error: '+e.message,'error');}
 };
 
-// ── HELPERS ──
+window.confirmDeleteHistory=function(uid,index){
+  const m=document.createElement('div');m.className='modal-overlay';
+  m.innerHTML=`<div class="modal-card">
+    <div style="font-family:var(--font-display);font-size:20px;color:var(--red);margin-bottom:10px">Delete history entry</div>
+    <div style="font-size:14px;color:var(--muted);line-height:1.7">Remove this plan history entry? The current plan will not be affected.</div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+      <button class="modal-confirm" onclick="doDeleteHistory('${uid}',${index});this.closest('.modal-overlay').remove()">Delete</button>
+    </div></div>`;
+  m.addEventListener('click',e=>{if(e.target===m)m.remove();});
+  document.body.appendChild(m);
+};
+
+window.doDeleteHistory=async function(uid,index){
+  try{
+    const sDoc=await fsGet(`users/${uid}/profile/survey`);
+    if(!sDoc)return;
+    const survey=ff(sDoc.fields);
+    if(!survey.planHistory||!survey.planHistory[index]){showToast('Entry not found.','error');return;}
+    survey.planHistory.splice(index,1);
+    // Re-save via REST PATCH
+    const token=await tok();
+    const fields={};
+    // Only patch planHistory field
+    const encoded=encodeURIComponent(JSON.stringify(survey.planHistory));
+    // Build Firestore value
+    const histVal={arrayValue:{values:survey.planHistory.map(h=>({mapValue:{fields:Object.fromEntries(Object.entries(h).map(([k,v])=>[k,{stringValue:String(v||'')}]))}}))}};
+    const body=JSON.stringify({fields:{planHistory:histVal}});
+    const r=await fetch(`${FS}/users/${uid}/profile/survey?updateMask.fieldPaths=planHistory`,{
+      method:'PATCH',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body
+    });
+    if(r.ok){showToast('✓ History entry deleted.');openPanel(uid);}
+    else{showToast('Save error: '+r.status,'error');}
+  }catch(e){showToast('Error: '+e.message,'error');}
+};
+
 function showToast(msg,type=''){
-  const t=document.createElement('div');
-  t.className='toast'+(type?' '+type:'');
-  t.textContent=msg;
-  document.body.appendChild(t);
-  setTimeout(()=>t.remove(),3500);
-}
-function esc(s){
-  if(!s)return'';
-  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const t=document.createElement('div');t.className='toast';
+  if(type==='error')t.style.borderColor='rgba(192,57,43,0.4)';
+  t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
 }
 </script>
 </body>
