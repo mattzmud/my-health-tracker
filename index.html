@@ -1594,6 +1594,7 @@ async function lookupOpenFoodFacts(query){
     if(!calories&&!protein)return null;
 
     const brandStr=Array.isArray(best.brands)?best.brands.join(', '):(best.brands||null);
+    if(!brandStr&&bestScore<0.9){console.log('[OFF] Rejecting — no brand, low confidence');return null;}
     console.log('[OFF] Matched "'+best.product_name+'" ('+brandStr+') score='+bestScore.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
     return{calories,protein,carbs,source:'off',
       name:best.product_name,brand:brandStr,
