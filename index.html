@@ -1518,7 +1518,8 @@ async function lookupOpenFoodFacts(query){
     });
     if(!res.ok){console.warn('[OFF] Worker HTTP',res.status);return null;}
     const data=await res.json();
-    const products=(data.products||[]).filter(p=>p.nutriments);
+    // Search-a-licious returns hits array, brands as array
+    const products=(data.products||data.hits||[]).filter(p=>p.nutriments);
     if(!products.length)return null;
 
     // Score results by name match
@@ -1527,7 +1528,9 @@ async function lookupOpenFoodFacts(query){
     let best=null,bestScore=0;
     for(const p of products){
       const name=(p.product_name||'').toLowerCase();
-      const brand=(p.brands||'').toLowerCase();
+      // brands can be array or string in new API
+      const brandRaw=Array.isArray(p.brands)?p.brands.join(' '):(p.brands||'');
+      const brand=brandRaw.toLowerCase();
       const combined=name+' '+brand;
       const matchCount=qWords.filter(w=>combined.includes(w)).length;
       const score=matchCount/Math.max(qWords.length,1);
@@ -1535,18 +1538,38 @@ async function lookupOpenFoodFacts(query){
     }
     if(bestScore<0.4||!best)return null;
 
-    // Use _serving fields — no scaling needed
     const n=best.nutriments;
-    const calories=Math.round(n['energy-kcal_serving']||n['energy-kcal_100g']||0);
-    const protein=Math.round((n['proteins_serving']||n['proteins_100g']||0)*10)/10;
-    const carbs=Math.round((n['carbohydrates_serving']||n['carbohydrates_100g']||0)*10)/10;
+    const servingG=best.serving_quantity||best.serving_size||100;
+
+    // Prefer _serving fields; fall back to scaling _100g values
+    let calories,protein,carbs;
+    if(n['energy-kcal_serving']||n['proteins_serving']){
+      calories=Math.round(n['energy-kcal_serving']||0);
+      protein=Math.round((n['proteins_serving']||0)*10)/10;
+      carbs=Math.round((n['carbohydrates_serving']||0)*10)/10;
+      console.log('[OFF] Using _serving fields');
+    } else {
+      // Scale _100g values by serving size
+      const scale=servingG/100;
+      calories=Math.round((n['energy-kcal_100g']||0)*scale);
+      protein=Math.round((n['proteins_100g']||0)*scale*10)/10;
+      carbs=Math.round((n['carbohydrates_100g']||0)*scale*10)/10;
+      console.log('[OFF] Scaling _100g by '+scale.toFixed(2));
+    }
+
+    // Calculate missing calories from macros
+    if(!calories&&protein){
+      const fat=n['fat_serving']||n['fat_100g']*(servingG/100)||0;
+      calories=Math.round(protein*4+carbs*4+fat*9);
+    }
 
     if(!calories&&!protein)return null;
 
-    console.log('[OFF] Matched "'+best.product_name+'" ('+best.brands+') score='+bestScore.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
+    const brandStr=Array.isArray(best.brands)?best.brands.join(', '):(best.brands||null);
+    console.log('[OFF] Matched "'+best.product_name+'" ('+brandStr+') score='+bestScore.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
     return{calories,protein,carbs,source:'off',
-      name:best.product_name,brand:best.brands||null,
-      servingSize:best.serving_quantity,servingSizeUnit:'g'};
+      name:best.product_name,brand:brandStr,
+      servingSize:servingG,servingSizeUnit:'g'};
   }catch(e){
     console.warn('[OFF] Error for "'+query+'":', e.message);
     return null;
