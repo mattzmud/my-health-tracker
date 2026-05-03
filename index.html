@@ -2520,6 +2520,24 @@ async function logFood(){
     // ── Step 1: Try Open Food Facts first, then USDA for each item ──
     console.log('[Food DB] Looking up',items.length,'items:',items);
     const dbResults=await Promise.all(items.map(async item=>{
+      // Check user's personal corrections first (with fuzzy matching)
+      const corrKey=item.toLowerCase().trim();
+      let correction=cache.nutritionCorrections[corrKey];
+      if(!correction){
+        // Fuzzy match — find closest key within edit distance 2
+        const keys=Object.keys(cache.nutritionCorrections);
+        let bestKey=null,bestDist=3;
+        for(const k of keys){
+          const dist=editDistance(corrKey,k);
+          if(dist<bestDist){bestDist=dist;bestKey=k;}
+        }
+        if(bestKey){correction=cache.nutritionCorrections[bestKey];console.log('[Corrections] Fuzzy matched "'+item+'" → "'+bestKey+'" (dist='+bestDist+')');}
+      }
+      if(correction){
+        console.log('[Corrections] Using correction for "'+item+'"');
+        return{...correction,source:'edited'};
+      }
+      // No user correction found — try databases
       const off=await lookupOpenFoodFacts(item);
       if(off)return off;
       const usda=await lookupUSDA(item);
@@ -2918,8 +2936,20 @@ async function saveEditEntry(ts){
   entry.baseProtein=Math.round((pro/servings)*10)/10;
   entry.baseCarbs=Math.round((carbs/servings)*10)/10;
   entry.source='edited';
-  await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
-  document.querySelector('.date-picker-modal')?.remove();
+  // Save correction to personal cache so future logs use corrected values
+  const corrKey=entry.text.toLowerCase().trim();
+  cache.nutritionCorrections[corrKey]={
+    calories:entry.baseCalories,
+    protein:entry.baseProtein,
+    carbs:entry.baseCarbs,
+    name:entry.text,
+    savedAt:Date.now()
+  };
+  await Promise.all([
+    fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate}),
+    fbSet('food','corrections',cache.nutritionCorrections)
+  ]);
+  document.querySelectorAll('.date-picker-modal')[document.querySelectorAll('.date-picker-modal').length-1]?.remove();
   renderFoodEntries();
   refreshDashboard();
 }
