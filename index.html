@@ -2384,7 +2384,10 @@ function refreshDashboard(){
   const dailyTimes=['am','af','pm'];
   let totalMedChecks=0,doneMedChecks=0;
   if(cache.trackMeds!==false)Object.values(cache.medsList||{}).forEach(med=>{
-    const dailySlots=(med.times||['am']).filter(t=>dailyTimes.includes(t));
+    const times=med.times||['am'];
+    // Skip meds that are weekly-only or as-needed-only — not tracked in daily progress
+    if(times.includes('wk')||times.includes('prn'))return;
+    const dailySlots=times.filter(t=>dailyTimes.includes(t));
     dailySlots.forEach(t=>{
       totalMedChecks++;
       if(ms[t+'-'+(med.id||med.name)])doneMedChecks++;
@@ -2758,6 +2761,19 @@ async function logFood(){
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
 }
 
+async function addFoodToGrocery(text){
+  if(!text)return;
+  if(!cache.grocery)cache.grocery=[];
+  // Don't add duplicates
+  if(cache.grocery.find(i=>i.text.toLowerCase()===text.toLowerCase())){
+    showToast('Already on your grocery list!');return;
+  }
+  const item={id:Date.now(),text,checked:false};
+  cache.grocery.push(item);
+  await fbSet('grocery','list',{items:cache.grocery});
+  showToast('&#128722; Added to grocery list: '+text);
+}
+
 async function saveFavorite(ts,date){
   const d=date||viewDate;
   const entry=(cache.food[d]||[]).find(e=>e.ts===ts);if(!entry)return;
@@ -2999,6 +3015,7 @@ function renderFoodEntries(){
           +(e.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; Verified</span>':e.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; USDA</span>':e.source==='edited'?'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(42,90,138,0.2)">&#9998; Edited</span>':'')
           +'</div></div>'
           +(!isPast?'<button data-ts="'+e.ts+'" onclick="openEditEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px" title="Edit">&#9998;</button>':'')
+          +(!isPast?'<button data-text="'+escHtml(e.text).replace(/"/g,"&quot;")+'" onclick="addFoodToGrocery(this.dataset.text)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px" title="Add to grocery list">&#128722;</button>':'')
           +(!isPast?favBtn+delBtn:'')
           +'</div>';
       }
