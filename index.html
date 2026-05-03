@@ -2610,7 +2610,7 @@ async function logFood(){
     console.log('[logFood] displayText:',displayText?displayText.slice(0,80):'EMPTY');
     if(displayText){const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));}
     renderFoodEntries();// update log entries
-  }catch(e){document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
+  }catch(e){console.error('[logFood] Error:',e.message,e.stack);document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
 }
 
