@@ -568,6 +568,27 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div class="card-title">&#129482; Blood Sugar</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Normal fasting: 70–99 mg/dL &nbsp;·&nbsp; Normal after meal: under 140 mg/dL</div>
 
+        </div>
+        <div style="margin-bottom:14px">
+          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Blood sugar level (mg/dL)</label>
+          <input type="number" id="bs-value" placeholder="e.g. 105" style="max-width:150px" min="30" max="600"/>
+        </div>
+        <div style="margin-bottom:14px">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:500">When are you logging this?</div>
+          <div class="bs-context-grid" id="bs-context-grid">
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'fasting')">Fasting (nothing eaten 8+ hrs)</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'before_meal')">Before a meal</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_breakfast')">After breakfast</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_lunch')">After lunch</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_dinner')">After dinner</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_snack')">After a snack</button>
+            <button class="bs-ctx-btn" onclick="selectBsContext(this,'random')">Random / not sure</button>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="logBloodSugar()" id="log-bs-btn">Log blood sugar</button>
+        <div id="bs-feedback" style="margin-top:12px"></div>
+        <div id="bs-history" style="margin-top:16px"></div>
+
         <!-- Estimated A1C tile -->
         <div id="a1c-tile" style="display:none;margin-bottom:20px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px">
           <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
@@ -618,26 +639,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <div style="font-size:11px;color:var(--muted);line-height:1.6;padding:8px 10px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
             &#8505;&#65039; <strong>About this estimate:</strong> A real A1C lab test reflects your average blood sugar over the past 90 days. The more readings you log over a 90-day period, the more accurate this estimate will be. This is a mathematical estimate only — only a lab test can confirm your actual A1C. If you have concerns, speak with your doctor.
           </div>
-        </div>
-        <div style="margin-bottom:14px">
-          <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Blood sugar level (mg/dL)</label>
-          <input type="number" id="bs-value" placeholder="e.g. 105" style="max-width:150px" min="30" max="600"/>
-        </div>
-        <div style="margin-bottom:14px">
-          <div style="font-size:13px;color:var(--muted);margin-bottom:8px;font-weight:500">When are you logging this?</div>
-          <div class="bs-context-grid" id="bs-context-grid">
-            <button class="bs-ctx-btn" onclick="selectBsContext(this,'fasting')">Fasting (nothing eaten 8+ hrs)</button>
-            <button class="bs-ctx-btn" onclick="selectBsContext(this,'before_meal')">Before a meal</button>
-            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_breakfast')">After breakfast</button>
-            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_lunch')">After lunch</button>
-            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_dinner')">After dinner</button>
-            <button class="bs-ctx-btn" onclick="selectBsContext(this,'after_snack')">After a snack</button>
-            <button class="bs-ctx-btn" onclick="selectBsContext(this,'random')">Random / not sure</button>
-          </div>
-        </div>
-        <button class="btn btn-primary btn-sm" onclick="logBloodSugar()" id="log-bs-btn">Log blood sugar</button>
-        <div id="bs-feedback" style="margin-top:12px"></div>
-        <div id="bs-history" style="margin-top:16px"></div>
+
       </div>
 
       <div id="vitals-empty" style="text-align:center;padding:40px 20px;color:var(--muted);font-size:14px">
