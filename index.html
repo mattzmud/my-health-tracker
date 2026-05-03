@@ -2979,16 +2979,15 @@ function _startQuagga(){
       target:videoEl,
       constraints:{
         facingMode:'environment',
-        width:{min:320,ideal:480},
-        height:{min:240,ideal:360}
+        width:{min:640,ideal:1280,max:1920},
+        height:{min:480,ideal:720,max:1080}
       }
     },
-    locator:{patchSize:'medium',halfSample:true},
+    locator:{patchSize:'medium',halfSample:false},
     numOfWorkers:0,
-    frequency:10,
+    frequency:5,
     decoder:{
-      readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader'],
-      multiple:false
+      readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader']
     },
     locate:true
   },function(err){
@@ -3138,7 +3137,7 @@ function _showBarcodeNotFound(barcode){
   const fb=document.getElementById('food-feedback');
   if(fb)fb.innerHTML='<div style="padding:10px 12px;background:rgba(138,106,26,0.1);border:1px solid rgba(138,106,26,0.25);border-radius:8px;font-size:13px;color:var(--text);margin-top:8px">'
     +'<div style="font-weight:600;margin-bottom:4px">&#9888;&#65039; Barcode not found</div>'
-    +'<div style="font-size:12px;color:var(--muted)">We could not find barcode '+barcode+' in our databases. Type the item name below to search manually.</div>'
+    +'<div style="font-size:12px;color:var(--muted)">We could not find barcode '+barcode+' in our databases. Type the item name above to search manually.</div>'
     +'</div>';
   const input=document.getElementById('food-input');
   if(input){input.value='';input.focus();}
