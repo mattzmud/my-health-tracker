@@ -736,6 +736,10 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
                 <div style="font-family:var(--font-display);font-size:22px;color:var(--red)" id="plan-tile-cal">—</div>
                 <div style="font-size:11px;color:var(--muted)">cal limit</div>
               </div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--red)" id="plan-tile-sugar">—</div>
+                <div style="font-size:11px;color:var(--muted)">sugar limit</div>
+              </div>
             </div>
           </div>
           <div id="plan-text" style="font-size:13.5px;color:var(--text);line-height:1.8;white-space:pre-wrap"></div>
@@ -1330,13 +1334,18 @@ function syncPageDateDisplay(page){
   });
   if(isToday){
     document.getElementById(page+'-today-btn')?.classList.add('active');
-    const el=document.getElementById(page+'-date-display');if(el)el.textContent='Today';
+    const el=document.getElementById(page+'-date-display');if(el)el.textContent=formatDate(TODAY);
   } else if(isYesterday){
     document.getElementById(page+'-yesterday-btn')?.classList.add('active');
-    const el=document.getElementById(page+'-date-display');if(el)el.textContent='Yesterday';
+    const el=document.getElementById(page+'-date-display');if(el)el.textContent=formatDate(getYesterday());
   } else {
     document.getElementById(page+'-pick-btn')?.classList.add('active');
-    const el=document.getElementById(page+'-date-display');if(el)el.textContent=viewDate.slice(5);
+    const el=document.getElementById(page+'-date-display');if(el)el.textContent=formatDate(viewDate);
+  }
+  // Also update the meds banner label if on meds page
+  if(page==='meds'){
+    const ml=document.getElementById('meds-date-label');
+    if(ml)ml.textContent=formatDate(viewDate);
   }
 }
 function getYesterday(){
@@ -1362,7 +1371,7 @@ async function pageJumpDate(page,when,btn){
   _loadedDates.delete(date);
   await ensureDateLoaded(viewDate);
   if(page==='vitals')await ensureVitalsLoaded(viewDate);
-  const label=when==='today'?'Today':'Yesterday';
+  const label=formatDate(date);
   updatePageDateDisplay(page,label);
   if(btn){
     document.querySelectorAll('#'+page+'-today-btn,#'+page+'-yesterday-btn,#'+page+'-pick-btn,#'+page+'-range-btn').forEach(b=>b.classList.remove('active'));
@@ -4184,6 +4193,7 @@ function renderProfile(){
       const tw=document.getElementById('plan-tile-water');if(tw)tw.textContent=(p.waterGoal||'—')+' oz';
       const tc=document.getElementById('plan-tile-carbs');if(tc)tc.textContent=(p.carbGoal||'—')+'g';
       const tcal=document.getElementById('plan-tile-cal');if(tcal)tcal.textContent=(p.calorieGoal||'—')+' kcal';
+      const tsugar=document.getElementById('plan-tile-sugar');if(tsugar)tsugar.textContent=(p.sugarGoal||'—')+'g';
     }
   }else{
     if(planCard){planCard.style.display='block';planCard.classList.add('collapsed');}
