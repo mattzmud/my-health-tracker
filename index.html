@@ -3006,23 +3006,16 @@ function _startQuagga(){
 
 
   // Single detection — remove debounce to see if anything is detected at all
-  let _lastCode='',_lastCodeCount=0;
+  let _handled=false;
   Quagga.onDetected(function(result){
+    if(_handled)return;
     const code=result.codeResult.code;
     if(!code||code.length<6)return;
-    if(code===_lastCode){
-      _lastCodeCount++;
-      if(_lastCodeCount===2){
-        console.log('[Quagga] Confirmed:', code, result.codeResult.format);
-        // Haptic feedback on mobile
-        if(navigator.vibrate)navigator.vibrate(50);
-        statusEl.textContent='Found: '+code+' — looking up...';
-        _handleBarcode(code);
-      }
-    } else {
-      _lastCode=code;
-      _lastCodeCount=1;
-    }
+    _handled=true;
+    console.log('[Quagga] Detected:', code);
+    if(navigator.vibrate)navigator.vibrate(50);
+    statusEl.textContent='Found: '+code+' — looking up...';
+    _handleBarcode(code);
   });
 }
 
