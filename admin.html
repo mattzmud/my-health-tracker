@@ -96,26 +96,37 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
   border-radius:50%;animation:spin 0.7s linear infinite;margin:0 auto 16px;}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-/* SLIDE-IN PANEL */
-.panel-overlay{position:fixed;inset:0;background:rgba(44,36,22,0.4);z-index:200;
-  opacity:0;transition:opacity 0.25s;pointer-events:none;}
+/* DETAIL MODAL */
+.panel-overlay{position:fixed;inset:0;background:rgba(44,36,22,0.6);z-index:200;
+  backdrop-filter:blur(4px);opacity:0;transition:opacity 0.2s;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;padding:20px;}
 .panel-overlay.open{opacity:1;pointer-events:all;}
-.side-panel{position:fixed;top:0;right:-100%;width:min(680px,100vw);height:100vh;
-  background:var(--surface);border-left:1px solid var(--border);z-index:201;
-  overflow-y:auto;transition:right 0.3s cubic-bezier(0.4,0,0.2,1);
-  box-shadow:-8px 0 32px rgba(85,107,47,0.1);}
-.side-panel.open{right:0;}
-.panel-header{position:sticky;top:0;background:var(--surface);border-bottom:1px solid var(--border);
-  padding:18px 24px;display:flex;align-items:center;gap:14px;z-index:10;}
+.side-panel{background:var(--surface);border-radius:16px;border:1px solid var(--border);
+  width:min(740px,100%);max-height:88vh;overflow-y:auto;
+  transform:scale(0.96) translateY(8px);transition:transform 0.2s cubic-bezier(0.4,0,0.2,1);
+  box-shadow:0 20px 60px rgba(0,0,0,0.2);}
+.side-panel.open{transform:scale(1) translateY(0);}
+.panel-header{position:sticky;top:0;background:rgba(250,247,242,0.97);backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);padding:18px 24px;
+  display:flex;align-items:center;gap:14px;z-index:10;border-radius:16px 16px 0 0;}
 .panel-avatar{width:48px;height:48px;border-radius:50%;background:var(--surface2);border:2px solid var(--border);
   flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:20px;}
 .panel-avatar img{width:100%;height:100%;object-fit:cover;}
-.panel-close{margin-left:auto;background:none;border:none;font-size:22px;color:var(--muted);cursor:pointer;padding:4px;}
-.panel-body{padding:24px;}
+.panel-close{margin-left:auto;background:none;border:1px solid var(--border);border-radius:8px;
+  font-size:13px;color:var(--muted);cursor:pointer;padding:6px 12px;font-family:var(--font-body);}
+.panel-close:hover{border-color:var(--red);color:var(--red);}
+.panel-body{padding:20px 24px 24px;}
 
-.panel-section{margin-bottom:24px;}
-.panel-section-title{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;
-  letter-spacing:0.08em;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+/* Collapsible sections */
+.panel-section{margin-bottom:10px;border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.panel-section-title{display:flex;align-items:center;justify-content:space-between;
+  padding:12px 16px;cursor:pointer;background:var(--surface2);user-select:none;
+  font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.06em;}
+.panel-section-title:hover{background:var(--nav);}
+.panel-section-title .chevron{font-size:11px;color:var(--muted);transition:transform 0.2s;}
+.panel-section.collapsed .chevron{transform:rotate(-90deg);}
+.panel-section-body{padding:14px 16px;border-top:1px solid var(--border);display:block;}
+.panel-section.collapsed .panel-section-body{display:none;}
 .detail-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;}
 .detail-item .detail-label{font-size:11px;color:var(--muted);margin-bottom:3px;}
 .detail-item .detail-val{font-size:13px;color:var(--text);}
@@ -225,6 +236,7 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
     <div class="empty-state"><div class="spinner"></div>Loading…</div>
   </div>
 </div>
+</div>
 
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
@@ -327,13 +339,14 @@ window.loadUsers=async function(){
 
 async function loadUserSummary(uid){
   try{
-    const[sData,vsData,lData,aData]=await Promise.all([
+    const[sData,vsData,lData,aData,rootData]=await Promise.all([
       fsGet(`users/${uid}/profile/survey`).then(d=>d?ff(d.fields):{}),
       fsGet(`users/${uid}/vitals/settings`).then(d=>d?ff(d.fields):{}),
       fsGet(`users/${uid}/profile/lastLogin`).then(d=>d?ff(d.fields):{}),
       fsGet(`users/${uid}/profile/avatar`).then(d=>d?ff(d.fields):{}),
+      fsGet(`users/${uid}`).then(d=>d?ff(d.fields):{}).catch(()=>({})),
     ]);
-    return{uid,name:sData.name||'—',email:sData.email||lData.email||'—',
+    return{uid,name:sData.name||'—',email:rootData.email||sData.email||lData.email||'—',
       dob:sData.dob||null,age:sData.age||null,createdAt:sData.createdAt||null,
       trackMeds:sData.trackMeds!==false,trackBP:vsData.trackBP||false,trackBS:vsData.trackBS||false,
       lastLoginDate:lData.date||null,lastLoginTs:lData.ts||null,
@@ -397,33 +410,37 @@ window.openPanel=async function(uid){
   // Open panel
   document.getElementById('panel-overlay').classList.add('open');
   document.getElementById('side-panel').classList.add('open');
-  document.body.style.overflow='hidden';
+  // modal doesn't need body overflow lock
   // Load full data
   const data=await loadFullUserData(uid);
   renderPanelBody(uid,data);
 };
 
+window.togglePanelSection=function(el){
+  el.closest('.panel-section').classList.toggle('collapsed');
+};
+
 window.closePanel=function(){
   document.getElementById('panel-overlay').classList.remove('open');
   document.getElementById('side-panel').classList.remove('open');
-  document.body.style.overflow='';
   currentPanelUid=null;
 };
 
 async function loadFullUserData(uid){
   const cols=['food','fitness','meds','weights','journal','vitals','badges','chats'];
-  const[sData,vsData,lData,medsListData,...colData]=await Promise.all([
+  const[sData,vsData,lData,medsListData,rootDoc,...colData]=await Promise.all([
     fsGet(`users/${uid}/profile/survey`).then(d=>d?ff(d.fields):{}),
     fsGet(`users/${uid}/vitals/settings`).then(d=>d?ff(d.fields):{}),
     fsGet(`users/${uid}/profile/lastLogin`).then(d=>d?ff(d.fields):{}),
     fsGet(`users/${uid}/medications/list`).then(d=>d?ff(d.fields):{}),
+    fsGet(`users/${uid}`).then(d=>d?ff(d.fields):{}).catch(()=>({})),
     ...cols.map(c=>fsList(`users/${uid}/${c}`).then(docs=>({col:c,docs})))
   ]);
   const colMap={};
   colData.forEach(({col,docs})=>{
     colMap[col]=docs.map(d=>({id:docId(d),...ff(d.fields)}));
   });
-  return{survey:sData,vitalSettings:vsData,lastLogin:lData,medsList:medsListData,...colMap};
+  return{survey:sData,vitalSettings:vsData,lastLogin:lData,medsList:medsListData,rootDoc,...colMap};
 }
 
 function renderPanelBody(uid,d){
@@ -439,7 +456,7 @@ function renderPanelBody(uid,d){
   html+=section('Account info',`
     <div class="detail-grid">
       ${di('Firebase UID',`<span class="mono">${uid}</span>`)}
-      ${di('Email',esc(s.email||'—'))}
+      ${di('Email',esc(d.rootDoc?.email||s.email||l.email||'—'))}
       ${di('Name',esc(s.name||'—'))}
       ${di('Date of birth',s.dob?new Date(s.dob+'T12:00:00').toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'}):'—')}
       ${di('Age',''+age)}
@@ -501,7 +518,7 @@ function renderPanelBody(uid,d){
     }else{
       planHtml+='<div style="font-size:12px;color:var(--muted)">No prior history yet.</div>';
     }
-    html+=section('MyWellpath plan',planHtml);
+    html+=section('MyWellpath plan',planHtml,true);
   }
 
   // ── RECENT WEIGHT ──
@@ -580,8 +597,13 @@ function renderPanelBody(uid,d){
   document.getElementById('panel-body').innerHTML=html;
 }
 
-function section(title,body){
-  return`<div class="panel-section"><div class="panel-section-title">${title}</div>${body}</div>`;
+function section(title,body,open=true){
+  return`<div class="panel-section${open?'':' collapsed'}">
+    <div class="panel-section-title" onclick="this.closest('.panel-section').classList.toggle('collapsed')">
+      <span>${title}</span><span class="chevron">&#9660;</span>
+    </div>
+    <div class="panel-section-body">${body}</div>
+  </div>`;
 }
 function di(label,val){
   return`<div class="detail-item"><div class="detail-label">${label}</div><div class="detail-val">${val}</div></div>`;
