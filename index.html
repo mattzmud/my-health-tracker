@@ -2968,6 +2968,10 @@ function _startQuagga(){
   if(!window.Quagga)return;
   const videoEl=document.getElementById('barcode-video');
 
+  const statusEl=document.getElementById('scanner-status');
+  statusEl.textContent='Initializing camera...';
+  console.log('[Quagga] Init starting, target:', videoEl);
+
   Quagga.init({
     inputStream:{
       name:'Live',
@@ -2975,39 +2979,47 @@ function _startQuagga(){
       target:videoEl,
       constraints:{
         facingMode:'environment',
-        width:{min:640,ideal:1280,max:1920},
-        height:{min:480,ideal:720,max:1080}
+        width:{min:320,ideal:640},
+        height:{min:240,ideal:480}
       }
     },
-    locator:{patchSize:'medium',halfSample:true},
-    numOfWorkers:0,// must be 0 for Safari
-    frequency:10,
+    locator:{patchSize:'medium',halfSample:false},
+    numOfWorkers:0,
+    frequency:5,
     decoder:{
       readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader']
     },
-    locate:true
+    locate:true,
+    debug:{
+      drawBoundingBox:false,
+      showFrequency:false,
+      drawScanline:false,
+      showPattern:false
+    }
   },function(err){
     if(err){
-      console.error('Quagga init error:',err);
-      document.getElementById('scanner-status').textContent='Camera error: '+err.message;
+      console.error('[Quagga] Init error:',err);
+      statusEl.textContent='Camera error: '+JSON.stringify(err);
       return;
     }
+    console.log('[Quagga] Init success, starting...');
+    statusEl.textContent='Camera ready — point at barcode';
+    setTimeout(()=>{if(statusEl.textContent==='Camera ready — point at barcode')statusEl.textContent='';},2000);
     Quagga.start();
     _quaggaRunning=true;
   });
 
-  // Debounce — only fire once per barcode
-  let lastBarcode='';
-  let lastBarcodeTime=0;
+  Quagga.onProcessed(function(result){
+    // Log every few frames to confirm processing
+    if(Math.random()<0.02)console.log('[Quagga] Processing frame, result:', result?'found boxes':'no boxes');
+  });
+
+  // Single detection — remove debounce to see if anything is detected at all
   Quagga.onDetected(function(result){
     const code=result.codeResult.code;
-    const now=Date.now();
-    // Require same code twice within 1.5s to reduce false positives
-    if(code===lastBarcode&&now-lastBarcodeTime<1500){
-      _handleBarcode(code);
-    }
-    lastBarcode=code;
-    lastBarcodeTime=now;
+    console.log('[Quagga] DETECTED:', code, 'format:', result.codeResult.format);
+    statusEl.textContent='Detected: '+code;
+    _handleBarcode(code);
   });
 }
 
