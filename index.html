@@ -567,6 +567,58 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
       <div class="card" id="bs-card" style="display:none">
         <div class="card-title">&#129482; Blood Sugar</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Normal fasting: 70–99 mg/dL &nbsp;·&nbsp; Normal after meal: under 140 mg/dL</div>
+
+        <!-- Estimated A1C tile -->
+        <div id="a1c-tile" style="display:none;margin-bottom:20px;padding:16px;background:var(--surface2);border:1px solid var(--border);border-radius:12px">
+          <div style="display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:12px">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Estimated A1C</div>
+              <div style="display:flex;align-items:baseline;gap:8px">
+                <div style="font-size:36px;font-weight:700;font-family:var(--font-display)" id="a1c-value">—</div>
+                <div style="font-size:16px;color:var(--muted)">%</div>
+                <div style="font-size:13px;font-weight:600;padding:3px 10px;border-radius:12px" id="a1c-badge">—</div>
+              </div>
+            </div>
+            <div style="text-align:right">
+              <div style="font-size:12px;color:var(--muted)" id="a1c-reading-count">Based on — readings</div>
+              <div style="font-size:12px;color:var(--muted)" id="a1c-date-range">—</div>
+            </div>
+          </div>
+          <!-- 90-day range picker -->
+          <div style="margin-bottom:12px">
+            <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:8px">Select 90-day window</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <div style="display:flex;gap:6px;flex-wrap:wrap">
+                <button class="btn btn-ghost btn-sm" onclick="setA1CRange(90)" id="a1c-btn-90" style="font-size:12px">Last 90 days</button>
+                <button class="btn btn-ghost btn-sm" onclick="setA1CRange(60)" id="a1c-btn-60" style="font-size:12px">Last 60 days</button>
+                <button class="btn btn-ghost btn-sm" onclick="setA1CRange(30)" id="a1c-btn-30" style="font-size:12px">Last 30 days</button>
+              </div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+                <input type="date" id="a1c-start-date" style="font-size:12px;max-width:130px" onchange="setA1CCustomRange()"/>
+                <span style="font-size:12px;color:var(--muted)">to</span>
+                <input type="date" id="a1c-end-date" style="font-size:12px;max-width:130px" onchange="setA1CCustomRange()"/>
+              </div>
+            </div>
+          </div>
+          <!-- A1C range reference -->
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:12px">
+            <div style="padding:6px 8px;border-radius:8px;background:rgba(85,107,47,0.1);border:1px solid rgba(85,107,47,0.2);text-align:center">
+              <div style="font-size:11px;font-weight:600;color:var(--accent)">Below 5.7%</div>
+              <div style="font-size:10px;color:var(--muted)">Normal</div>
+            </div>
+            <div style="padding:6px 8px;border-radius:8px;background:rgba(138,106,26,0.1);border:1px solid rgba(138,106,26,0.2);text-align:center">
+              <div style="font-size:11px;font-weight:600;color:var(--amber)">5.7–6.4%</div>
+              <div style="font-size:10px;color:var(--muted)">Prediabetes</div>
+            </div>
+            <div style="padding:6px 8px;border-radius:8px;background:rgba(192,57,43,0.1);border:1px solid rgba(192,57,43,0.2);text-align:center">
+              <div style="font-size:11px;font-weight:600;color:var(--red)">6.5%+</div>
+              <div style="font-size:10px;color:var(--muted)">Diabetes</div>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);line-height:1.6;padding:8px 10px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+            &#8505;&#65039; <strong>About this estimate:</strong> A real A1C lab test reflects your average blood sugar over the past 90 days. The more readings you log over a 90-day period, the more accurate this estimate will be. This is a mathematical estimate only — only a lab test can confirm your actual A1C. If you have concerns, speak with your doctor.
+          </div>
+        </div>
         <div style="margin-bottom:14px">
           <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Blood sugar level (mg/dL)</label>
           <input type="number" id="bs-value" placeholder="e.g. 105" style="max-width:150px" min="30" max="600"/>
@@ -1761,7 +1813,7 @@ function showSection(name){
   if(name==='grocery')_run(()=>renderGroceryList(),'renderGroceryList');
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
   if(name==='profile')_run(()=>renderProfile(),'renderProfile');
-  if(name==='vitals'){ensureVitalsLoaded(viewDate).then(()=>_run(()=>renderVitals(),'renderVitals'));syncPageDateDisplay('vitals');}
+  if(name==='vitals'){ensureVitalsLoaded(viewDate).then(()=>{_run(()=>renderVitals(),'renderVitals');initA1CDatePickers();});syncPageDateDisplay('vitals');}
 }
 
 // ── ONBOARDING ──────────────────────────────────────────────
@@ -4263,7 +4315,7 @@ function renderVitals(){
   if(bsCard)bsCard.style.display=s.trackBS?'block':'none';
   if(emptyEl)emptyEl.style.display=(s.trackBP||s.trackBS)?'none':'block';
   if(s.trackBP)renderBPHistory();
-  if(s.trackBS)renderBSHistory();
+  if(s.trackBS){renderBSHistory();renderA1CTile();}
 }
 
 function getVitalsForDate(type, date){
@@ -4373,6 +4425,111 @@ function renderBPHistory(){
   el.innerHTML=html;
 }
 
+// ── ESTIMATED A1C ─────────────────────────────────────────────
+let _a1cDays=90; // default window
+
+function calcEstimatedA1C(avgBG){
+  // ADA formula: eA1C = (avgBG + 46.7) / 28.7
+  return Math.round(((avgBG+46.7)/28.7)*10)/10;
+}
+
+function a1cCategory(a1c){
+  if(a1c<5.7)return{label:'Normal',color:'var(--accent)',bg:'rgba(85,107,47,0.1)'};
+  if(a1c<6.5)return{label:'Prediabetes',color:'var(--amber)',bg:'rgba(138,106,26,0.1)'};
+  return{label:'Diabetes',color:'var(--red)',bg:'rgba(192,57,43,0.1)'};
+}
+
+function getDateNDaysAgo(n){
+  const d=new Date();d.setDate(d.getDate()-n);
+  return d.toISOString().slice(0,10);
+}
+
+function renderA1CTile(){
+  const tile=document.getElementById('a1c-tile');
+  if(!tile||!cache.vitalSettings?.trackBS)return;
+  tile.style.display='block';
+
+  // Get date range
+  const endDate=document.getElementById('a1c-end-date')?.value||TODAY;
+  const startDate=document.getElementById('a1c-start-date')?.value||getDateNDaysAgo(_a1cDays);
+
+  // Collect all BS readings in range from cache
+  // Load any dates in range not yet cached
+  const allReadings=[];
+  const loadPromises=[];
+  let d=new Date(startDate+'T12:00:00');
+  const end=new Date(endDate+'T12:00:00');
+  while(d<=end){
+    const dateStr=d.toISOString().slice(0,10);
+    if(cache.vitals.bs[dateStr]===undefined){
+      loadPromises.push(ensureVitalsLoaded(dateStr));
+    }
+    d.setDate(d.getDate()+1);
+  }
+  if(loadPromises.length){
+    Promise.all(loadPromises).then(()=>renderA1CTile());
+    return;// re-render once loaded
+  }
+  Object.keys(cache.vitals.bs||{}).forEach(date=>{
+    if(date>=startDate&&date<=endDate){
+      (cache.vitals.bs[date]||[]).forEach(r=>{if(r.value)allReadings.push(r.value);});
+    }
+  });
+
+  const valEl=document.getElementById('a1c-value');
+  const badgeEl=document.getElementById('a1c-badge');
+  const countEl=document.getElementById('a1c-reading-count');
+  const rangeEl=document.getElementById('a1c-date-range');
+
+  if(rangeEl)rangeEl.textContent=startDate.slice(5)+' – '+endDate.slice(5);
+  if(countEl)countEl.textContent='Based on '+allReadings.length+' reading'+(allReadings.length===1?'':'s');
+
+  if(!allReadings.length){
+    if(valEl)valEl.textContent='—';
+    if(badgeEl){badgeEl.textContent='No data';badgeEl.style.background='var(--surface)';badgeEl.style.color='var(--muted)';}
+    return;
+  }
+
+  const avg=Math.round(allReadings.reduce((a,b)=>a+b,0)/allReadings.length);
+  const a1c=calcEstimatedA1C(avg);
+  const cat=a1cCategory(a1c);
+
+  if(valEl)valEl.textContent=a1c.toFixed(1);
+  if(valEl)valEl.style.color=cat.color;
+  if(badgeEl){
+    badgeEl.textContent=cat.label;
+    badgeEl.style.background=cat.bg;
+    badgeEl.style.color=cat.color;
+    badgeEl.style.border='1px solid '+cat.color.replace('var(--','').replace(')','');
+  }
+}
+
+function setA1CRange(days){
+  _a1cDays=days;
+  const end=TODAY;
+  const start=getDateNDaysAgo(days);
+  const startEl=document.getElementById('a1c-start-date');
+  const endEl=document.getElementById('a1c-end-date');
+  if(startEl)startEl.value=start;
+  if(endEl)endEl.value=end;
+  // Update button states
+  ['30','60','90'].forEach(d=>{
+    const btn=document.getElementById('a1c-btn-'+d);
+    if(btn)btn.style.background=String(days)===d?'var(--accent)':'';
+    if(btn)btn.style.color=String(days)===d?'#fff':'';
+  });
+  renderA1CTile();
+}
+
+function setA1CCustomRange(){
+  // Clear preset button highlights
+  ['30','60','90'].forEach(d=>{
+    const btn=document.getElementById('a1c-btn-'+d);
+    if(btn){btn.style.background='';btn.style.color='';}
+  });
+  renderA1CTile();
+}
+
 function renderBSHistory(){
   const el=document.getElementById('bs-history');if(!el)return;
   let readings;
@@ -4396,6 +4553,15 @@ function renderBSHistory(){
   el.innerHTML=html;
 }
 
+function initA1CDatePickers(){
+  const startEl=document.getElementById('a1c-start-date');
+  const endEl=document.getElementById('a1c-end-date');
+  if(startEl&&!startEl.value){startEl.value=getDateNDaysAgo(90);startEl.max=TODAY;}
+  if(endEl&&!endEl.value){endEl.value=TODAY;endEl.max=TODAY;}
+  const btn90=document.getElementById('a1c-btn-90');
+  if(btn90){btn90.style.background='var(--accent)';btn90.style.color='#fff';}
+}
+
 function renderVitals(){
   const s=cache.vitalSettings||{};
   const bpCard=document.getElementById('bp-card');
@@ -4410,7 +4576,7 @@ function renderVitals(){
   document.getElementById('bp-feedback').innerHTML='';
   document.getElementById('bs-feedback').innerHTML='';
   if(s.trackBP)renderBPHistory();
-  if(s.trackBS)renderBSHistory();
+  if(s.trackBS){renderBSHistory();renderA1CTile();}
 }
 
 async function logBloodPressure(){
