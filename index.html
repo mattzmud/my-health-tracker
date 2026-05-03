@@ -832,7 +832,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <textarea id="food-input" placeholder="Describe what you ate... separate items with commas"></textarea>
         <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
           <button class="btn btn-primary" onclick="logFood()" id="log-food-btn"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Log &amp; Analyze</button>
-          <button class="btn btn-ghost btn-sm" onclick="openBarcodeScanner()" title="Scan barcode" style="display:flex;align-items:center;gap:5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="4" height="16" rx="1"/><rect x="8" y="4" width="2" height="16" rx="1"/><rect x="12" y="4" width="3" height="16" rx="1"/><rect x="17" y="4" width="2" height="16" rx="1"/><rect x="21" y="4" width="1" height="16" rx="1"/></svg> Scan</button>
+          <button class="btn btn-ghost btn-sm" onclick="openBarcodeScanner()" title="Scan barcode" id="scan-barcode-btn" style="display:flex;align-items:center;gap:5px"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="4" width="4" height="16" rx="1"/><rect x="8" y="4" width="2" height="16" rx="1"/><rect x="12" y="4" width="3" height="16" rx="1"/><rect x="17" y="4" width="2" height="16" rx="1"/><rect x="21" y="4" width="1" height="16" rx="1"/></svg> Scan</button>
         </div>
         <div style="font-size:11px;color:var(--muted);margin-top:8px;line-height:1.6">&#8505;&#65039; Nutrition facts are sourced from community-contributed databases. If values look incorrect, tap any logged item to edit them.</div>
         <div id="food-feedback"></div>
@@ -2942,20 +2942,16 @@ async function openBarcodeScanner(){
   const modal=document.getElementById('barcode-scanner-modal');
   const status=document.getElementById('scanner-status');
   if(!modal)return;
-  if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
-    alert('Camera not supported. Please use Safari on iPhone or Chrome on Android.');
-    return;
-  }
   status.textContent='Loading scanner...';
   modal.classList.add('active');
   _scannerActive=true;
   try{
     await _loadHtml5Qr();
-    status.textContent='Starting camera...';
+    status.textContent='';
     const container=document.getElementById('barcode-video');
     container.innerHTML='';
-    // Pass formats to constructor: EAN_13=9,EAN_8=10,UPC_A=14,UPC_E=15,CODE_128=5
-    const _formats=[9,10,14,15,5];
+    // Try live scanner first
+    const _formats=[9,10,14,15,5]; // EAN-13,EAN-8,UPC-A,UPC-E,Code128
     _html5QrScanner=new Html5Qrcode('barcode-video',{formatsToSupport:_formats});
     await _html5QrScanner.start(
       {facingMode:'environment'},
@@ -2968,17 +2964,53 @@ async function openBarcodeScanner(){
         _scannerActive=false;
         _handleBarcode(decodedText);
       },
-      (err)=>{
-        // fires every frame when no barcode found — log occasionally
-        if(Math.random()<0.01)console.log('[html5qr] Scanning...',err);
-      }
+      (err)=>{if(Math.random()<0.01)console.log('[html5qr] Scanning...',err);}
     );
-    status.textContent='';
     console.log('[html5qr] Scanner started');
   }catch(e){
-    console.error('[html5qr] Error:',e);
-    status.textContent='Camera error: '+e.message;
+    console.error('[html5qr] Live scan failed, falling back to photo mode:',e.message);
+    // Fallback: photo capture mode
+    _launchPhotoScanner();
   }
+}
+
+function _launchPhotoScanner(){
+  closeBarcodeScanner();
+  // Create a hidden file input that opens camera
+  const input=document.createElement('input');
+  input.type='file';
+  input.accept='image/*';
+  input.capture='environment';
+  input.style.display='none';
+  document.body.appendChild(input);
+  input.onchange=async function(){
+    const file=input.files[0];
+    document.body.removeChild(input);
+    if(!file)return;
+    const status=document.getElementById('food-feedback');
+    if(status)status.innerHTML='<div style="padding:8px 12px;font-size:13px;color:var(--muted)">&#128269; Reading barcode from photo...</div>';
+    try{
+      await _loadHtml5Qr();
+      const _formats=[9,10,14,15,5];
+      const scanner=new Html5Qrcode('__barcode_offscreen__',{formatsToSupport:_formats});
+      // Create offscreen div
+      const div=document.createElement('div');div.id='__barcode_offscreen__';div.style.display='none';
+      document.body.appendChild(div);
+      const result=await scanner.scanFile(file,false);
+      document.body.removeChild(div);
+      console.log('[html5qr] Photo scan result:',result);
+      if(status)status.innerHTML='';
+      _handleBarcode(result);
+    }catch(e){
+      console.error('[html5qr] Photo scan failed:',e);
+      const status2=document.getElementById('food-feedback');
+      if(status2)status2.innerHTML='<div style="padding:10px 12px;background:rgba(138,106,26,0.1);border:1px solid rgba(138,106,26,0.25);border-radius:8px;font-size:13px;color:var(--text);margin-top:8px">'
+        +'<div style="font-weight:600;margin-bottom:4px">&#9888;&#65039; Barcode not readable</div>'
+        +'<div style="font-size:12px;color:var(--muted)">Could not read barcode from photo. Make sure the barcode is well-lit and in focus. Or type the item name above to search manually.</div>'
+        +'</div>';
+    }
+  };
+  input.click();
 }
 
 function closeBarcodeScanner(){
