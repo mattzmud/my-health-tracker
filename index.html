@@ -2955,16 +2955,9 @@ async function openBarcodeScanner(){
     const container=document.getElementById('barcode-video');
     container.innerHTML='';
     _html5QrScanner=new Html5Qrcode('barcode-video');
-    const formatsToSupport=[
-      Html5QrcodeSupportedFormats.EAN_13,
-      Html5QrcodeSupportedFormats.EAN_8,
-      Html5QrcodeSupportedFormats.UPC_A,
-      Html5QrcodeSupportedFormats.UPC_E,
-      Html5QrcodeSupportedFormats.CODE_128
-    ];
     await _html5QrScanner.start(
       {facingMode:'environment'},
-      {fps:10,qrbox:{width:250,height:120},aspectRatio:1.7,formatsToSupport},
+      {fps:10,qrbox:{width:250,height:150}},
       (decodedText)=>{
         if(!_scannerActive)return;
         console.log('[html5qr] Detected:',decodedText);
