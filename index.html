@@ -38,8 +38,21 @@
 }
 /* Text size levels */
 body{font-size:15px;line-height:1.6;}
-body.text-large{font-size:17px;line-height:1.7;}
-body.text-xlarge{font-size:19px;line-height:1.8;}
+body.text-large{font-size:19px;line-height:1.75;}
+body.text-xlarge{font-size:22px;line-height:1.85;}
+/* Scale up key UI elements proportionally */
+body.text-large .card-title{font-size:20px;}
+body.text-large .stat-num{font-size:28px;}
+body.text-large .btn{font-size:16px;padding:10px 18px;}
+body.text-large .btn-sm{font-size:14px;padding:7px 14px;}
+body.text-large input,body.text-large select,body.text-large textarea{font-size:17px;}
+body.text-large .nav-label{font-size:12px;}
+body.text-xlarge .card-title{font-size:23px;}
+body.text-xlarge .stat-num{font-size:32px;}
+body.text-xlarge .btn{font-size:18px;padding:12px 20px;}
+body.text-xlarge .btn-sm{font-size:16px;padding:8px 16px;}
+body.text-xlarge input,body.text-xlarge select,body.text-xlarge textarea{font-size:20px;}
+body.text-xlarge .nav-label{font-size:13px;}
 /* Darken muted text at larger sizes for readability */
 body.text-large{--muted:#5e5347;}
 body.text-xlarge{--muted:#4a4139;}
