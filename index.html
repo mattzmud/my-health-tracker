@@ -2954,12 +2954,12 @@ async function openBarcodeScanner(){
     status.textContent='Starting camera...';
     const container=document.getElementById('barcode-video');
     container.innerHTML='';
-    _html5QrScanner=new Html5Qrcode('barcode-video');
-    // html5-qrcode needs format integers, not the enum object
-    // EAN_13=0, EAN_8=14, UPC_A=3, UPC_E=4, CODE_128=2
+    // Pass formats to constructor: EAN_13=9,EAN_8=10,UPC_A=14,UPC_E=15,CODE_128=5
+    const _formats=[9,10,14,15,5];
+    _html5QrScanner=new Html5Qrcode('barcode-video',{formatsToSupport:_formats});
     await _html5QrScanner.start(
       {facingMode:'environment'},
-      {fps:10,qrbox:{width:250,height:150},formatsToSupport:[0,14,3,4,2]},
+      {fps:10,qrbox:{width:250,height:150}},
       (decodedText)=>{
         if(!_scannerActive)return;
         console.log('[html5qr] Detected:',decodedText);
