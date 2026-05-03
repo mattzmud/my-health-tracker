@@ -1167,7 +1167,7 @@ onAuthStateChanged(auth, async user => {
     const _ua=navigator.userAgent;
     const _dev=/iPhone/.test(_ua)?'iPhone':/iPad/.test(_ua)?'iPad':/Android/.test(_ua)?'Android':/Mac/.test(_ua)?'Mac':/Windows/.test(_ua)?'Windows':'Unknown';
     const _brw=/CriOS|Chrome/.test(_ua)?'Chrome':/Safari/.test(_ua)?'Safari':/Firefox/.test(_ua)?'Firefox':/Edg/.test(_ua)?'Edge':'Unknown';
-    window.fbSet&&window.fbSet('profile','lastLogin',{date:new Date().toISOString().split('T')[0],ts:Date.now(),device:_dev,browser:_brw});
+    const _ld=new Date();const _localDate=_ld.getFullYear()+'-'+String(_ld.getMonth()+1).padStart(2,'0')+'-'+String(_ld.getDate()).padStart(2,'0');window.fbSet&&window.fbSet('profile','lastLogin',{date:_localDate,ts:Date.now(),device:_dev,browser:_brw});
     window._authUser = user;
     document.getElementById('login-screen').style.display = 'none';
     const profile = await window.fbGet('profile','survey');
@@ -2144,8 +2144,9 @@ async function generateWellnessPlan(showModal=false,reason='Plan updated'){
       }catch(e){changeSummary=diffs.length?diffs.join(' · '):reason;}
     }
 
-    const now=new Date().toISOString();
-    const record={text:cleaned,updatedAt:now.split('T')[0],updatedTs:now,reason,changeSummary};
+    const now=new Date();
+    const localDate=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+    const record={text:cleaned,updatedAt:localDate,updatedTs:now.toISOString(),reason,changeSummary};
     window._profile.wellnessPlan=record;
 
     // Rolling history max 10
