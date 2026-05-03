@@ -2955,9 +2955,11 @@ async function openBarcodeScanner(){
     const container=document.getElementById('barcode-video');
     container.innerHTML='';
     _html5QrScanner=new Html5Qrcode('barcode-video');
+    // html5-qrcode needs format integers, not the enum object
+    // EAN_13=0, EAN_8=14, UPC_A=3, UPC_E=4, CODE_128=2
     await _html5QrScanner.start(
       {facingMode:'environment'},
-      {fps:10,qrbox:{width:250,height:150}},
+      {fps:10,qrbox:{width:250,height:150},formatsToSupport:[0,14,3,4,2]},
       (decodedText)=>{
         if(!_scannerActive)return;
         console.log('[html5qr] Detected:',decodedText);
