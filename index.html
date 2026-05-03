@@ -2939,6 +2939,14 @@ async function _loadHtml5Qr(){
 }
 
 async function openBarcodeScanner(){
+  // Detect iOS Safari — use photo mode directly (live barcode scanning not supported)
+  const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)&&!window.MSStream;
+  const isSafari=/^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  if(isIOS||isSafari){
+    _launchPhotoScanner();
+    return;
+  }
+  // Non-iOS: try live scanner
   const modal=document.getElementById('barcode-scanner-modal');
   const status=document.getElementById('scanner-status');
   if(!modal)return;
@@ -2950,26 +2958,23 @@ async function openBarcodeScanner(){
     status.textContent='';
     const container=document.getElementById('barcode-video');
     container.innerHTML='';
-    // Try live scanner first
-    const _formats=[9,10,14,15,5]; // EAN-13,EAN-8,UPC-A,UPC-E,Code128
+    const _formats=[9,10,14,15,5];
     _html5QrScanner=new Html5Qrcode('barcode-video',{formatsToSupport:_formats});
     await _html5QrScanner.start(
       {facingMode:'environment'},
       {fps:10,qrbox:{width:250,height:150}},
       (decodedText)=>{
         if(!_scannerActive)return;
-        console.log('[html5qr] Detected:',decodedText);
         if(navigator.vibrate)navigator.vibrate(50);
         status.textContent='Found: '+decodedText+' — looking up...';
         _scannerActive=false;
         _handleBarcode(decodedText);
       },
-      (err)=>{if(Math.random()<0.01)console.log('[html5qr] Scanning...',err);}
+      ()=>{}
     );
-    console.log('[html5qr] Scanner started');
+    console.log('[html5qr] Live scanner started');
   }catch(e){
-    console.error('[html5qr] Live scan failed, falling back to photo mode:',e.message);
-    // Fallback: photo capture mode
+    console.error('[html5qr] Live scan failed:',e.message);
     _launchPhotoScanner();
   }
 }
