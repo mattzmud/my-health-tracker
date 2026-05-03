@@ -2979,23 +2979,18 @@ function _startQuagga(){
       target:videoEl,
       constraints:{
         facingMode:'environment',
-        width:{min:320,ideal:640},
-        height:{min:240,ideal:480}
+        width:{min:320,ideal:480},
+        height:{min:240,ideal:360}
       }
     },
-    locator:{patchSize:'medium',halfSample:false},
+    locator:{patchSize:'medium',halfSample:true},
     numOfWorkers:0,
-    frequency:5,
+    frequency:10,
     decoder:{
-      readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader']
+      readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader'],
+      multiple:false
     },
-    locate:true,
-    debug:{
-      drawBoundingBox:false,
-      showFrequency:false,
-      drawScanline:false,
-      showPattern:false
-    }
+    locate:true
   },function(err){
     if(err){
       console.error('[Quagga] Init error:',err);
@@ -3009,17 +3004,26 @@ function _startQuagga(){
     _quaggaRunning=true;
   });
 
-  Quagga.onProcessed(function(result){
-    // Log every few frames to confirm processing
-    if(Math.random()<0.02)console.log('[Quagga] Processing frame, result:', result?'found boxes':'no boxes');
-  });
+
 
   // Single detection — remove debounce to see if anything is detected at all
+  let _lastCode='',_lastCodeCount=0;
   Quagga.onDetected(function(result){
     const code=result.codeResult.code;
-    console.log('[Quagga] DETECTED:', code, 'format:', result.codeResult.format);
-    statusEl.textContent='Detected: '+code;
-    _handleBarcode(code);
+    if(!code||code.length<6)return;
+    if(code===_lastCode){
+      _lastCodeCount++;
+      if(_lastCodeCount===2){
+        console.log('[Quagga] Confirmed:', code, result.codeResult.format);
+        // Haptic feedback on mobile
+        if(navigator.vibrate)navigator.vibrate(50);
+        statusEl.textContent='Found: '+code+' — looking up...';
+        _handleBarcode(code);
+      }
+    } else {
+      _lastCode=code;
+      _lastCodeCount=1;
+    }
   });
 }
 
