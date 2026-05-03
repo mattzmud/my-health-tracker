@@ -2819,8 +2819,8 @@ function renderFoodEntries(){
   carbBar.style.width=Math.min(100,(tc/cg)*100)+'%';
   carbBar.style.background=tc>cg?'var(--red)':'var(--amber)';
   const sugarProgEl=document.getElementById('prog-sugar');
-  if(sugarProgEl){sugarProgEl.style.width=Math.min(100,(ts_/sg)*100)+'%';sugarProgEl.style.background=ts_>sg?'var(--red)':'rgba(192,57,43,0.6)';}
-  const sugarLabelEl=document.getElementById('prog-sugar-label');if(sugarLabelEl)sugarLabelEl.textContent=Math.round(ts_)+' / '+sg+'g'+(ts_>sg?' ⚠':'');
+  if(sugarProgEl){sugarProgEl.style.width=Math.min(100,(tsugar/sg2)*100)+'%';sugarProgEl.style.background=tsugar>sg2?'var(--red)':'rgba(192,57,43,0.6)';}
+  const sugarLabelEl=document.getElementById('prog-sugar-label');if(sugarLabelEl)sugarLabelEl.textContent=Math.round(tsugar)+' / '+sg2+'g'+(tsugar>sg2?' ⚠':'');
   const calBar=document.getElementById('food-prog-cal');
   if(calBar){calBar.style.width=Math.min(100,(tcal/calg2)*100)+'%';calBar.style.background=tcal>calg2?'var(--red)':'rgba(192,57,43,0.6)';}
   // Calorie adjustment note
