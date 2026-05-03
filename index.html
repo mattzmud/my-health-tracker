@@ -2563,6 +2563,22 @@ async function logFood(){
   document.getElementById('food-feedback').innerHTML='';
   if(!cache.food[viewDate])cache.food[viewDate]=[];
   try{
+    // ── Barcode prefill fast path ──
+    if(window._barcodePreFill&&items.length===1){
+      const pf=window._barcodePreFill;
+      cache.food[viewDate].push({time:mt,text:rawText,
+        protein:pf.protein,carbs:pf.carbs,calories:pf.calories,sugar:pf.sugar||0,
+        baseProtein:pf.protein,baseCarbs:pf.carbs,baseCalories:pf.calories,baseSugar:pf.sugar||0,
+        servings:1,water:0,ts:Date.now(),source:pf.source});
+      window._barcodePreFill=null;
+      await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+      document.getElementById('food-input').value='';
+      document.getElementById('food-feedback').innerHTML='';
+      renderFoodEntries();refreshDashboard();
+      btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
+      return;
+    }
+    window._barcodePreFill=null;
     const itemList=items.length>0?items.join(', '):'Nothing food-wise, just water.';
     // Ask AI for per-item breakdown as JSON array + feedback
     // ── Step 1: Try Open Food Facts first, then USDA for each item ──
