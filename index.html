@@ -436,6 +436,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div class="stat-card"><div class="stat-num" id="dash-protein" style="color:var(--blue)">&#8212;</div><div class="stat-label" id="stat-protein-label">Protein Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-water-label">Water Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-carbs" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-carbs-label">Carbs Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-sugar" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-sugar-label">Sugar Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-calories" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-calories-label">Calories Today</div></div>
       </div>
       <div class="grid2">
@@ -444,6 +445,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <div class="prog-wrap"><div class="prog-label"><span>Protein</span><span id="prog-protein-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-protein" style="width:0%;background:var(--accent)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Net carbs</span><span id="prog-carbs-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-carbs" style="width:0%;background:var(--amber)"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Sugar</span><span id="prog-sugar-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-sugar" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Calories</span><span id="prog-cal-label">0 kcal</span></div><div class="prog-bar"><div class="prog-fill" id="prog-cal" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px;display:none"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
@@ -486,6 +488,10 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div class="card">
           <div class="card-title" id="carbs-chart-title" style="margin-bottom:14px">Net carbs</div>
           <canvas id="carbs-chart" height="160"></canvas>
+        </div>
+        <div class="card">
+          <div class="card-title" id="sugar-chart-title" style="margin-bottom:14px">Sugar</div>
+          <canvas id="sugar-chart" height="160"></canvas>
         </div>
         <div class="card">
           <div class="card-title" id="cal-chart-title" style="margin-bottom:14px">Calories</div>
@@ -864,6 +870,13 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
               <span><span id="food-carb-total" style="color:var(--amber);font-weight:600">0g</span> <span id="food-carb-goal-label" style="color:var(--muted)">/ 100g limit</span></span>
             </div>
             <div class="prog-bar"><div class="prog-fill" id="food-prog-carb" style="width:0%;background:#a0782a"></div></div>
+          </div>
+          <div class="prog-wrap" style="margin-top:10px">
+            <div class="prog-label">
+              <span>&#127852; Sugar</span>
+              <span><span id="food-sugar-total" style="color:var(--red);font-weight:600">0g</span> <span id="food-sugar-goal-label" style="color:var(--muted)">/ 50g limit</span></span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-sugar" style="width:0%;background:rgba(192,57,43,0.6)"></div></div>
           </div>
           <div class="prog-wrap" style="margin-top:10px">
             <div class="prog-label">
@@ -1572,17 +1585,19 @@ async function lookupOpenFoodFacts(query){
     const n2=resolvedNutriments;
 
     // Prefer _serving fields; fall back to scaling _100g values
-    let calories,protein,carbs;
+    let calories,protein,carbs,sugar=0;
     if(n2['energy-kcal_serving']||n2['proteins_serving']){
       calories=Math.round(n2['energy-kcal_serving']||0);
       protein=Math.round((n2['proteins_serving']||0)*10)/10;
       carbs=Math.round((n2['carbohydrates_serving']||0)*10)/10;
+      sugar=Math.round((n2['sugars_serving']||0)*10)/10;
       console.log('[OFF] Using _serving fields → '+calories+'kcal '+protein+'pro '+carbs+'carbs');
     } else {
       const scale=resolvedServingG/100;
       calories=Math.round((n2['energy-kcal_100g']||0)*scale);
       protein=Math.round((n2['proteins_100g']||0)*scale*10)/10;
       carbs=Math.round((n2['carbohydrates_100g']||0)*scale*10)/10;
+      sugar=Math.round((n2['sugars_100g']||0)*scale*10)/10;
       console.log('[OFF] Scaling _100g by '+scale.toFixed(2)+' → '+calories+'kcal '+protein+'pro '+carbs+'carbs');
     }
 
@@ -1597,7 +1612,7 @@ async function lookupOpenFoodFacts(query){
     const brandStr=Array.isArray(best.brands)?best.brands.join(', '):(best.brands||null);
     if(!brandStr&&bestScore<0.9){console.log('[OFF] Rejecting — no brand, low confidence');return null;}
     console.log('[OFF] Matched "'+best.product_name+'" ('+brandStr+') score='+bestScore.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
-    return{calories,protein,carbs,source:'off',
+    return{calories,protein,carbs,sugar,source:'off',
       name:best.product_name,brand:brandStr,
       servingSize:servingG,servingSizeUnit:'g'};
   }catch(e){
@@ -1692,7 +1707,8 @@ async function lookupUSDA(query){
     if(!calories&&!protein)return null;
 
     console.log('[USDA] Final:',best.description,'→',calories,'kcal',protein,'pro',carbs,'carbs');
-    return{calories,protein,carbs,source:'usda',
+    const usdaSugar=Math.round((raw.sugar||0)*scale*10)/10;
+    return{calories,protein,carbs,sugar:usdaSugar,source:'usda',
       name:best.description,brand:best.brandOwner||null,
       servingSize:detail.servingSize,servingSizeUnit:detail.servingSizeUnit};
   }catch(e){
@@ -1896,7 +1912,7 @@ async function generatePlan(){
   window._profile=profile;
   // Run nutrition goals + workout plan in parallel — both independent
   const nutritionPromise=callAI(
-    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200}\nProtein in grams, water in oz, net carbs in grams, calories in kcal. Calculate calorie goal using TDEE minus appropriate deficit for their goals and activity level. Be specific to this person.',
+    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50}\nProtein in grams, water in oz, net carbs in grams, calories in kcal, sugar in grams (total daily sugar limit — typically 25-50g). Calculate calorie goal using TDEE minus appropriate deficit for their goals and activity level. Be specific to this person.',
     'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
   ).catch(()=>null);
 
@@ -1919,6 +1935,7 @@ async function generatePlan(){
         if(ng.waterGoal&&ng.waterGoal>0)window._profile.waterGoal=Math.round(ng.waterGoal);
         if(ng.carbGoal&&ng.carbGoal>0)window._profile.carbGoal=Math.round(ng.carbGoal);
         if(ng.calorieGoal&&ng.calorieGoal>0)window._profile.calorieGoal=Math.round(ng.calorieGoal);
+        if(ng.sugarGoal&&ng.sugarGoal>0)window._profile.sugarGoal=Math.round(ng.sugarGoal);
       }
     }
   }catch(e){}
@@ -2001,7 +2018,7 @@ async function generateWellnessPlan(showModal=false,reason='Plan updated'){
   const p=window._profile;if(!p)return;
   try{
     const prevPlan=p.wellnessPlan;
-    const prevGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000};
+    const prevGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000,sugar:p.sugarGoal||50};
 
     const plan=await callAI(
       'Create a clear, personalized wellness plan for:\n'+buildUserContext()
@@ -2018,7 +2035,7 @@ async function generateWellnessPlan(showModal=false,reason='Plan updated'){
     const cleaned=plan.replace(/```/g,'').trim();
 
     // Build change summary
-    const currGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000};
+    const currGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000,sugar:p.sugarGoal||50};
     let changeSummary='Initial plan created.';
     if(prevPlan&&prevPlan.text){
       const diffs=[];
@@ -2171,7 +2188,7 @@ window.appInit=async function(){
   Promise.all([
     ..._last7.map(d=>ensureDateLoaded(d)),
     fbGetCol('journal').then(jc=>Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;})),
-  ]).then(()=>{renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();});
+  ]).then(()=>{renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();});
   setSyncStatus('synced');
   loadAvatar();// load early so avatar shows on dashboard
   updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
@@ -2224,7 +2241,7 @@ async function uploadAvatar(event){
 // ── DASHBOARD ──────────────────────────────────────────────
 let weightChart,proteinChart,waterChart,carbsChart;
 function refreshDashboard(){
-  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80,cg=p.carbGoal||100,calg=p.calorieGoal||2000;
+  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80,cg=p.carbGoal||100,calg=p.calorieGoal||2000,sg=p.sugarGoal||50;
   // goalsDate = single selected day (or today for multi-day ranges)
   const _dashDays=getDashDays();
   const _isSingle=_dashDays.length===1;
@@ -2242,9 +2259,11 @@ function refreshDashboard(){
   document.getElementById('dash-protein').textContent=Math.round(tp)+'g';
   document.getElementById('dash-water').textContent=Math.round(tw)+' oz';
   document.getElementById('dash-carbs').textContent=Math.round(tc)+'g';
+  document.getElementById('dash-sugar').textContent=Math.round(ts_)+'g';
   const _sl=document.getElementById('stat-protein-label');if(_sl)_sl.textContent=goalsDate===TODAY?'Protein Today':'Protein '+goalsDate.slice(5);
   const _wl=document.getElementById('stat-water-label');if(_wl)_wl.textContent=goalsDate===TODAY?'Water Today':'Water '+goalsDate.slice(5);
   const _cl=document.getElementById('stat-carbs-label');if(_cl)_cl.textContent=goalsDate===TODAY?'Carbs Today':'Carbs '+goalsDate.slice(5);
+  const _sl2=document.getElementById('stat-sugar-label');if(_sl2)_sl2.textContent=goalsDate===TODAY?'Sugar Today':'Sugar '+goalsDate.slice(5);
   document.getElementById('dash-calories').textContent=Math.round(tcal)+' kcal';
   const _call=document.getElementById('stat-calories-label');if(_call)_call.textContent=goalsDate===TODAY?'Calories Today':'Cal '+goalsDate.slice(5);
   document.getElementById('prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
@@ -2291,7 +2310,7 @@ function refreshDashboard(){
     wh.innerHTML='<div style="margin-bottom:4px">Recent: '+rec+'</div>';
     if(cache.weights.length>1){const diff=+(cache.weights[cache.weights.length-1].val-cache.weights[cache.weights.length-2].val).toFixed(1);wh.innerHTML+='<div style="font-size:12px;color:'+(diff<0?'var(--green)':diff>0?'var(--red)':'var(--muted)')+'">vs last: '+(diff>0?'+':'')+diff+' lbs</div>';}
   }
-  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();
+  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();
   renderDashboardVitals();
   applyMedsVisibility();
 }
@@ -2478,6 +2497,23 @@ function renderCalChart(){
       label:{content:'Goal: '+goal+' kcal',display:true,position:'end',font:{size:10},color:'rgba(192,57,43,0.8)'}}}}}});
 }
 
+let sugarChart=null;
+function renderSugarChart(){
+  const days=getDashDays(),goal=(window._profile||{}).sugarGoal||50;
+  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.sugar||0),0)));
+  const ctx=document.getElementById('sugar-chart')?.getContext('2d');if(!ctx)return;
+  if(sugarChart)sugarChart.destroy();
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
+  sugarChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Sugar',data,
+    backgroundColor:data.map(v=>v>goal?'rgba(192,57,43,0.7)':'rgba(192,57,43,0.45)'),
+    borderColor:data.map(v=>v>goal?'rgba(192,57,43,0.9)':'rgba(192,57,43,0.7)'),
+    borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Sugar: '+ctx.raw+'g'+(ctx.raw>goal?' (over limit)':'')}}},
+    scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
+      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+5)}},
+    annotation:{annotations:{goalLine:{type:'line',yMin:goal,yMax:goal,borderColor:'rgba(192,57,43,0.4)',borderWidth:1.5,borderDash:[4,4],
+      label:{content:'Limit: '+goal+'g',display:true,position:'end',font:{size:10},color:'rgba(192,57,43,0.8)'}}}}}});
+}
 function renderCarbsChart(){
   const days=getDashDays(),goal=(window._profile||{}).carbGoal||100;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.carbs||0),0)));
@@ -2498,7 +2534,7 @@ function renderCarbsChart(){
 
 function buildUserContext(){
   const p=window._profile||{};
-  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal';
+  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit';
 }
 
 // ── FOOD DIARY ──────────────────────────────────────────────
@@ -2584,10 +2620,10 @@ async function logFood(){
       const usda=dbResults[i];
       let macros;
       if(usda){
-        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs};
+        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs,sugar:usda.sugar||0};
       } else {
         const ai=aiParsed[aiIdx]||{protein:0,carbs:0,calories:0};
-        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10};
+        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10,sugar:Math.round((ai.sugar||0)*10)/10};
         aiIdx++;
       }
       cache.food[viewDate].push({
@@ -2596,9 +2632,11 @@ async function logFood(){
         protein:macros.protein,
         carbs:macros.carbs,
         calories:macros.calories,
+        sugar:macros.sugar||0,
         baseProtein:macros.protein,
         baseCarbs:macros.carbs,
         baseCalories:macros.calories,
+        baseSugar:macros.sugar||0,
         servings:1,
         water:0,
         ts:Date.now()+i,
@@ -2754,9 +2792,9 @@ function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   // food-feedback is managed by logFood — don't clear it here
   const entries=cache.food[viewDate]||[];
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),tsugar=entries.reduce((a,e)=>a+(e.sugar||0),0);
   const p=window._profile||{};
-  const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100;
+  const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100, sg2=p.sugarGoal||50;
   // Update log title
   const logTitle=document.getElementById('food-log-title');
   if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
@@ -2767,6 +2805,9 @@ function renderFoodEntries(){
   document.getElementById('food-protein-total').textContent=Math.round(tp)+'g';
   document.getElementById('food-water-total').textContent=Math.round(tw)+' oz';
   document.getElementById('food-carb-total').textContent=Math.round(tc)+'g';
+  const fst=document.getElementById('food-sugar-total');if(fst)fst.textContent=Math.round(tsugar)+'g';
+  const fsgl=document.getElementById('food-sugar-goal-label');if(fsgl)fsgl.textContent='/ '+sg2+'g limit';
+  const fsp=document.getElementById('food-prog-sugar');if(fsp){fsp.style.width=Math.min(100,(tsugar/sg2)*100)+'%';fsp.style.background=tsugar>sg2?'var(--red)':'rgba(192,57,43,0.6)';};
   document.getElementById('food-cal-total').textContent=Math.round(tcal)+' kcal';
   document.getElementById('food-protein-goal-label').textContent='/ '+pg+'g goal';
   document.getElementById('food-water-goal-label').textContent='/ '+wg+' oz goal';
@@ -2777,6 +2818,9 @@ function renderFoodEntries(){
   const carbBar=document.getElementById('food-prog-carb');
   carbBar.style.width=Math.min(100,(tc/cg)*100)+'%';
   carbBar.style.background=tc>cg?'var(--red)':'var(--amber)';
+  const sugarProgEl=document.getElementById('prog-sugar');
+  if(sugarProgEl){sugarProgEl.style.width=Math.min(100,(ts_/sg)*100)+'%';sugarProgEl.style.background=ts_>sg?'var(--red)':'rgba(192,57,43,0.6)';}
+  const sugarLabelEl=document.getElementById('prog-sugar-label');if(sugarLabelEl)sugarLabelEl.textContent=Math.round(ts_)+' / '+sg+'g'+(ts_>sg?' ⚠':'');
   const calBar=document.getElementById('food-prog-cal');
   if(calBar){calBar.style.width=Math.min(100,(tcal/calg2)*100)+'%';calBar.style.background=tcal>calg2?'var(--red)':'rgba(192,57,43,0.6)';}
   // Calorie adjustment note
@@ -2844,6 +2888,7 @@ function renderFoodEntries(){
           +(e.calories!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.calories)+' kcal</span>':'')
           +(e.protein!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g pro</span>':'')
           +(e.carbs!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
+          +(e.sugar!=null&&e.sugar>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.sugar)+'g sugar</span>':'')
           +'<span style="font-size:11px;color:var(--muted);font-style:italic">'+servingLabel+'</span>'
           +(e.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; Verified</span>':e.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; USDA</span>':e.source==='edited'?'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(42,90,138,0.2)">&#9998; Edited</span>':'')
           +'</div></div>'
@@ -2871,7 +2916,7 @@ function openEditEntry(ts){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
   const servings=entry.servings||1;
-  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0};
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0};
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
   modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
@@ -2886,10 +2931,11 @@ function openEditEntry(ts){
     +'</div></div>'
     +'<div style="margin-bottom:16px">'
     +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Nutrition facts (per serving: '+Math.round(base.cal)+' kcal · '+Math.round(base.pro)+'g pro · '+Math.round(base.carbs)+'g carbs)</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Calories</div><input type="number" id="edit-cal" value="'+Math.round(entry.calories)+'" min="0" style="width:100%"/></div>'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Protein (g)</div><input type="number" id="edit-pro" value="'+Math.round(entry.protein)+'" min="0" style="width:100%"/></div>'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Carbs (g)</div><input type="number" id="edit-carbs" value="'+Math.round(entry.carbs)+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sugar (g)</div><input type="number" id="edit-sugar" value="'+Math.round(entry.sugar||0)+'" min="0" style="width:100%"/></div>'
     +'</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.querySelectorAll(&#39;.date-picker-modal&#39;)[document.querySelectorAll(&#39;.date-picker-modal&#39;).length-1].remove()">Cancel</button>'
@@ -2904,7 +2950,7 @@ function openEditEntry(ts){
 function adjustServings(ts,delta){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
-  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0};
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0};
   const current=entry.servings||1;
   const next=Math.max(0.25,Math.round((current+delta)*4)/4);
   entry.servings=next;
@@ -2918,6 +2964,7 @@ function adjustServings(ts,delta){
   if(calEl)calEl.value=Math.round(base.cal*next);
   if(proEl)proEl.value=Math.round(base.pro*next*10)/10;
   if(carbsEl)carbsEl.value=Math.round(base.carbs*next*10)/10;
+  const sugarEl=document.getElementById('edit-sugar');if(sugarEl)sugarEl.value=Math.round(base.sugar*next*10)/10;
 }
 
 async function saveEditEntry(ts){
@@ -2926,16 +2973,19 @@ async function saveEditEntry(ts){
   const cal=parseFloat(document.getElementById('edit-cal').value)||0;
   const pro=parseFloat(document.getElementById('edit-pro').value)||0;
   const carbs=parseFloat(document.getElementById('edit-carbs').value)||0;
+  const sugar2=parseFloat(document.getElementById('edit-sugar')?.value)||0;
   const servings=entry.servings||1;
   // Store base values (per single serving) derived from new manual values
   entry.calories=Math.round(cal);
   entry.protein=Math.round(pro*10)/10;
   entry.carbs=Math.round(carbs*10)/10;
+  entry.sugar=Math.round(sugar2*10)/10;
   entry.servings=servings;
   // Update base macros to match manual edit (so future serving adjustments work correctly)
   entry.baseCalories=Math.round(cal/servings);
   entry.baseProtein=Math.round((pro/servings)*10)/10;
   entry.baseCarbs=Math.round((carbs/servings)*10)/10;
+  entry.baseSugar=Math.round((sugar2/servings)*10)/10;
   entry.source='edited';
   // Save correction to personal cache so future logs use corrected values
   const corrKey=entry.text.toLowerCase().trim();
@@ -2943,6 +2993,7 @@ async function saveEditEntry(ts){
     calories:entry.baseCalories,
     protein:entry.baseProtein,
     carbs:entry.baseCarbs,
+    sugar:entry.baseSugar||0,
     name:entry.text,
     savedAt:Date.now()
   };
@@ -4422,7 +4473,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
@@ -4523,6 +4574,7 @@ async function applyGoalSuggestion(encoded){
   if(goals.waterGoal){window._profile.waterGoal=Math.round(goals.waterGoal);changed.push('Water: '+window._profile.waterGoal+' oz');}
   if(goals.carbGoal){window._profile.carbGoal=Math.round(goals.carbGoal);changed.push('Carbs: '+window._profile.carbGoal+'g');}
   if(goals.calorieGoal){window._profile.calorieGoal=Math.round(goals.calorieGoal);changed.push('Calories: '+window._profile.calorieGoal+' kcal');}
+  if(goals.sugarGoal){window._profile.sugarGoal=Math.round(goals.sugarGoal);changed.push('Sugar: '+window._profile.sugarGoal+'g');}
   await fbSet('profile','survey',window._profile);
   const card=document.getElementById('goal-suggestion-card');
   if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);text-align:center;padding:4px">&#10003; Goals updated — '+changed.join(' · ')+'<br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span></div>';
