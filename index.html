@@ -465,22 +465,22 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div class="stat-card"><div class="stat-num" id="dash-lbs-lost" style="color:var(--amber)">&#8212;</div><div class="stat-label">Lbs Lost</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-protein" style="color:var(--blue)">&#8212;</div><div class="stat-label" id="stat-protein-label">Protein Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-water-label">Water Today</div></div>
-        <div class="stat-card"><div class="stat-num" id="dash-carbs" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-carbs-label">Carbs Today</div></div>
-        <div class="stat-card"><div class="stat-num" id="dash-sugar" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-sugar-label">Sugar Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-fiber" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-fiber-label">Fiber Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-calories" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-calories-label">Calories Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-carbs" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-carbs-label">Carbs Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-sugar" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-sugar-label">Sugar Today</div></div>
       </div>
       <div class="grid2">
         <div class="card">
           <div class="card-title" id="goals-card-title">Today's goals</div>
           <div class="prog-wrap"><div class="prog-label"><span>Protein</span><span id="prog-protein-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-protein" style="width:0%;background:var(--accent)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fiber</span><span id="prog-fiber-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-fiber" style="width:0%;background:var(--accent)"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Calories</span><span id="prog-cal-label">0 kcal</span></div><div class="prog-bar"><div class="prog-fill" id="prog-cal" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Net carbs</span><span id="prog-carbs-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-carbs" style="width:0%;background:var(--amber)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Sugar</span><span id="prog-sugar-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-sugar" style="width:0%;background:var(--red)"></div></div></div>
-          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fiber</span><span id="prog-fiber-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-fiber" style="width:0%;background:var(--accent)"></div></div></div>
-          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
-          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Calories</span><span id="prog-cal-label">0 kcal</span></div><div class="prog-bar"><div class="prog-fill" id="prog-cal" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px;display:none"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
         </div>
         <div class="card">
           <div class="card-title">Log weight</div>
@@ -526,10 +526,10 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <canvas id="sugar-chart" height="160"></canvas>
         </div>
         <div class="card">
-        <div class="card">
           <div class="card-title" id="fiber-chart-title" style="margin-bottom:14px">Fiber</div>
           <canvas id="fiber-chart" height="160"></canvas>
         </div>
+        <div class="card">
           <div class="card-title" id="cal-chart-title" style="margin-bottom:14px">Calories</div>
           <canvas id="cal-chart" height="160"></canvas>
         </div>
