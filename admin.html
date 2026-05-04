@@ -522,6 +522,9 @@ function renderPanelBody(uid,d){
   // ── HEALTH PROFILE ──
   const conditions=(s.conditions||[]).join(', ')||'None';
   const meds=d.medsList&&d.medsList.meds?Object.values(d.medsList.meds).filter(m=>!m.deletedDate).map(m=>m.name+(m.dose?' '+m.dose:'')).join(', '):'None';
+  // Build HRT display string
+  const hrtDisplay=s.hrt==='Yes'?('Yes'+(s.hrtDetail?' — '+s.hrtDetail:'')):(s.hrt||'Not specified');
+
   html+=section('Health profile',`
     <div class="detail-grid">
       ${di('Conditions',conditions)}
@@ -532,6 +535,14 @@ function renderPanelBody(uid,d){
       ${di('Fitness goals',(s.fitnessGoals||[]).join(', ')||'—')}
       ${di('Equipment',s.equipment||'—')}
       ${di('Session time',s.sessionTime||'—')}
+    </div>
+    <div style="margin-top:12px;padding:10px 12px;background:rgba(85,107,47,0.04);border:1px solid var(--border);border-radius:8px">
+      <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px">Gender &amp; Hormone Profile</div>
+      <div class="detail-grid">
+        ${di('Identifies as',s.genderIdentity||'Not specified')}
+        ${di('Biological sex',s.biologicalSex||'Not specified')}
+        ${di('Hormone therapy',hrtDisplay)}
+      </div>
     </div>
     <div style="margin-top:10px">${di('Active medications',meds)}</div>
     <div style="margin-top:6px">${di('Tracking','Meds: '+(s.trackMeds?'✓':'✗')+' · BP: '+(d.vitalSettings?.trackBP?'✓':'✗')+' · Blood sugar: '+(d.vitalSettings?.trackBS?'✓':'✗'))}</div>

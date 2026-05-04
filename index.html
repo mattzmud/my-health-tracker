@@ -175,6 +175,7 @@ textarea{min-height:80px;}
 .msg-avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;}
 .msg.ai .msg-avatar{background:var(--accent);color:#0f1117;}
 .msg.user .msg-avatar{background:var(--amber);color:#0f1117;}
+.msg.user .msg-avatar img{width:30px;height:30px;border-radius:50%;object-fit:cover;display:block;}
 .msg-bubble{max-width:78%;padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.6;white-space:pre-wrap;}
 .msg.ai .msg-bubble{background:var(--surface);color:var(--text);border:1px solid var(--border);}
 .msg.user .msg-bubble{background:var(--accent);color:#ffffff;}
@@ -726,6 +727,47 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <button class="btn btn-primary btn-sm" onclick="saveDOB()">Save</button>
         </div>
         <div id="dob-error" style="font-size:13px;color:var(--red);margin-top:8px;display:none"></div>
+      </div>
+
+      <!-- Gender & hormone info -->
+      <div class="card profile-card collapsed" id="pc-gender">
+        <div class="profile-card-header" onclick="toggleProfileCard('pc-gender')">
+          <div class="card-title" style="margin:0">&#127987;&#65039; Gender &amp; Health Profile</div>
+          <span class="profile-card-chevron">&#9660;</span>
+        </div>
+        <div class="profile-card-body">
+          <div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6">These details help us give you the most accurate nutrition and fitness recommendations. You can ask your coach to update these at any time.</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px">
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">I identify as</div>
+              <select id="profile-gender-identity" class="form-input" style="margin-bottom:0">
+                <option value="">Not specified</option>
+                <option>Man</option><option>Woman</option><option>Non-binary</option>
+                <option>Prefer to self-describe</option><option>Prefer not to say</option>
+              </select>
+            </div>
+            <div>
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Biological sex</div>
+              <select id="profile-biological-sex" class="form-input" style="margin-bottom:0">
+                <option value="">Not specified</option>
+                <option>Male</option><option>Female</option><option>Intersex</option>
+                <option>Prefer not to say</option>
+              </select>
+            </div>
+          </div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:14px;padding:6px 8px;background:rgba(85,107,47,0.06);border-radius:6px;border-left:2px solid var(--accent);line-height:1.5">Biological sex is used only for health calculations like calorie needs and nutritional goals. Your gender identity is what we use everywhere else.</div>
+          <div style="margin-bottom:12px">
+            <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Hormone therapy or hormonal medication?</div>
+            <select id="profile-hrt" class="form-input" style="margin-bottom:8px" onchange="document.getElementById('profile-hrt-detail-row').style.display=this.value==='Yes'?'block':'none'">
+              <option>No</option><option>Yes</option>
+            </select>
+            <div id="profile-hrt-detail-row" style="display:none">
+              <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Please describe</div>
+              <input type="text" id="profile-hrt-detail" class="form-input" placeholder="e.g. estrogen, testosterone, birth control, HRT for menopause" style="margin-bottom:0"/>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="saveGenderProfile()">Save changes</button>
+        </div>
       </div>
 
       <!-- Badges -->
@@ -1949,6 +1991,13 @@ function showSection(name){
 const OB_STEPS=[
   {id:'basics',title:'Tell us about yourself',sub:'This helps us personalize your nutrition goals, workout plan, and coaching.',
    fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_dob',label:'Date of birth',type:'date',placeholder:''},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
+  {id:'gender',title:'A bit about you',sub:'This helps us give you the most accurate nutrition and fitness recommendations.',
+   fields:[
+     {id:'ob_gender_identity',label:'I identify as',type:'select',options:['Man','Woman','Non-binary','Prefer to self-describe','Prefer not to say'],placeholder:''},
+     {id:'ob_biological_sex',label:'Biological sex',type:'select',options:['Male','Female','Intersex','Prefer not to say'],placeholder:'',note:'Used only for health calculations like calorie needs and nutritional goals. Your gender identity is what we use everywhere else.'},
+     {id:'ob_hrt',label:'Are you currently taking any hormone therapy or hormonal medication?',type:'select',options:['No','Yes'],placeholder:''},
+     {id:'ob_hrt_detail',label:'If yes, please describe (e.g. estrogen, testosterone, birth control, HRT for menopause)',type:'text',placeholder:'Optional — helps us give more accurate recommendations',conditional:{field:'ob_hrt',value:'Yes'}}
+   ]},
   {id:'health',title:'Health conditions',sub:'Select any that apply.',
    multi:['Type 2 Diabetes','Type 1 Diabetes','High blood pressure','High cholesterol','Heart condition','Thyroid condition','PCOS','Anxiety / Depression','Chronic pain','None of the above']},
   {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath?',subNote:'We recommend logging your medications — some (like diuretics, GLP-1s, and blood pressure meds) directly affect hydration, nutrition needs, and how your body responds to exercise. Logging them helps MyWellpath build a more accurate, personalized plan for you.',
@@ -2006,6 +2055,11 @@ function renderObStep(){
     step.fields.forEach(f=>{
       if(f.type==='photo'){
         // Photo upload UI
+        // Handle conditional fields
+        if(f.conditional){
+          const condVal=obData[f.conditional.field];
+          if(condVal!==f.conditional.value){input.style.display='none';label.style.display='none';if(note)note.style.display='none';return;}
+        }
         const hasPhoto=obData.ob_photo_data;
         html+=`<div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:10px 0">
           <div id="ob-avatar-preview" onclick="document.getElementById('ob-photo-input').click()" style="width:100px;height:100px;border-radius:50%;background:var(--surface2);border:2px dashed rgba(126,184,164,0.5);display:flex;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;transition:border-color 0.2s" title="Tap to choose photo">
@@ -2018,8 +2072,15 @@ function renderObStep(){
           <input type="file" id="ob-photo-input" accept="image/*" style="display:none" onchange="obHandlePhoto(event)"/>
         </div>`;
       } else {
+        // Skip conditional fields whose condition isn't met
+        if(f.conditional&&obData[f.conditional.field]!==f.conditional.value)return;
         if(f.label)html+=`<label class="form-label">${f.label}</label>`;
+        if(f.note)html+=`<div style="font-size:11px;color:var(--muted);margin-bottom:6px;padding:6px 8px;background:rgba(85,107,47,0.06);border-radius:6px;border-left:2px solid var(--accent);line-height:1.5">${f.note}</div>`;
         if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
+        else if(f.type==='select'){
+          const selVal=obData[f.id]||'';
+          html+=`<select class="form-input" id="${f.id}" style="margin-bottom:12px">${(f.options||[]).map(opt=>`<option value="${opt}"${selVal===opt?' selected':''}>${opt}</option>`).join('')}</select>`;
+        }
         else html+=`<input class="form-input" type="${f.type}" id="${f.id}" placeholder="${f.placeholder}" value="${obData[f.id]||''}" style="margin-bottom:12px"/>`;
       }
     });
@@ -2105,12 +2166,12 @@ async function generatePlan(){
   window._profile=profile;
   // Run nutrition goals + workout plan in parallel — both independent
   const nutritionPromise=callAI(
-    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}\nProtein in grams, water in oz, net carbs in grams, calories in kcal, sugar in grams (daily limit), fiber in grams (daily target — typically 25-38g, higher for diabetics). Calculate calorie goal using TDEE. Be specific to this person.',
+    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs, Biological sex: '+(profile.biologicalSex||'Not specified')+(profile.hrt==='Yes'?', Hormone therapy: Yes'+(profile.hrtDetail?' ('+profile.hrtDetail+')':''):'')+'\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}\nProtein in grams, water in oz, net carbs in grams, calories in kcal, sugar in grams (daily limit), fiber in grams (daily target — typically 25-38g, higher for diabetics). Calculate calorie goal using TDEE. Be specific to this person.',
     'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
   ).catch(()=>null);
 
   const workoutPromise=callAI(
-    'You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.'
+    'You are a fitness coach. Create a personalized 7-day weekly workout plan for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal: '+profile.goalWeight+'lbs, Biological sex: '+(profile.biologicalSex||'Not specified')+(profile.genderIdentity&&profile.genderIdentity!==profile.biologicalSex?', Identifies as: '+profile.genderIdentity:'')+'\nConditions: '+(profile.conditions.join(', ')||'None')+', Goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+', Equipment: '+profile.equipment+'\nInjuries: '+(profile.injuries||'None')+', Session time: '+profile.sessionTime+'\nCreate structured 7-day plan. Format as JSON ONLY:\n{"plan":[{"day":"Monday","focus":"Cardio + Lower body","rest":false,"exercises":[{"name":"Treadmill walk","detail":"25 min brisk","yt":"treadmill walking workout beginners"}]},{"day":"Sunday","focus":"Rest","rest":true,"exercises":[]}]}\nReturn ONLY valid JSON.'
   ).catch(()=>null);
 
   // Await both with a shared 25s timeout
@@ -2166,7 +2227,7 @@ async function generatePlan(){
 }
 
 function buildProfileFromObData(){
-  return{name:obData.ob_name||'Friend',dob:obData.ob_dob||null,age:computeAge(obData.ob_dob)||parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,calorieGoal:2000,currentCalories:parseInt(obData.ob_current_calories)||null,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
+  return{name:obData.ob_name||'Friend',dob:obData.ob_dob||null,genderIdentity:obData.ob_gender_identity||'',biologicalSex:obData.ob_biological_sex||'',hrt:obData.ob_hrt||'No',hrtDetail:obData.ob_hrt_detail||'',age:computeAge(obData.ob_dob)||parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,calorieGoal:2000,currentCalories:parseInt(obData.ob_current_calories)||null,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
 }
 
 function getDefaultWorkoutPlan(){
@@ -2415,6 +2476,8 @@ async function loadAvatar(){
   try{
     const data=await fbGet('profile','avatar');
     if(data&&data.img){
+      window._avatarSrc=data.img; // cache for use in chat
+      window._avatarSrc=dataUrl;
       ['avatar-img','profile-avatar-img'].forEach(id=>{
         const el=document.getElementById(id);
         if(el){el.src=data.img;el.style.display='block';}
@@ -2792,7 +2855,7 @@ function renderCarbsChart(){
 
 function buildUserContext(){
   const p=window._profile||{};
-  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit, '+(p.fiberGoal||28)+'g fiber target';
+  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs'+(p.genderIdentity?', Identifies as: '+p.genderIdentity:'')+(p.biologicalSex?', Biological sex: '+p.biologicalSex:'')+(p.hrt&&p.hrt==='Yes'?', Hormone therapy: Yes'+(p.hrtDetail?' ('+p.hrtDetail+')':''):', Hormone therapy: No')+'\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit, '+(p.fiberGoal||28)+'g fiber target';
 }
 
 // ── FOOD DIARY ──────────────────────────────────────────────
@@ -5559,6 +5622,15 @@ function renderProfile(){
       if(dashPlaceholder)dashPlaceholder.style.display='none';
     }
   });
+  // Populate gender profile card
+  const pgi=document.getElementById('profile-gender-identity');
+  if(pgi&&p.genderIdentity){pgi.value=p.genderIdentity;}
+  const pbs=document.getElementById('profile-biological-sex');
+  if(pbs&&p.biologicalSex){pbs.value=p.biologicalSex;}
+  const phrt=document.getElementById('profile-hrt');
+  if(phrt){phrt.value=p.hrt||'No';document.getElementById('profile-hrt-detail-row').style.display=p.hrt==='Yes'?'block':'none';}
+  const phrtd=document.getElementById('profile-hrt-detail');
+  if(phrtd)phrtd.value=p.hrtDetail||'';
   renderBadges();
 }
 
@@ -5572,6 +5644,155 @@ async function syncProfileAvatar(event){
       profImg.src=img.src;profImg.style.display='block';if(profPlaceholder)profPlaceholder.style.display='none';
     }
   },500);
+}
+
+function openCoachGenderForm(){
+  const p=window._profile||{};
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.style.zIndex='500';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:420px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:4px">Update gender profile</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.5">I\'ll use this to give you the most accurate nutrition and fitness recommendations.</div>'
+    // Gender identity
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">I identify as</div>'
+    +'<select id="cgf-identity" class="form-input" style="margin-bottom:0">'
+    +'<option value="">Not specified</option>'
+    +['Man','Woman','Non-binary','Prefer to self-describe','Prefer not to say'].map(o=>`<option${p.genderIdentity===o?' selected':''}>${o}</option>`).join('')
+    +'</select></div>'
+    // Biological sex
+    +'<div style="margin-bottom:6px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Biological sex</div>'
+    +'<select id="cgf-sex" class="form-input" style="margin-bottom:0">'
+    +'<option value="">Not specified</option>'
+    +['Male','Female','Intersex','Prefer not to say'].map(o=>`<option${p.biologicalSex===o?' selected':''}>${o}</option>`).join('')
+    +'</select></div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-bottom:12px;padding:6px 8px;background:rgba(85,107,47,0.06);border-radius:6px;border-left:2px solid var(--accent);line-height:1.5">Used only for health calculations like calorie needs and nutritional goals. Your gender identity is what we use everywhere else.</div>'
+    // HRT
+    +'<div style="margin-bottom:6px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Hormone therapy or hormonal medication?</div>'
+    +'<select id="cgf-hrt" class="form-input" style="margin-bottom:8px" onchange="document.getElementById(&#39;cgf-hrt-detail-row&#39;).style.display=this.value===&#39;Yes&#39;?&#39;block&#39;:&#39;none&#39;">'
+    +'<option'+((!p.hrt||p.hrt==='No')?' selected':'')+'>No</option>'
+    +'<option'+(p.hrt==='Yes'?' selected':'')+'>Yes</option>'
+    +'</select>'
+    +'<div id="cgf-hrt-detail-row" style="display:'+(p.hrt==='Yes'?'block':'none')+'">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Please describe</div>'
+    +'<input type="text" id="cgf-hrt-detail" class="form-input" placeholder="e.g. estrogen, testosterone, birth control, HRT for menopause" value="'+escHtml(p.hrtDetail||'')+'" style="margin-bottom:0"/>'
+    +'</div></div>'
+    +'<div style="display:flex;gap:8px;margin-top:16px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-primary btn-sm" style="flex:2" onclick="saveCoachGenderForm()">Save &amp; continue</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+async function saveCoachGenderForm(){
+  const gi=document.getElementById('cgf-identity')?.value||'';
+  const bs=document.getElementById('cgf-sex')?.value||'';
+  const hrt=document.getElementById('cgf-hrt')?.value||'No';
+  const hrtDetail=document.getElementById('cgf-hrt-detail')?.value?.trim()||'';
+  if(!window._profile)return;
+  window._profile.genderIdentity=gi;
+  window._profile.biologicalSex=bs;
+  window._profile.hrt=hrt;
+  window._profile.hrtDetail=hrtDetail;
+  await fbSet('profile','survey',window._profile);
+  document.querySelector('.date-picker-modal')?.remove();
+  // Sync profile page fields if visible
+  renderProfile();
+  // Coach follow-up message + goal buttons
+  const ca=document.getElementById('chat-area');
+  if(ca){
+    const genderDesc=gi?(gi+(bs&&bs!==gi?' (biological sex: '+bs+')':'')):(bs||'not specified');
+    const hrtDesc=hrt==='Yes'?(' You\'re currently on hormone therapy'+(hrtDetail?' ('+hrtDetail+')':'')+'.'):'';
+    const msg='Got it! I\'ve updated your profile.'+hrtDesc+' Your biological sex and hormone information play a role in what your nutrition and fitness goals should be — they affect things like calorie needs, protein targets, and exercise recommendations. Would you like me to recalculate your goals based on your updated profile?';
+    ca.innerHTML+='<div class="msg ai"><div class="msg-avatar">&#127807;</div><div class="msg-bubble">'+msg
+      +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">'
+      +'<button class="btn btn-primary btn-sm" onclick="triggerGenderGoalUpdate(&#39;nutrition&#39;);this.closest(&#39;.msg-bubble&#39;).querySelectorAll(&#39;button&#39;).forEach(b=>b.remove())">&#x1F966; Nutrition goals</button>'
+      +'<button class="btn btn-primary btn-sm" onclick="triggerGenderGoalUpdate(&#39;fitness&#39;);this.closest(&#39;.msg-bubble&#39;).querySelectorAll(&#39;button&#39;).forEach(b=>b.remove())">&#x1F3CB; Fitness goals</button>'
+      +'<button class="btn btn-primary btn-sm" onclick="triggerGenderGoalUpdate(&#39;all&#39;);this.closest(&#39;.msg-bubble&#39;).querySelectorAll(&#39;button&#39;).forEach(b=>b.remove())">&#x2728; All goals</button>'
+      +'<button class="btn btn-ghost btn-sm" onclick="this.closest(&#39;.msg-bubble&#39;).querySelectorAll(&#39;button&#39;).forEach(b=>b.remove())">Don\'t update</button>'
+      +'</div></div></div>';
+    ca.scrollTop=ca.scrollHeight;
+  }
+}
+
+async function saveGenderProfile(){
+  const gi=document.getElementById('profile-gender-identity')?.value||'';
+  const bs=document.getElementById('profile-biological-sex')?.value||'';
+  const hrt=document.getElementById('profile-hrt')?.value||'No';
+  const hrtDetail=document.getElementById('profile-hrt-detail')?.value?.trim()||'';
+  if(!window._profile)return;
+  window._profile.genderIdentity=gi;
+  window._profile.biologicalSex=bs;
+  window._profile.hrt=hrt;
+  window._profile.hrtDetail=hrtDetail;
+  await fbSet('profile','survey',window._profile);
+  showToast('&#128640; Profile saved!');
+  // Trigger recalculation prompt
+  openGenderGoalsPrompt();
+}
+
+function openGenderGoalsPrompt(){
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:400px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:10px">Profile updated!</div>'
+    +'<div style="font-size:13px;color:var(--text);line-height:1.6;margin-bottom:16px">Your biological sex and hormone information play a role in what your nutrition and fitness goals should be. Would you like me to recalculate your goals based on your updated profile?</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 10px;background:rgba(138,106,26,0.08);border-radius:6px;border-left:3px solid var(--amber)">&#9888;&#65039; Updating your fitness goals will regenerate your workout plan. Your current plan will be replaced. Nutrition goals update immediately.</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+    +'<button class="btn btn-primary btn-sm" onclick="triggerGenderGoalUpdate(&#39;nutrition&#39;);this.closest(&#39;.date-picker-modal&#39;).remove()">&#x1F966; Nutrition goals</button>'
+    +'<button class="btn btn-primary btn-sm" onclick="triggerGenderGoalUpdate(&#39;fitness&#39;);this.closest(&#39;.date-picker-modal&#39;).remove()">&#x1F3CB; Fitness goals</button>'
+    +'<button class="btn btn-primary btn-sm" onclick="triggerGenderGoalUpdate(&#39;all&#39;);this.closest(&#39;.date-picker-modal&#39;).remove()">&#x2728; All goals</button>'
+    +'<button class="btn btn-ghost btn-sm" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Don\'t update</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+async function triggerGenderGoalUpdate(type){
+  showToast('Recalculating your goals...');
+  const p=window._profile;
+  if(!p)return;
+  if(type==='nutrition'||type==='all'){
+    // Recalculate nutrition goals
+    try{
+      const res=await callAI(
+        'Recalculate nutrition goals for this user with updated gender/hormone info.',
+        `You are a nutrition expert. ${buildUserContext()}\n\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}\nUse TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activity level. Be specific to this person.`
+      );
+      const clean=res.replace(/```json|```/g,'').trim();
+      const ng=JSON.parse(clean);
+      const changes=[];
+      if(ng.proteinGoal){const old=p.proteinGoal||120;p.proteinGoal=Math.round(ng.proteinGoal);if(p.proteinGoal!==old)changes.push('Protein: '+old+'g → '+p.proteinGoal+'g');}
+      if(ng.waterGoal){const old=p.waterGoal||80;p.waterGoal=Math.round(ng.waterGoal);if(p.waterGoal!==old)changes.push('Water: '+old+'oz → '+p.waterGoal+'oz');}
+      if(ng.carbGoal){const old=p.carbGoal||100;p.carbGoal=Math.round(ng.carbGoal);if(p.carbGoal!==old)changes.push('Carbs: '+old+'g → '+p.carbGoal+'g');}
+      if(ng.calorieGoal){const old=p.calorieGoal||2000;p.calorieGoal=Math.round(ng.calorieGoal);if(p.calorieGoal!==old)changes.push('Calories: '+old+' → '+p.calorieGoal+' kcal');}
+      if(ng.sugarGoal){const old=p.sugarGoal||50;p.sugarGoal=Math.round(ng.sugarGoal);if(p.sugarGoal!==old)changes.push('Sugar: '+old+'g → '+p.sugarGoal+'g');}
+      if(ng.fiberGoal){const old=p.fiberGoal||28;p.fiberGoal=Math.round(ng.fiberGoal);if(p.fiberGoal!==old)changes.push('Fiber: '+old+'g → '+p.fiberGoal+'g');}
+      await fbSet('profile','survey',p);
+      refreshDashboard();
+      showToast(changes.length?'&#127806; Nutrition goals updated: '+changes.join(', '):'&#127806; Nutrition goals confirmed — no changes needed.');
+    }catch(e){showToast('Could not recalculate nutrition goals.','error');console.error(e);}
+  }
+  if(type==='fitness'||type==='all'){
+    // Regenerate fitness plan starting tomorrow
+    try{
+      const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+      const tomorrowStr=tomorrow.getFullYear()+'-'+String(tomorrow.getMonth()+1).padStart(2,'0')+'-'+String(tomorrow.getDate()).padStart(2,'0');
+      // Archive current plan with effective date
+      if(p.workoutPlan){
+        if(!p.workoutPlanHistory)p.workoutPlanHistory=[];
+        p.workoutPlanHistory.push({plan:p.workoutPlan,archivedAt:new Date().toLocaleDateString('en-CA'),effectiveThrough:new Date().toLocaleDateString('en-CA')});
+      }
+      p.workoutPlanEffectiveDate=tomorrowStr;
+      await fbSet('profile','survey',p);
+      await generateWellnessPlan(false,'Gender profile updated');
+      showToast('&#127939; Fitness plan regenerated — starts tomorrow ('+tomorrowStr+').');
+    }catch(e){showToast('Could not regenerate fitness plan.','error');console.error(e);}
+  }
 }
 
 async function changePassword(){
@@ -6169,6 +6390,13 @@ async function saveMessageToSession(role,content){
   await fbSet('chats',currentSessionId,session);
 }
 
+function _userAvatarHTML(){
+  if(window._avatarSrc){
+    return'<img src="'+window._avatarSrc+'" alt="You" style="width:30px;height:30px;border-radius:50%;object-fit:cover;display:block"/>';
+  }
+  return'&#128100;';
+}
+
 async function sendChat(){
   const input=document.getElementById('chat-input'),text=input.value.trim();if(!text)return;
   if(!currentSessionId)await startNewChatSession(true);
@@ -6180,7 +6408,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. \'+( (_getAllCategories&&_getAllCategories().length)?(\'Existing categories to reuse if they match: \'+_getAllCategories().join(\', \')+\'. Only create new ones if none fit.\'):(\'Categories: Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert.\'))+\'  Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. \'+( (_getAllCategories&&_getAllCategories().length)?(\'Existing categories to reuse if they match: \'+_getAllCategories().join(\', \')+\'. Only create new ones if none fit.\'):(\'Categories: Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert.\'))+\'  Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nIf the user wants to update their gender identity, biological sex, or hormone therapy information, respond warmly and end with:\nGENDER_UPDATE_PROMPT:true\nThis will open a form for them to fill in. Do not ask them to type the values — just emit the tag.\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
@@ -6212,12 +6440,13 @@ async function sendChat(){
     }
     let suggestedDOB=null;
     if(reply.includes('DOB_UPDATE:')){try{const m=reply.match(/DOB_UPDATE:(\{[^}]+\})/);if(m)suggestedDOB=JSON.parse(m[1]);}catch(e){}}
+    if(reply.includes('GENDER_UPDATE_PROMPT:true')){setTimeout(()=>openCoachGenderForm(),300);}
     // Regenerate plan whenever coach discusses/confirms goals or plan
     if(reply.includes('PLAN_REFRESH:true')){generateWellnessPlan(false,'Goals reviewed with coach');}
     chatHistory.push({role:'assistant',content:reply});
     await saveMessageToSession('assistant',reply);
     document.getElementById(tid)?.remove();
-    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/RECIPE_SAVE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').replace(/DOB_UPDATE:\{[^}]+\}/,'').replace(/PLAN_REFRESH:true/g,'').trim();
+    const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/RECIPE_SAVE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').replace(/DOB_UPDATE:\{[^}]+\}/,'').replace(/GENDER_UPDATE_PROMPT:true/g,'').replace(/PLAN_REFRESH:true/g,'').trim();
     addChatMsgDOM('ai',cleanReply,ingredients,suggestedGoals,suggestedDOB);
   }catch(e){document.getElementById(tid)?.remove();addChatMsgDOM('ai','Sorry, connection issue. Please try again!');}
   btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
@@ -6266,7 +6495,7 @@ function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null,suggestedD
       +'<button data-id="dob-confirm-card" onclick="document.getElementById(this.dataset.id).remove()" style="flex:1;padding:7px;background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.7);border:1px solid rgba(255,255,255,0.2);border-radius:6px;font-size:13px;cursor:pointer;font-family:var(--font-body)">Not quite</button>'
       +'</div></div>';
   }
-  ca.innerHTML+='<div class="msg '+role+'"><div class="msg-avatar">'+(role==='ai'?'&#127807;':'&#128100;')+'</div><div class="msg-bubble">'+escHtml(text)+extra+'</div></div>';
+  ca.innerHTML+='<div class="msg '+role+'"><div class="msg-avatar">'+(role==='ai'?'&#127807;':_userAvatarHTML())+'</div><div class="msg-bubble">'+escHtml(text)+extra+'</div></div>';
   ca.scrollTop=ca.scrollHeight;
 }
 
