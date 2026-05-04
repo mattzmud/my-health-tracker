@@ -5809,7 +5809,17 @@ Use TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activ
         else coachMsg(msg);
         ca.scrollTop=ca.scrollHeight;
       }
-    }catch(e){coachMsg('Sorry, I couldn\'t recalculate your nutrition goals. Please try again.');console.error(e);}
+    }catch(e){
+      console.error('Nutrition goal recalc error:',e);
+      if(ca){
+        const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
+        const last=msgs[msgs.length-1];
+        const retryMsg='I had trouble recalculating your nutrition goals ('+escHtml(e.message||'unknown error')+'). <button onclick="triggerGenderGoalUpdate(&#39;nutrition&#39;);this.parentElement.innerHTML=&#39;Retrying...&#39;" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--font-body);margin-left:8px">Retry</button>';
+        if(last&&last.textContent.includes('Recalculating'))last.innerHTML=retryMsg;
+        else coachMsg(retryMsg);
+        ca.scrollTop=ca.scrollHeight;
+      }
+    }
   }
 
   if(type==='fitness'||type==='all'){
@@ -5824,7 +5834,12 @@ Use TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activ
       p.workoutPlanEffectiveDate=tomorrowStr;
       await fbSet('profile','survey',p);
       await generateWellnessPlan(false,'Gender profile updated');
-      const fitnessMsg='Your fitness plan has been regenerated! Your new plan starts <strong>tomorrow ('+tomorrowStr+')</strong>. Your previous plan and all logged workouts remain in your history. Head to the Fitness tab tomorrow to see your new plan.';
+      // Get the newly generated plan summary
+      const newPlan=window._profile?.wellnessPlan?.text||'';
+      const planPreview=newPlan?newPlan.split('\n').slice(0,4).join('<br>'):'';
+      const fitnessMsg='Your fitness plan has been regenerated! Your new plan starts <strong>tomorrow ('+tomorrowStr+')</strong>. Your previous plan and all logged workouts remain in your history.'
+        +(planPreview?'<br><br><div style="font-size:12px;opacity:0.85;background:rgba(0,0,0,0.15);padding:8px;border-radius:6px;margin-top:6px">'+planPreview+'...</div>':'')
+        +'<br><br>Head to the <strong>Fitness</strong> tab tomorrow to see your full new plan.';
       if(ca){
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
         const last=msgs[msgs.length-1];
@@ -6580,19 +6595,32 @@ async function applyGoalSuggestion(encoded){
   if(!window._profile)return;
   let goals;
   try{goals=JSON.parse(decodeURIComponent(encoded));}catch(e){return;}
-  const changed=[];
-  if(goals.proteinGoal){window._profile.proteinGoal=Math.round(goals.proteinGoal);changed.push('Protein: '+window._profile.proteinGoal+'g');}
-  if(goals.waterGoal){window._profile.waterGoal=Math.round(goals.waterGoal);changed.push('Water: '+window._profile.waterGoal+' oz');}
-  if(goals.carbGoal){window._profile.carbGoal=Math.round(goals.carbGoal);changed.push('Carbs: '+window._profile.carbGoal+'g');}
-  if(goals.calorieGoal){window._profile.calorieGoal=Math.round(goals.calorieGoal);changed.push('Calories: '+window._profile.calorieGoal+' kcal');}
-  if(goals.sugarGoal){window._profile.sugarGoal=Math.round(goals.sugarGoal);changed.push('Sugar: '+window._profile.sugarGoal+'g');}
-  if(goals.fiberGoal){window._profile.fiberGoal=Math.round(goals.fiberGoal);changed.push('Fiber: '+window._profile.fiberGoal+'g');}
-  await fbSet('profile','survey',window._profile);
+  const p=window._profile;
+  // Capture old values before assignment
+  const oldProtein=p.proteinGoal||120,oldWater=p.waterGoal||80,oldCarbs=p.carbGoal||100;
+  const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28;
+  if(goals.proteinGoal)p.proteinGoal=Math.round(goals.proteinGoal);
+  if(goals.waterGoal)p.waterGoal=Math.round(goals.waterGoal);
+  if(goals.carbGoal)p.carbGoal=Math.round(goals.carbGoal);
+  if(goals.calorieGoal)p.calorieGoal=Math.round(goals.calorieGoal);
+  if(goals.sugarGoal)p.sugarGoal=Math.round(goals.sugarGoal);
+  if(goals.fiberGoal)p.fiberGoal=Math.round(goals.fiberGoal);
+  await fbSet('profile','survey',p);
+  // Build change summary with before/after
+  const changes=[];
+  if(p.proteinGoal!==oldProtein)changes.push('<strong>Protein:</strong> '+oldProtein+'g → '+p.proteinGoal+'g');
+  if(p.waterGoal!==oldWater)changes.push('<strong>Water:</strong> '+oldWater+' → '+p.waterGoal+' oz');
+  if(p.carbGoal!==oldCarbs)changes.push('<strong>Carbs:</strong> '+oldCarbs+'g → '+p.carbGoal+'g');
+  if(p.calorieGoal!==oldCal)changes.push('<strong>Calories:</strong> '+oldCal+' → '+p.calorieGoal+' kcal');
+  if(p.sugarGoal!==oldSugar)changes.push('<strong>Sugar limit:</strong> '+oldSugar+'g → '+p.sugarGoal+'g');
+  if(p.fiberGoal!==oldFiber)changes.push('<strong>Fiber goal:</strong> '+oldFiber+'g → '+p.fiberGoal+'g');
   const card=document.getElementById('goal-suggestion-card');
-  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);text-align:center;padding:4px">&#10003; Goals updated — '+changed.join(' · ')+'<br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span></div>';
+  const summary=changes.length
+    ?'Goals updated!<br><br>'+changes.join('<br>')+'<br><br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span>'
+    :'Your goals are already set to these values — no changes needed.';
+  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);padding:4px">&#10003; '+summary+'</div>';
   refreshDashboard();
-  // Regenerate plan to reflect new goals
-  generateWellnessPlan(false);
+  generateWellnessPlan(false,'Goals updated via coach');
 }
 </script>
 <!-- Barcode Scanner Modal -->
