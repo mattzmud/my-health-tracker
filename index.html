@@ -4452,8 +4452,11 @@ async function shareRecipe(id){
 
     _showShareModal(url,r.title);
   }catch(e){
-    console.error('Share error:',e);
-    showToast('Could not generate share link. Please try again.','error');
+    console.error('Share error:',e.message,e.code,e);
+    const msg=e.code==='storage/unauthorized'?'Storage permission denied — check Firebase Storage rules.'
+      :e.code==='storage/unknown'?'Firebase Storage not set up — enable it in Firebase Console.'
+      :'Could not generate share link: '+e.message;
+    showToast(msg,'error');
   }
 }
 
