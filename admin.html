@@ -210,15 +210,48 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
     </div>
   </div>
   <div class="main">
-    <div class="page-title">User management</div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
+      <div class="page-title" style="margin-bottom:0">User management</div>
+      <button onclick="toggleAdminView('feedback')" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:var(--font-body);position:relative">
+        &#128172; Feedback
+        <span id="admin-feedback-badge" style="display:none;background:var(--red);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;align-items:center;justify-content:center">0</span>
+      </button>
+    </div>
     <div class="page-sub">View and manage all MyWellpath accounts. Click any user to see full details.</div>
     <div class="stats-row" id="stats-row"></div>
-    <div class="search-bar">
-      <input class="search-input" id="search-input" placeholder="Search by name, email, or user ID…" oninput="filterUsers()"/>
-      <button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button>
+    <!-- Users view -->
+    <div id="admin-users-view">
+      <div class="search-bar">
+        <input class="search-input" id="search-input" placeholder="Search by name, email, or user ID…" oninput="filterUsers()"/>
+        <button class="refresh-btn" onclick="loadUsers()">↻ Refresh</button>
+      </div>
+      <div class="users-grid" id="users-grid">
+        <div class="empty-state"><div class="spinner"></div>Loading users…</div>
+      </div>
     </div>
-    <div class="users-grid" id="users-grid">
-      <div class="empty-state"><div class="spinner"></div>Loading users…</div>
+    <!-- Feedback view -->
+    <div id="admin-feedback-panel" style="display:none">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+        <button onclick="toggleAdminView('users')" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#8592; Back to users</button>
+        <div style="font-size:18px;font-family:var(--font-display);color:var(--text)">&#128172; Feedback tickets</div>
+        <select id="fb-filter-type" onchange="loadAdminFeedback()" style="font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--surface2);color:var(--text);font-family:var(--font-body)">
+          <option value="">All types</option>
+          <option value="Bug">🐛 Bugs</option>
+          <option value="Feature">💡 Feature requests</option>
+          <option value="Suggestion">💬 Suggestions</option>
+          <option value="Feedback">👍 Feedback</option>
+        </select>
+        <select id="fb-filter-status" onchange="loadAdminFeedback()" style="font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--surface2);color:var(--text);font-family:var(--font-body)">
+          <option value="">All statuses</option>
+          <option value="New">New</option>
+          <option value="In review">In review</option>
+          <option value="In progress">In progress</option>
+          <option value="Done">Done</option>
+          <option value="Closed">Closed</option>
+        </select>
+        <button onclick="loadAdminFeedback()" class="refresh-btn">↻ Refresh</button>
+      </div>
+      <div id="admin-feedback-list"><div class="empty-state"><div class="spinner"></div>Loading tickets…</div></div>
     </div>
   </div>
 </div>
@@ -751,12 +784,10 @@ async function setRootDoc(col,id,data){
 }
 
 window.toggleAdminView=function(view){
-  const userList=document.getElementById('user-list');
+  const usersView=document.getElementById('admin-users-view');
   const fbPanel=document.getElementById('admin-feedback-panel');
-  const searchBar=document.getElementById('admin-panel')?.querySelector('.search-bar');
-  if(userList)userList.style.display=view==='users'?'block':'none';
+  if(usersView)usersView.style.display=view==='users'?'block':'none';
   if(fbPanel)fbPanel.style.display=view==='feedback'?'block':'none';
-  if(searchBar)searchBar.style.display=view==='users'?'flex':'none';
   if(view==='feedback')loadAdminFeedback();
 };
 
