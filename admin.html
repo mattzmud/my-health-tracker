@@ -768,15 +768,30 @@ async function getRootDocs(col){
   if(!r.ok)return[];
   const d=await r.json();return d.documents||[];
 }
+async function toFsVal(v){
+  if(typeof v==='string')return{stringValue:v};
+  if(typeof v==='boolean')return{booleanValue:v};
+  if(typeof v==='number')return Number.isInteger(v)?{integerValue:v}:{doubleValue:v};
+  if(v===null)return{nullValue:null};
+  if(Array.isArray(v))return{arrayValue:{values:await Promise.all(v.map(toFsVal))}};
+  if(typeof v==='object'){
+    const fields={};
+    for(const[k,val]of Object.entries(v))fields[k]=await toFsVal(val);
+    return{mapValue:{fields}};
+  }
+  return{stringValue:String(v)};
+}
+
 async function setRootDoc(col,id,data){
   const fields={};
-  Object.entries(data).forEach(([k,v])=>{
-    if(typeof v==='string')fields[k]={stringValue:v};
-    else if(typeof v==='boolean')fields[k]={booleanValue:v};
-    else if(typeof v==='number')fields[k]=Number.isInteger(v)?{integerValue:v}:{doubleValue:v};
-    else if(v===null)fields[k]={nullValue:null};
-  });
-  await fetch(`${FS_ROOT}/${col}/${id}`,{
+  const updateMaskFields=[];
+  for(const[k,v]of Object.entries(data)){
+    fields[k]=await toFsVal(v);
+    updateMaskFields.push(k);
+  }
+  // Use updateMask to only update specified fields — prevents overwriting other fields
+  const maskQuery=updateMaskFields.map(f=>`updateMask.fieldPaths=${encodeURIComponent(f)}`).join('&');
+  await fetch(`${FS_ROOT}/${col}/${id}?${maskQuery}`,{
     method:'PATCH',
     headers:{Authorization:'Bearer '+await tok(),'Content-Type':'application/json'},
     body:JSON.stringify({fields})
@@ -823,7 +838,14 @@ window.loadAdminFeedback=async function(){
       ${t.description?`<div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px;padding:8px 10px;background:var(--surface2);border-radius:6px">${esc(t.description)}</div>`:''}
       ${t.device?`<div style="font-size:10px;color:var(--muted);margin-bottom:10px">${esc(t.device)}</div>`:''}
       <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:8px">
-        <textarea id="note-${t.id}" placeholder="Add a note to the user (optional)..." style="font-size:12px;min-height:50px;resize:vertical">${esc(t.adminNote)}</textarea>
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:4px">Thread (${t.messages?.length||0} messages)</div>
+        <div style="max-height:160px;overflow-y:auto;margin-bottom:8px;display:flex;flex-direction:column;gap:6px">
+          ${(t.messages||[]).map(m=>`<div style="display:flex;flex-direction:column;align-items:${m.sender==='admin'?'flex-end':'flex-start'}">
+            <div style="max-width:90%;padding:7px 10px;border-radius:8px;background:${m.sender==='admin'?'var(--accent)':'var(--surface2)'};color:${m.sender==='admin'?'#fff':'var(--text)'};font-size:12px;line-height:1.5">${esc(m.text||'')}</div>
+            <div style="font-size:10px;color:var(--muted);margin-top:2px">${esc(m.senderName||m.sender)} · ${esc(m.createdAt||'')}</div>
+          </div>`).join('')}
+        </div>
+        <textarea id="note-${t.id}" placeholder="Reply to user..." style="font-size:12px;min-height:50px;resize:vertical"></textarea>
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
           <select class="ticket-status-select" id="status-${t.id}">
             ${['New','In review','In progress','Done','Closed'].map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}
@@ -831,8 +853,15 @@ window.loadAdminFeedback=async function(){
           <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer">
             <input type="checkbox" id="notify-${t.id}" style="accent-color:var(--accent)"/> Notify user
           </label>
-          <button class="btn btn-primary btn-sm" data-tid="${t.id}" data-uid="${t.uid}" onclick="saveTicket(this.dataset.tid,this.dataset.uid)">Save</button>
+          <button class="btn btn-primary btn-sm" data-tid="${t.id}" data-uid="${t.uid}" onclick="saveTicket(this.dataset.tid,this.dataset.uid)">Send reply</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--red)" data-tid="${t.id}" onclick="deleteTicket(this.dataset.tid)">Delete</button>
+        </div>
+        <div style="margin-top:10px;padding:10px;background:rgba(138,106,26,0.06);border:1px solid rgba(138,106,26,0.2);border-radius:8px">
+          <div style="font-size:11px;font-weight:600;color:var(--amber);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">&#128274; Internal notes — not visible to user</div>
+          <textarea id="internal-${t.id}" placeholder="Private notes, follow-up reminders, internal context..." style="font-size:12px;min-height:50px;resize:vertical;width:100%;background:transparent;border-color:rgba(138,106,26,0.25)">${esc(t.internalNote||'')}</textarea>
+          <button class="btn btn-ghost btn-sm" style="margin-top:6px;font-size:11px;color:var(--amber)" data-tid="${t.id}" onclick="saveInternalNote(this.dataset.tid)">Save internal note</button>
+        </div>
+        
         </div>
       </div></div>`).join('');
   }catch(e){el.innerHTML=`<div style="padding:20px;color:var(--muted)">Error: ${e.message}</div>`;}
@@ -840,10 +869,27 @@ window.loadAdminFeedback=async function(){
 
 window.saveTicket=async function(id,uid){
   const status=document.getElementById('status-'+id)?.value||'New';
-  const adminNote=document.getElementById('note-'+id)?.value||'';
+  const replyText=(document.getElementById('note-'+id)?.value||'').trim();
   const notify=document.getElementById('notify-'+id)?.checked||false;
   try{
-    await setRootDoc('feedback',id,{status,adminNote,notified:notify});
+    // Fetch current ticket to get full messages array
+    const docs=await getRootDocs('feedback');
+    const ticketDoc=docs.find(d=>d.name.split('/').pop()===id);
+    const existingFields=ticketDoc?.fields||{};
+    let messages=[];
+    if(existingFields.messages?.arrayValue?.values){
+      messages=existingFields.messages.arrayValue.values.map(mv=>{
+        const f=mv.mapValue?.fields||{};
+        return{sender:f.sender?.stringValue||'',senderName:f.senderName?.stringValue||'',
+          text:f.text?.stringValue||'',ts:parseInt(f.ts?.integerValue||0),
+          createdAt:f.createdAt?.stringValue||''};
+      });
+    }
+    if(replyText){
+      messages.push({sender:'admin',senderName:'MyWellpath Team',text:replyText,
+        ts:Date.now(),createdAt:new Date().toLocaleDateString('en-CA')});
+    }
+    await setRootDoc('feedback',id,{status,messages,adminRead:true,userRead:false});
     if(notify&&uid&&uid!=='—'){
       const notifId='notif-'+Date.now();
       await fetch(`${FS_ROOT}/users/${uid}/notifications/${notifId}`,{
@@ -851,13 +897,23 @@ window.saveTicket=async function(id,uid){
         headers:{Authorization:'Bearer '+await tok(),'Content-Type':'application/json'},
         body:JSON.stringify({fields:{
           ticketId:{stringValue:id},
-          message:{stringValue:'Your '+document.getElementById('status-'+id)?.value+' feedback update'+(adminNote?' — '+adminNote.slice(0,100):'')},
+          message:{stringValue:'MyWellpath Team replied to your feedback'+(replyText?' — '+replyText.slice(0,100):'')},
           status:{stringValue:status},read:{booleanValue:false},
           createdAt:{stringValue:new Date().toLocaleDateString('en-CA')}
         }})
       });
     }
-    showToast('✓ Ticket updated'+(notify?' · User notified':'')+'.');
+    const noteEl=document.getElementById('note-'+id);if(noteEl)noteEl.value='';
+    showToast('✓ '+(replyText?'Reply sent':'Status updated')+(notify?' · User notified':'')+'.');
+    loadAdminFeedback();
+  }catch(e){console.error('saveTicket:',e);showToast('Error: '+e.message,'error');}
+};
+
+window.saveInternalNote=async function(id){
+  const text=(document.getElementById('internal-'+id)?.value||'').trim();
+  try{
+    await setRootDoc('feedback',id,{internalNote:text});
+    showToast('&#128274; Internal note saved.');
   }catch(e){showToast('Error: '+e.message,'error');}
 };
 

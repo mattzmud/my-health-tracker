@@ -4952,11 +4952,11 @@ async function submitFeedback(){
   if(!title){showToast('Please enter a title.','error');return;}
   const btn=document.getElementById('fb-submit-btn');
   if(btn){btn.disabled=true;btn.textContent='Submitting...';}
+  const _ticketId='fb-'+Date.now();
   const ticket={
-    id:'fb-'+Date.now(),
+    id:_ticketId,
     type:_feedbackType,
     title,
-    description:desc,
     status:'New',
     uid:window._uid||'unknown',
     name:window._profile?.name||'Unknown',
@@ -4964,8 +4964,13 @@ async function submitFeedback(){
     device:navigator.userAgent.slice(0,80),
     createdAt:new Date().toLocaleDateString('en-CA'),
     createdTs:Date.now(),
-    adminNote:'',
-    notified:false,
+    messages:[{
+      sender:'user',
+      senderName:window._profile?.name||'You',
+      text:desc,
+      ts:Date.now(),
+      createdAt:new Date().toLocaleDateString('en-CA')
+    }],
   };
   try{
     await window.fbRootSet('feedback',ticket.id,ticket);
@@ -4980,11 +4985,12 @@ async function submitFeedback(){
   }
 }
 
+let _openTicketId=null;
+
 async function loadMyTickets(){
   const el=document.getElementById('fb-tickets-list');
   if(!el)return;
   try{
-    // Fetch all feedback docs for this user
     const allFb=await window.fbRootGetCol('feedback',window._uid);
     const myTickets=Object.values(allFb||{})
       .filter(t=>t.uid===window._uid)
@@ -4994,27 +5000,108 @@ async function loadMyTickets(){
       return;
     }
     const statusColors={New:'var(--blue)','In review':'var(--amber)','In progress':'var(--amber)',Done:'var(--accent)',Closed:'var(--muted)'};
-    el.innerHTML=myTickets.map(t=>`
-      <div class="feedback-ticket">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;flex-wrap:wrap">
-          <div style="font-size:13px;font-weight:600;color:var(--text)">${escHtml(t.title||'—')}</div>
-          <span class="feedback-ticket-status" style="background:${statusColors[t.status]||'var(--muted)'};color:#fff">${t.status}</span>
+    el.innerHTML=myTickets.map(t=>{
+      const msgs=t.messages||[];
+      const lastMsg=msgs[msgs.length-1];
+      const hasAdminReply=msgs.some(m=>m.sender==='admin');
+      const unreadDot=hasAdminReply&&!t.userRead?'<span style="width:8px;height:8px;background:var(--red);border-radius:50%;display:inline-block;margin-left:6px"></span>':'';
+      return`<div class="feedback-ticket" style="cursor:pointer" onclick="openTicketThread('${t.id}')">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${escHtml(t.title||'—')}${unreadDot}</div>
+          <span class="feedback-ticket-status" style="background:${statusColors[t.status]||'var(--muted)'};color:#fff">${escHtml(t.status)}</span>
         </div>
-        <div style="display:flex;gap:8px;margin-bottom:6px">
-          <span style="font-size:11px;color:var(--muted)">${t.type||'—'}</span>
+        <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+          <span style="font-size:11px;color:var(--muted)">${escHtml(t.type||'—')}</span>
           <span style="font-size:11px;color:var(--muted)">·</span>
-          <span style="font-size:11px;color:var(--muted)">${t.createdAt||'—'}</span>
+          <span style="font-size:11px;color:var(--muted)">${escHtml(t.createdAt||'—')}</span>
+          <span style="font-size:11px;color:var(--muted)">·</span>
+          <span style="font-size:11px;color:var(--muted)">${msgs.length} message${msgs.length===1?'':'s'}</span>
         </div>
-        ${t.adminNote?`<div style="font-size:12px;color:var(--text);background:rgba(85,107,47,0.08);border-left:3px solid var(--accent);padding:6px 10px;border-radius:4px;margin-top:6px"><strong>Team note:</strong> ${escHtml(t.adminNote)}</div>`:''}
-      </div>`).join('');
+        ${lastMsg?`<div style="font-size:12px;color:var(--muted);margin-top:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><strong>${escHtml(lastMsg.senderName||lastMsg.sender)}:</strong> ${escHtml((lastMsg.text||'').slice(0,80))}${(lastMsg.text||'').length>80?'…':''}</div>`:''}
+      </div>`;
+    }).join('');
   }catch(e){
     el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">Could not load tickets.</div>';
+    console.error('loadMyTickets error:',e);
   }
+}
+
+async function openTicketThread(id){
+  // Fetch latest ticket data
+  const docs=await window.fbRootGetCol('feedback',window._uid);
+  const t=Object.values(docs||{}).find(t=>t.id===id);
+  if(!t)return;
+  _openTicketId=id;
+
+  // Mark as read
+  await window.fbRootSet('feedback',id,{...t,userRead:true});
+
+  const statusColors={New:'var(--blue)','In review':'var(--amber)','In progress':'var(--amber)',Done:'var(--accent)',Closed:'var(--muted)'};
+  const msgs=t.messages||[];
+
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.style.zIndex='600';
+  modal.innerHTML=`<div class="date-picker-card" style="max-width:480px;max-height:85vh;display:flex;flex-direction:column;padding:0;overflow:hidden">
+    <div style="padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div>
+        <div style="font-family:var(--font-display);font-size:16px;color:var(--text)">${escHtml(t.title||'—')}</div>
+        <div style="display:flex;gap:8px;margin-top:3px">
+          <span style="font-size:11px;color:var(--muted)">${escHtml(t.type||'—')}</span>
+          <span class="feedback-ticket-status" style="background:${statusColors[t.status]||'var(--muted)'};color:#fff;font-size:10px">${escHtml(t.status)}</span>
+        </div>
+      </div>
+      <button onclick="this.closest('.date-picker-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">&#10005;</button>
+    </div>
+    <div id="ticket-thread-msgs" style="flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px">
+      ${msgs.map(m=>{
+        const isUser=m.sender==='user';
+        return`<div style="display:flex;flex-direction:column;align-items:${isUser?'flex-end':'flex-start'}">
+          <div style="max-width:85%;padding:10px 14px;border-radius:${isUser?'12px 12px 4px 12px':'12px 12px 12px 4px'};background:${isUser?'var(--accent)':'var(--surface2)'};color:${isUser?'#fff':'var(--text)'};font-size:13px;line-height:1.5;border:1px solid ${isUser?'transparent':'var(--border)'}">
+            ${escHtml(m.text||'')}
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:3px">${escHtml(m.senderName||m.sender)} · ${escHtml(m.createdAt||'')}</div>
+        </div>`;
+      }).join('')}
+    </div>
+    <div style="padding:12px 14px;border-top:1px solid var(--border);display:flex;gap:8px">
+      <textarea id="ticket-reply-input" placeholder="Reply..." style="flex:1;min-height:44px;max-height:100px;resize:none;font-size:13px" rows="1"></textarea>
+      <button class="btn btn-primary btn-sm" id="ticket-reply-btn" onclick="sendTicketReply('${id}')">Send</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  // Scroll to bottom
+  setTimeout(()=>{const el=document.getElementById('ticket-thread-msgs');if(el)el.scrollTop=el.scrollHeight;},50);
+  // Enter to send
+  document.getElementById('ticket-reply-input')?.addEventListener('keydown',e=>{
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendTicketReply(id);}
+  });
+}
+
+async function sendTicketReply(id){
+  const input=document.getElementById('ticket-reply-input');
+  const text=(input?.value||'').trim();
+  if(!text)return;
+  const btn=document.getElementById('ticket-reply-btn');
+  if(btn){btn.disabled=true;btn.textContent='...';}
+  // Fetch current ticket to get messages array
+  const docs=await window.fbRootGetCol('feedback',window._uid);
+  const t=Object.values(docs||{}).find(t=>t.id===id);
+  if(!t){if(btn){btn.disabled=false;btn.textContent='Send';}return;}
+  const newMsg={sender:'user',senderName:window._profile?.name||'You',text,ts:Date.now(),createdAt:new Date().toLocaleDateString('en-CA')};
+  const messages=[...(t.messages||[]),newMsg];
+  await window.fbRootSet('feedback',id,{...t,messages,userRead:true,adminRead:false});
+  if(input)input.value='';
+  if(btn){btn.disabled=false;btn.textContent='Send';}
+  // Re-open thread to show updated messages
+  document.querySelector('.date-picker-modal[style*="z-index: 600"], .date-picker-modal[style*="z-index:600"]')?.remove();
+  openTicketThread(id);
 }
 
 async function markNotificationsRead(){
   try{
-    const notifs=await window.fbRootGetCol('notifications',window._uid);
+    const notifs=await fbGetCol('notifications');
     const unread=Object.entries(notifs||{}).filter(([,n])=>!n.read);
     for(const[id,n]of unread){
       await fbSet('notifications',id,{...n,read:true});
