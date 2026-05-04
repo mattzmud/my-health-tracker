@@ -4159,34 +4159,100 @@ function toggleRecipeCard(id){
   if(chev)chev.style.transform=collapsed?'rotate(0deg)':'rotate(-90deg)';
 }
 
-function openEditCategories(id){
+function _getAllCategories(){
+  // Get all unique categories across all saved recipes
+  return [...new Set((cache.recipes||[]).flatMap(r=>r.categories||[]).filter(Boolean))].sort();
+}
+
+function openEditRecipe(id){
   const r=cache.recipes.find(rec=>rec.id===id);
   if(!r)return;
-  const current=(r.categories||[]).join(', ');
+  const allCats=_getAllCategories();
+  const selected=new Set(r.categories||[]);
+
+  const catPills=allCats.map(c=>`<button class="feedback-type-pill${selected.has(c)?' active':''}" data-cat="${escHtml(c)}" onclick="toggleRecipeCatPill(this)">${escHtml(c)}</button>`).join('');
+
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
-  modal.innerHTML='<div class="date-picker-card" style="max-width:360px">'
-    +'<div style="font-family:var(--font-display);font-size:18px;margin-bottom:6px">Edit categories</div>'
-    +'<div style="font-size:13px;color:var(--muted);margin-bottom:12px">Comma-separated list of categories (e.g. Dinner, Chicken, Low-carb)</div>'
-    +'<input type="text" id="edit-cats-input" value="'+escHtml(current)+'" placeholder="Dinner, Chicken, Low-carb" style="width:100%;margin-bottom:14px"/>'
+  modal.innerHTML='<div class="date-picker-card" style="max-width:440px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;margin-bottom:14px">Edit recipe</div>'
+    // Title
+    +'<div style="margin-bottom:14px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Title</div>'
+    +'<input type="text" id="edit-recipe-title" value="'+escHtml(r.title||'')+'" style="width:100%"/>'
+    +'</div>'
+    // Categories
+    +'<div style="margin-bottom:14px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Categories</div>'
+    +(allCats.length?'<div id="edit-recipe-cat-pills" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+catPills+'</div>':'')
+    +'<div style="display:flex;gap:8px;align-items:center">'
+    +'<input type="text" id="edit-recipe-new-cat" placeholder="Add a new category..." style="flex:1;font-size:13px"/>'
+    +'<button class="btn btn-ghost btn-sm" onclick="addNewRecipeCat()">Add</button>'
+    +'</div>'
+    +'</div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
-    +'<button class="btn btn-primary btn-sm" style="flex:2" data-rid="'+id+'" onclick="saveRecipeCategories(this.dataset.rid)">Save</button>'
+    +'<button class="btn btn-primary btn-sm" style="flex:2" data-rid="'+id+'" onclick="saveEditRecipe(this.dataset.rid)">Save changes</button>'
     +'</div></div>';
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
-  setTimeout(()=>document.getElementById('edit-cats-input')?.focus(),100);
+  setTimeout(()=>document.getElementById('edit-recipe-title')?.focus(),100);
+  document.getElementById('edit-recipe-new-cat')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addNewRecipeCat();}});
 }
 
-async function saveRecipeCategories(id){
+function openEditCategories(id){openEditRecipe(id);} // alias for backwards compat
+
+function toggleRecipeCatPill(btn){
+  btn.classList.toggle('active');
+}
+
+function addNewRecipeCat(){
+  const input=document.getElementById('edit-recipe-new-cat');
+  const val=(input?.value||'').trim();
+  if(!val)return;
+  // Check if already exists
+  const existing=[...document.querySelectorAll('#edit-recipe-cat-pills [data-cat]')].map(b=>b.dataset.cat.toLowerCase());
+  if(existing.includes(val.toLowerCase())){
+    // Just activate it
+    const btn=[...document.querySelectorAll('#edit-recipe-cat-pills [data-cat]')].find(b=>b.dataset.cat.toLowerCase()===val.toLowerCase());
+    if(btn)btn.classList.add('active');
+  } else {
+    // Add new pill
+    const pillsDiv=document.getElementById('edit-recipe-cat-pills');
+    if(!pillsDiv){
+      // Create pills div if none existed
+      const newDiv=document.createElement('div');
+      newDiv.id='edit-recipe-cat-pills';
+      newDiv.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px';
+      input.closest('div').parentElement.insertBefore(newDiv, input.closest('div'));
+    }
+    const btn=document.createElement('button');
+    btn.className='feedback-type-pill active';
+    btn.dataset.cat=val;
+    btn.textContent=val;
+    btn.onclick=function(){toggleRecipeCatPill(this);};
+    document.getElementById('edit-recipe-cat-pills')?.appendChild(btn);
+  }
+  input.value='';
+}
+
+async function saveEditRecipe(id){
   const r=cache.recipes.find(rec=>rec.id===id);
   if(!r)return;
-  const val=document.getElementById('edit-cats-input')?.value||'';
-  r.categories=val.split(',').map(c=>c.trim()).filter(Boolean);
+  const title=(document.getElementById('edit-recipe-title')?.value||'').trim();
+  if(!title){showToast('Please enter a title.','error');return;}
+  const activePills=[...document.querySelectorAll('#edit-recipe-cat-pills .active')].map(b=>b.dataset.cat).filter(Boolean);
+  r.title=title;
+  r.categories=activePills;
   await fbSet('recipes',id,r);
   document.querySelector('.date-picker-modal')?.remove();
   renderRecipes();
-  showToast('Categories updated!');
+  showToast('Recipe updated!');
+}
+
+async function saveRecipeCategories(id){
+  // Legacy — now handled by saveEditRecipe
+  await saveEditRecipe(id);
 }
 
 function recipeCard(r){
@@ -4262,6 +4328,7 @@ function recipeCard(r){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">'
     +'<button class="btn btn-primary btn-sm" data-rid="'+r.id+'" onclick="openLogRecipe(this.dataset.rid)">&#127859; Log this meal</button>'
     +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="addRecipeIngredientsToGrocery(this.dataset.rid)">&#128722; Grocery list</button>'
+    +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="openEditRecipe(this.dataset.rid)">&#9998; Edit</button>'
     +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="shareRecipe(this.dataset.rid)">&#128279; Share</button>'
     +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="printRecipe(this.dataset.rid)">&#128424; Print</button>'
     +'<button class="btn btn-ghost btn-sm" style="color:var(--red)" data-rid="'+r.id+'" onclick="deleteRecipe(this.dataset.rid)">&#128465; Delete</button>'
@@ -4633,14 +4700,14 @@ function openAddMyRecipe(){
     +'<div id="recipe-coach-messages" style="flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:10px"></div>'
     +'<div style="padding:12px 16px;border-top:1px solid var(--border);display:flex;gap:8px;align-items:flex-end">'
     +'<textarea id="recipe-coach-input" placeholder="Type your recipe, paste a link, or describe it..." style="flex:1;min-height:44px;max-height:120px;resize:none;font-size:14px" rows="1"></textarea>'
-    +'<label style="cursor:pointer;padding:8px;color:var(--muted)" title="Upload recipe photo"><input type="file" accept="image/*" style="display:none" onchange="handleRecipePhoto(this)"/>&#128247;</label>'
+    +'<label style="cursor:pointer;padding:8px;color:var(--muted)" title="Upload photo or PDF"><input type="file" accept="image/*,application/pdf" style="display:none" onchange="handleRecipePhoto(this)"/>&#128247;</label>'
     +'<button class="btn btn-primary btn-sm" onclick="sendRecipeCoachMessage()" id="recipe-coach-send-btn">Send</button>'
     +'</div></div>';
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
   // Send opening message
   _recipeCoachMessages=[];
-  _appendRecipeCoachMsg('coach',"I'm ready for your recipe! You can:\n\n• **Type or paste the recipe** directly\n• **Paste a link** to the recipe and I'll parse it\n• **Describe it** and I'll format it\n• **Upload a photo** using the camera icon — great for screenshots or handwritten recipes\n\nOnce I have it, I'll save it to your recipes with full macros.");
+  _appendRecipeCoachMsg('coach',"I'm ready for your recipe! You can:\n\n• **Type or paste the recipe** directly\n• **Paste a link** to the recipe and I'll parse it\n• **Describe it** and I'll format it\n• **Upload a photo or PDF** using the 📷 icon — great for screenshots, photos of recipe cards, or saved PDF recipes\n\nOnce I have it, I'll save it to your recipes with full macros.");
   setTimeout(()=>document.getElementById('recipe-coach-input')?.focus(),100);
 
   // Enter key sends
@@ -4670,17 +4737,26 @@ function _appendRecipeCoachMsg(role,text,imgSrc){
 async function handleRecipePhoto(input){
   const file=input.files?.[0];
   if(!file)return;
+  const isPDF=file.type==='application/pdf';
   const reader=new FileReader();
   reader.onload=async e=>{
     const b64=e.target.result.split(',')[1];
-    const preview=e.target.result;
-    _appendRecipeCoachMsg('user','[Recipe photo]',preview);
     window._recipeSourceType='photo';
     window._recipeSourceUrl=null;
-    _recipeCoachMessages.push({role:'user',content:[
-      {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
-      {type:'text',text:'Here is a photo of my recipe. Please extract the full recipe from it.'}
-    ]});
+    if(isPDF){
+      _appendRecipeCoachMsg('user','[Recipe PDF: '+escHtml(file.name)+']');
+      _recipeCoachMessages.push({role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:b64}},
+        {type:'text',text:'Here is a PDF of my recipe. Please extract the full recipe from it.'}
+      ]});
+    } else {
+      const preview=e.target.result;
+      _appendRecipeCoachMsg('user','[Recipe photo]',preview);
+      _recipeCoachMessages.push({role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
+        {type:'text',text:'Here is a photo of my recipe. Please extract the full recipe from it.'}
+      ]});
+    }
     await _sendRecipeToCoach();
   };
   reader.readAsDataURL(file);
@@ -4709,11 +4785,15 @@ async function _sendRecipeToCoach(){
   loadDiv.textContent='Thinking...';
   document.getElementById('recipe-coach-messages')?.appendChild(loadDiv);
 
-  const systemPrompt='You are a helpful recipe assistant. When given a recipe (typed, pasted, linked, or from a photo), extract and format it as a clean structured recipe. '
+  const _existingCats=_getAllCategories();
+  const _catHint=_existingCats.length
+    ?'Existing categories to reuse if applicable: '+_existingCats.join(', ')+'. Use these exact names when they match. Only create new category names if none of the existing ones fit.'
+    :'Categories should reflect meal type and main ingredient (e.g. Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert).';
+  const systemPrompt='You are a helpful recipe assistant. When given a recipe (typed, pasted, linked, or from a photo or PDF), extract and format it as a clean structured recipe. '
     +buildUserContext()
     +' IMPORTANT: After providing the recipe in a friendly readable format, you MUST end your response with a JSON block in this exact format:\n'
     +'RECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour","2 eggs"],"instructions":"Step 1...\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}'
-    +' Estimate macros per serving using your knowledge. All macro fields are required. If the recipe has a link and you cannot access it, ask the user to paste the content. '
+    +' Estimate macros per serving using your knowledge. All macro fields are required. '+_catHint+' Include 1-3 relevant categories. If the recipe has a link and you cannot access it, ask the user to paste the content. '
     +'After saving, tell the user the recipe has been saved and they can view it in their Recipes tab.';
 
   try{
@@ -6007,7 +6087,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. Categories should reflect meal type and main ingredient (e.g. Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert). Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. \'+( (_getAllCategories&&_getAllCategories().length)?(\'Existing categories to reuse if they match: \'+_getAllCategories().join(\', \')+\'. Only create new ones if none fit.\'):(\'Categories: Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert.\'))+\'  Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
