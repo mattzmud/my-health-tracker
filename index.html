@@ -2470,36 +2470,31 @@ function refreshDashboard(){
   const _sugarBar=document.getElementById('prog-sugar');
   if(_sugarBar){_sugarBar.style.width=Math.min(100,(ts_/sg)*100)+'%';_sugarBar.style.background=ts_>sg?'var(--red)':'rgba(192,57,43,0.6)';}
   const _sugarLbl=document.getElementById('prog-sugar-label');if(_sugarLbl)_sugarLbl.textContent=Math.round(ts_)+' / '+sg+'g'+(ts_>sg?' ⚠':'');
-  // Fiber progress bar (dashboard)
-  const _fiberBar=document.getElementById('prog-fiber');
-  if(_fiberBar){_fiberBar.style.width=Math.min(100,(tf_/fg)*100)+'%';_fiberBar.style.background=tf_>=fg?'var(--accent)':'rgba(85,107,47,0.45)';}
-  const _fiberLbl=document.getElementById('prog-fiber-label');if(_fiberLbl)_fiberLbl.textContent=Math.round(tf_)+' / '+fg+'g'+(tf_>=fg?' ✓':'');
+  // Fiber progress bar updated below after med fiber is added
   document.getElementById('dash-calories').textContent=Math.round(tcal)+' kcal';
   const _call=document.getElementById('stat-calories-label');if(_call)_call.textContent=goalsDate===TODAY?'Calories Today':'Cal '+goalsDate.slice(5);
-  document.getElementById('prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
-  document.getElementById('prog-water').style.width=Math.min(100,(tw/wg)*100)+'%';
+  const _pp=document.getElementById('prog-protein');if(_pp)_pp.style.width=Math.min(100,(tp/pg)*100)+'%';
+  const _pw=document.getElementById('prog-water');if(_pw)_pw.style.width=Math.min(100,(tw/wg)*100)+'%';
   // Carbs bar — turns red when over limit
   const _carbPct=Math.min(110,(tc/cg)*100);
   const _carbOver=tc>cg;
-  document.getElementById('prog-carbs').style.width=Math.min(100,_carbPct)+'%';
-  document.getElementById('prog-carbs').style.background=_carbOver?'var(--red)':'var(--amber)';
-  document.getElementById('prog-protein-label').textContent=Math.round(tp)+' / '+pg+'g';
-  document.getElementById('prog-water-label').textContent=Math.round(tw)+' / '+wg+' oz';
-  document.getElementById('prog-carbs-label').textContent=Math.round(tc)+' / '+cg+'g'+(tc>cg?' ⚠':'');
+  const _pc=document.getElementById('prog-carbs');if(_pc){_pc.style.width=Math.min(100,_carbPct)+'%';_pc.style.background=_carbOver?'var(--red)':'var(--amber)';}
+  const _ppl=document.getElementById('prog-protein-label');if(_ppl)_ppl.textContent=Math.round(tp)+' / '+pg+'g';
+  const _pwl=document.getElementById('prog-water-label');if(_pwl)_pwl.textContent=Math.round(tw)+' / '+wg+' oz';
+  const _pcl=document.getElementById('prog-carbs-label');if(_pcl)_pcl.textContent=Math.round(tc)+' / '+cg+'g'+(tc>cg?' ⚠':'');
   // Get today's adjusted calorie goal (may be modified by extra workouts)
   const _todayCalGoal=(cache.food[goalsDate]&&cache.food[goalsDate]._adjustedCalGoal)||calg;
   const _calOver=tcal>_todayCalGoal;
-  document.getElementById('prog-cal').style.width=Math.min(100,(tcal/_todayCalGoal)*100)+'%';
-  document.getElementById('prog-cal').style.background=_calOver?'var(--red)':'rgba(192,57,43,0.6)';
-  document.getElementById('prog-cal-label').textContent=Math.round(tcal)+' / '+_todayCalGoal+' kcal'+(tcal>_todayCalGoal?' ⚠':'');
+  const _pca=document.getElementById('prog-cal');if(_pca){_pca.style.width=Math.min(100,(tcal/_todayCalGoal)*100)+'%';_pca.style.background=_calOver?'var(--red)':'rgba(192,57,43,0.6)';}
+  const _pcal=document.getElementById('prog-cal-label');if(_pcal)_pcal.textContent=Math.round(tcal)+' / '+_todayCalGoal+' kcal'+(tcal>_todayCalGoal?' ⚠':'');
   const plan=(window._profile&&window._profile.workoutPlan)||[];
   const _gd=new Date(goalsDate+'T12:00:00');
   const _goalDay=['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][_gd.getDay()];
   const todayPlan=plan.find(d=>d.day===_goalDay)||{exercises:[]};
   const exData=cache.fitness[goalsDate]||{};
   const exDone=todayPlan.exercises.filter(e=>exData[e.name]).length;
-  document.getElementById('prog-ex').style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
-  document.getElementById('prog-ex-label').textContent=exDone+' / '+todayPlan.exercises.length+' done';
+  const _pex=document.getElementById('prog-ex');if(_pex)_pex.style.width=todayPlan.exercises.length?(exDone/todayPlan.exercises.length)*100+'%':'0%';
+  const _pexl=document.getElementById('prog-ex-label');if(_pexl)_pexl.textContent=exDone+' / '+todayPlan.exercises.length+' done';
   const ms=cache.meds[goalsDate]||{};
   // Count each daily time slot as one dose (am, af, pm only — exclude wk and prn)
   const dailyTimes=['am','af','pm'];
@@ -2515,6 +2510,10 @@ function refreshDashboard(){
     });
   });
   tf_+=medFiber;
+  // ── Fiber progress bar (after med fiber included) ──
+  const _fiberBar=document.getElementById('prog-fiber');
+  if(_fiberBar){_fiberBar.style.width=Math.min(100,(tf_/fg)*100)+'%';_fiberBar.style.background=tf_>=fg?'var(--accent)':'rgba(85,107,47,0.45)';}
+  const _fiberLbl=document.getElementById('prog-fiber-label');if(_fiberLbl)_fiberLbl.textContent=Math.round(tf_)+' / '+fg+'g'+(tf_>=fg?' ✓':'');
   if(cache.trackMeds!==false)Object.values(cache.medsList||{}).forEach(med=>{
     const times=med.times||['am'];
     // Skip meds that are weekly-only or as-needed-only — not tracked in daily progress
@@ -2525,8 +2524,8 @@ function refreshDashboard(){
       if(ms[t+'-'+(med.id||med.name)])doneMedChecks++;
     });
   });
-  document.getElementById('prog-meds').style.width=totalMedChecks?(doneMedChecks/totalMedChecks)*100+'%':'0%';
-  document.getElementById('prog-meds-label').textContent=doneMedChecks+' / '+totalMedChecks+' taken';
+  const _pm=document.getElementById('prog-meds');if(_pm)_pm.style.width=totalMedChecks?(doneMedChecks/totalMedChecks)*100+'%':'0%';
+  const _pml=document.getElementById('prog-meds-label');if(_pml)_pml.textContent=doneMedChecks+' / '+totalMedChecks+' taken';
   const wh=document.getElementById('weight-history');
   if(!cache.weights.length){wh.textContent='No weight logged yet. Log your starting weight!';}
   else{
@@ -2549,12 +2548,22 @@ function renderWeightChart(){
   const ctx=document.getElementById('weight-chart').getContext('2d');if(weightChart)weightChart.destroy();
   const gw=(window._profile||{}).goalWeight||130;
   const days=getDashDays();
+  // Weight chart always shows all entries (trend over time) regardless of date range
+  // For multi-day ranges, filter to range; for today/yesterday show all history
   let weights=cache.weights;
-  if(days.length>1){
+  if(days.length>1&&dashRange!=='today'&&dashRange!=='yesterday'){
     const start=days[0],end=days[days.length-1];
-    weights=weights.filter(w=>w.date>=start&&w.date<=end);
+    const filtered=weights.filter(w=>w.date>=start&&w.date<=end);
+    if(filtered.length>=2)weights=filtered; // only filter if we have enough data
   }
-  if(weights.length<2){ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';ctx.fillText(weights.length===0?'No weight entries in this range.':'Log at least 2 weight entries to see your trend.',450,80);return;}
+  if(!weights.length){
+    ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';
+    ctx.fillText('No weight entries yet. Log your starting weight!',450,80);return;
+  }
+  if(weights.length<2){
+    ctx.clearRect(0,0,900,160);ctx.fillStyle='#8a8fa8';ctx.font='14px DM Sans,sans-serif';ctx.textAlign='center';
+    ctx.fillText('Log at least 2 weight entries to see your trend.',450,80);return;
+  }
   weightChart=new Chart(ctx,{type:'line',data:{labels:weights.map(w=>w.date.slice(5)),datasets:[{label:'Weight',data:weights.map(w=>w.val),borderColor:'#7eb8a4',backgroundColor:'rgba(126,184,164,0.08)',fill:true,tension:0.4,pointBackgroundColor:'#7eb8a4',pointRadius:4},{label:'Goal',data:weights.map(()=>gw),borderColor:'rgba(201,169,110,0.5)',borderDash:[6,4],fill:false,pointRadius:0}]},options:co()});
 }
 // ── DATE PICKER ──────────────────────────────────────────────
@@ -2639,10 +2648,12 @@ async function setDashRange(range,btn){
   // Single-day ranges update viewDate so Today goals card stays in sync
   if(days.length===1){viewDate=days[0];updateDateNav();await ensureDateLoaded(viewDate);}
   // Preload food + vitals for all days in range in parallel
+  const loadBtn=btn;if(loadBtn){loadBtn.disabled=true;}
   await Promise.all(days.map(d=>Promise.all([
-    cache.food[d]?Promise.resolve():fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[]; }),
+    cache.food[d]!==undefined?Promise.resolve():fbGet('food',d).then(fd=>{cache.food[d]=fd?(fd.entries||[]):[]; }),
     ensureVitalsLoaded(d)
   ])));
+  if(loadBtn){loadBtn.disabled=false;}
   updateDashRangeLabel();
   refreshDashboard();
 }
@@ -3109,6 +3120,20 @@ function renderFoodEntries(){
   const fst=document.getElementById('food-sugar-total');if(fst)fst.textContent=Math.round(tsugar)+'g';
   const fsgl=document.getElementById('food-sugar-goal-label');if(fsgl)fsgl.textContent='/ '+sg2+'g limit';
   const fsp=document.getElementById('food-prog-sugar');if(fsp){fsp.style.width=Math.min(100,(tsugar/sg2)*100)+'%';fsp.style.background=tsugar>sg2?'var(--red)':'rgba(192,57,43,0.6)';}
+  // Add fiber from checked meds for this day
+  let _medFiberFood=0;
+  if(cache.trackMeds!==false){
+    const _ms=cache.meds[viewDate]||{};
+    Object.values(cache.medsList||{}).forEach(med=>{
+      if(!med.fiberGrams)return;
+      const times=med.times||['am'];
+      if(times.includes('wk')||times.includes('prn'))return;
+      times.filter(t=>['am','af','pm'].includes(t)).forEach(t=>{
+        if(_ms[t+'-'+(med.id||med.name)])_medFiberFood+=med.fiberGrams*(med.qty||1);
+      });
+    });
+  }
+  tfiber+=_medFiberFood;
   const fft=document.getElementById('food-fiber-total');if(fft)fft.textContent=Math.round(tfiber)+'g';
   const ffgl=document.getElementById('food-fiber-goal-label');if(ffgl)ffgl.textContent='/ '+fg2+'g goal';
   const ffp=document.getElementById('food-prog-fiber');if(ffp){ffp.style.width=Math.min(100,(tfiber/fg2)*100)+'%';ffp.style.background=tfiber>=fg2?'var(--accent)':'rgba(85,107,47,0.4)';};
@@ -3379,7 +3404,7 @@ function openEditEntry(ts){
   const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0};
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
-  modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
+  modal.innerHTML='<div class="date-picker-card" style="max-width:500px">'
     +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:4px">Edit entry</div>'
     +'<div style="font-size:13px;color:var(--muted);margin-bottom:16px">'+escHtml(entry.text)+'</div>'
     +'<div style="margin-bottom:16px">'
@@ -3390,13 +3415,15 @@ function openEditEntry(ts){
     +'<button onclick="adjustServings('+ts+',0.25)" style="width:36px;height:36px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);font-size:18px;cursor:pointer;color:var(--text)">&#43;</button>'
     +'</div></div>'
     +'<div style="margin-bottom:16px">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Nutrition facts (per serving: '+Math.round(base.cal)+' kcal · '+Math.round(base.pro)+'g pro · '+Math.round(base.carbs)+'g carbs)</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px">'
-    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Calories</div><input type="number" id="edit-cal" value="'+Math.round(entry.calories)+'" min="0" style="width:100%"/></div>'
-    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Protein (g)</div><input type="number" id="edit-pro" value="'+Math.round(entry.protein)+'" min="0" style="width:100%"/></div>'
-    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Carbs (g)</div><input type="number" id="edit-carbs" value="'+Math.round(entry.carbs)+'" min="0" style="width:100%"/></div>'
-    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sugar (g)</div><input type="number" id="edit-sugar" value="'+Math.round(entry.sugar||0)+'" min="0" style="width:100%"/></div>'
-    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Fiber (g)</div><input type="number" id="edit-fiber" value="'+Math.round(entry.fiber||0)+'" min="0" style="width:100%"/></div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Nutrition per serving</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:10px">'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Calories</div><input type="number" id="edit-cal" value="'+Math.round(entry.calories)+'" min="0" style="width:100%;font-size:15px"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Protein (g)</div><input type="number" id="edit-pro" value="'+Math.round(entry.protein)+'" min="0" style="width:100%;font-size:15px"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Carbs (g)</div><input type="number" id="edit-carbs" value="'+Math.round(entry.carbs)+'" min="0" style="width:100%;font-size:15px"/></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sugar (g)</div><input type="number" id="edit-sugar" value="'+Math.round(entry.sugar||0)+'" min="0" style="width:100%;font-size:15px"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Fiber (g)</div><input type="number" id="edit-fiber" value="'+Math.round(entry.fiber||0)+'" min="0" style="width:100%;font-size:15px"/></div>'
     +'</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.querySelectorAll(&#39;.date-picker-modal&#39;)[document.querySelectorAll(&#39;.date-picker-modal&#39;).length-1].remove()">Cancel</button>'
