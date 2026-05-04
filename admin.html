@@ -497,9 +497,8 @@ function renderPanelBody(uid,d){
       ${di('Session time',s.sessionTime||'—')}
     </div>
     <div style="margin-top:10px">${di('Active medications',meds)}</div>
-    <div style="margin-top:6px">${di('Tracking','Meds: '+(s.trackMeds?'✓':'✗')+' · BP: '+(d.vitalSettings?.trackBP?'✓':'✗')+' · Blood sugar: '+(d.vitalSettings?.trackBS?'✓':'✗'))}</div>`);
-    <div style="margin-top:6px">${(()=>{const bsR=[];(d.vitals||[]).filter(v=>v.id!=='settings').forEach(day=>(day.bs||[]).forEach(r=>{if(r.value)bsR.push(r.value);}));if(!bsR.length)return '';const avg=bsR.reduce((a,b)=>a+b,0)/bsR.length;const a1c=Math.round(((avg+46.7)/28.7)*10)/10;return di('Est. A1C',''+a1c.toFixed(1)+'% (from '+bsR.length+' readings)');})()}</div>
-
+    <div style="margin-top:6px">${di('Tracking','Meds: '+(s.trackMeds?'✓':'✗')+' · BP: '+(d.vitalSettings?.trackBP?'✓':'✗')+' · Blood sugar: '+(d.vitalSettings?.trackBS?'✓':'✗'))}</div>
+    <div style="margin-top:6px">${(()=>{const bsR=[];(d.vitals||[]).filter(v=>v.id!=='settings').forEach(day=>(day.bs||[]).forEach(r=>{if(r.value)bsR.push(r.value);}));if(!bsR.length)return '';const avg=bsR.reduce((a,b)=>a+b,0)/bsR.length;const a1c=Math.round(((avg+46.7)/28.7)*10)/10;return di('Est. A1C',''+a1c.toFixed(1)+'% (from '+bsR.length+' readings)');})()}</div>`);
   // ── WELLPATH PLAN ──
   const plan=s.wellnessPlan;
   const history=s.planHistory||[];

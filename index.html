@@ -479,7 +479,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Calories</span><span id="prog-cal-label">0 kcal</span></div><div class="prog-bar"><div class="prog-fill" id="prog-cal" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Net carbs</span><span id="prog-carbs-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-carbs" style="width:0%;background:var(--amber)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Sugar</span><span id="prog-sugar-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-sugar" style="width:0%;background:var(--red)"></div></div></div>
-          <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px;display:none"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
+          <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
         </div>
         <div class="card">
@@ -2340,6 +2340,7 @@ window.appInit=async function(){
   cache.badges=bc?(bc.list||[]):[];
   cache.vitalSettings=vs||{trackBP:false,trackBS:false};
   if(nc)cache.nutritionCorrections=nc;
+  cache.trackMeds=window._profile?.trackMeds!==false;
   if(recCol)cache.recipes=Object.entries(recCol).map(([id,d])=>({id,...d})).sort((a,b)=>(b.dateAdded||'').localeCompare(a.dateAdded||''));
   if(bpd){cache.vitals.bp[TODAY]=bpd.bp||[];cache.vitals.bs[TODAY]=bpd.bs||[];}
   else{cache.vitals.bp[TODAY]=[];cache.vitals.bs[TODAY]=[];}
@@ -5223,13 +5224,13 @@ async function saveMedsTrackingSetting(){
 }
 
 function applyMedsVisibility(){
-  const show=cache.trackMeds;
+  const show=cache.trackMeds!==false;
   // Nav tab
   const navMeds=document.getElementById('nav-meds');
   const mobMeds=document.getElementById('mob-meds');
   if(navMeds)navMeds.style.display=show?'':'none';
   if(mobMeds)mobMeds.style.display=show?'':'none';
-  // Dashboard progress bar
+  // Dashboard progress bar — always show if trackMeds is on
   const wrap=document.getElementById('prog-meds-wrap');
   if(wrap)wrap.style.display=show?'block':'none';
 }
