@@ -1197,6 +1197,11 @@ const fbApp = initializeApp(firebaseConfig);
 const storage = getStorage(fbApp);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
+window.auth=auth;
+window.storage=storage;
+window._storageRef=ref;
+window._uploadBytes=uploadBytes;
+window._getDownloadURL=getDownloadURL;
 
 onAuthStateChanged(auth, async user => {
   if (user) {
@@ -4441,10 +4446,10 @@ async function shareRecipe(id){
     const pdfBlob=doc.output('blob');
 
     // Upload to Firebase Storage
-    const fileName='recipes/'+auth.currentUser.uid+'/'+id+'.pdf';
-    const storageRef=ref(storage,fileName);
-    await uploadBytes(storageRef,pdfBlob,{contentType:'application/pdf'});
-    const url=await getDownloadURL(storageRef);
+    const fileName='recipes/'+window._uid+'/'+id+'.pdf';
+    const storageRef=window._storageRef(window.storage,fileName);
+    await window._uploadBytes(storageRef,pdfBlob,{contentType:'application/pdf'});
+    const url=await window._getDownloadURL(storageRef);
 
     // Cache the URL on the recipe object
     r.shareUrl=url;
