@@ -2762,9 +2762,13 @@ async function logFood(){
     let aiParsed=[];
     let displayText='';
     if(itemsNeedingAI.length>0){
+      const _exAI=(cache.food[viewDate]||[]).filter(e=>e.time===mt).map(e=>e.text);
+      const _othAI=(cache.food[viewDate]||[]).filter(e=>e.time!==mt).reduce((acc,e)=>{if(!acc[e.time])acc[e.time]=[];acc[e.time].push(e.text);return acc;},{});
+      const _mealCtxAI=_exAI.length?' (also in this meal: '+_exAI.join(', ')+')':'';
+      const _dayCtxAI=Object.keys(_othAI).length?' | Other meals today: '+Object.entries(_othAI).map(([t,its])=>t+': '+its.join(', ')).join(' | '):'';
       const res=await callAI(
-        'Meal: '+mt+'\nItems needing nutrition estimates:\n'+itemsNeedingAI.map((it,i)=>(i+1)+'. '+it).join('\n'),
-        'You are a nutrition coach. '+buildUserContext()+'\n\nReturn a JSON array with EXACTLY '+itemsNeedingAI.length+' objects, one per item in order listed. Then a blank line. Then 2-3 sentences of feedback.\n\nFormat:\n[\n{"item":"name","protein":26,"carbs":0,"calories":140}\n]\n\nFeedback text here.\n\nRules: realistic individual estimates, integers, same order as listed, do not combine items.'
+        'Meal: '+mt+_mealCtxAI+_dayCtxAI+'\nItems needing nutrition estimates:\n'+itemsNeedingAI.map((it,i)=>(i+1)+'. '+it).join('\n'),
+        'You are a nutrition coach. '+buildUserContext()+'\n\nReturn a JSON array with EXACTLY '+itemsNeedingAI.length+' objects, one per item in order listed. Then a blank line. Then 2-3 sentences of feedback considering the full meal context.\n\nFormat:\n[\n{"item":"name","protein":26,"carbs":0,"calories":140,"sugar":0,"fiber":0}\n]\n\nFeedback text here.\n\nRules: realistic individual estimates, integers, same order as listed, do not combine items.'
       );
       try{
         const start=res.indexOf('[');
@@ -3092,7 +3096,7 @@ function renderFoodEntries(){
           +'</div></div>'
           +(!isPast?'<button data-ts="'+e.ts+'" onclick="openEditEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px" title="Edit">&#9998;</button>':'')
           +(!isPast?'<button data-text="'+escHtml(e.text).replace(/"/g,"&quot;")+'" onclick="addFoodToGrocery(this.dataset.text)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px" title="Add to grocery list">&#128722;</button>':'')
-          +(!isPast?favBtn+delBtn:'')
+          +favBtn+(!isPast?delBtn:'')
           +'</div>';
       }
     });
