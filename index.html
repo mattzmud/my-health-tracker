@@ -4489,7 +4489,7 @@ function _showShareModal(url,title){
 function _copyRecipeLink(url){
   navigator.clipboard.writeText(url).then(()=>{
     const btn=document.getElementById('copy-link-btn');
-    if(btn){btn.textContent='&#10003; Copied!';btn.disabled=true;}
+    if(btn){btn.innerHTML='&#10003; Copied!';btn.disabled=true;}
     showToast('Link copied to clipboard!');
   }).catch(()=>{
     // Fallback for older browsers
