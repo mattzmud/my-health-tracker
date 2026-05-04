@@ -1120,6 +1120,11 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           </div>
           <button class="btn btn-primary btn-sm" onclick="openAddMyRecipe()">&#43; Add my own recipe</button>
         </div>
+        <!-- Search + filter bar -->
+        <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+          <input type="search" id="recipe-search" placeholder="Search recipes..." style="flex:1;min-width:140px" oninput="renderRecipes()"/>
+          <div id="recipe-category-filters" style="display:flex;gap:6px;flex-wrap:wrap"></div>
+        </div>
         <div id="recipes-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--muted)">
           <div style="font-size:36px;margin-bottom:12px">&#128218;</div>
           <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">No recipes yet</div>
@@ -1129,7 +1134,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
             <button class="btn btn-ghost btn-sm" onclick="openAddMyRecipe()">Add my own</button>
           </div>
         </div>
-        <div id="recipes-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px"></div>
+        <div id="recipes-list" style="display:flex;flex-direction:column;gap:10px"></div>
       </div>
     </section>
 
@@ -4015,18 +4020,84 @@ async function checkAllMeds(prefix){
 
 // ── RECIPES ──────────────────────────────────────────────────
 
+let _recipeActiveCategory='All';
+
 function renderRecipes(){
   const list=document.getElementById('recipes-list');
   const empty=document.getElementById('recipes-empty');
   if(!list)return;
-  const recipes=cache.recipes||[];
-  if(!recipes.length){
+  const allRecipes=cache.recipes||[];
+
+  // Build category filter buttons
+  const allCats=['All',...new Set(allRecipes.flatMap(r=>r.categories||[]).filter(Boolean))].sort((a,b)=>a==='All'?-1:b==='All'?1:a.localeCompare(b));
+  const filterDiv=document.getElementById('recipe-category-filters');
+  if(filterDiv){
+    filterDiv.innerHTML=allCats.map(cat=>
+      '<button data-cat="'+escHtml(cat)+'" onclick="setRecipeCategory(this.dataset.cat)" style="font-size:11px;padding:3px 10px;border-radius:12px;border:1px solid '+(cat===_recipeActiveCategory?'var(--accent)':'var(--border2)')+';background:'+(cat===_recipeActiveCategory?'var(--accent)':'var(--surface2)')+';color:'+(cat===_recipeActiveCategory?'#fff':'var(--muted)')+';cursor:pointer;white-space:nowrap">'+escHtml(cat)+'</button>'
+    ).join('');
+  }
+
+  // Filter by search and category
+  const q=(document.getElementById('recipe-search')?.value||'').toLowerCase().trim();
+  let recipes=allRecipes;
+  if(_recipeActiveCategory!=='All')recipes=recipes.filter(r=>(r.categories||[]).includes(_recipeActiveCategory));
+  if(q)recipes=recipes.filter(r=>(r.title||'').toLowerCase().includes(q)||(r.ingredients||[]).some(i=>i.toLowerCase().includes(q)));
+
+  if(!allRecipes.length){
     list.innerHTML='';
     if(empty)empty.style.display='block';
     return;
   }
   if(empty)empty.style.display='none';
+  if(!recipes.length){
+    list.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">No recipes match your search.</div>';
+    return;
+  }
   list.innerHTML=recipes.map(r=>recipeCard(r)).join('');
+}
+
+function setRecipeCategory(cat){
+  _recipeActiveCategory=cat;
+  renderRecipes();
+}
+
+function toggleRecipeCard(id){
+  const body=document.getElementById('recipe-body-'+id);
+  const chev=document.getElementById('recipe-chev-'+id);
+  if(!body)return;
+  const collapsed=body.style.display==='none';
+  body.style.display=collapsed?'block':'none';
+  if(chev)chev.style.transform=collapsed?'rotate(0deg)':'rotate(-90deg)';
+}
+
+function openEditCategories(id){
+  const r=cache.recipes.find(rec=>rec.id===id);
+  if(!r)return;
+  const current=(r.categories||[]).join(', ');
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:360px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;margin-bottom:6px">Edit categories</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:12px">Comma-separated list of categories (e.g. Dinner, Chicken, Low-carb)</div>'
+    +'<input type="text" id="edit-cats-input" value="'+escHtml(current)+'" placeholder="Dinner, Chicken, Low-carb" style="width:100%;margin-bottom:14px"/>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-primary btn-sm" style="flex:2" data-rid="'+id+'" onclick="saveRecipeCategories(this.dataset.rid)">Save</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('edit-cats-input')?.focus(),100);
+}
+
+async function saveRecipeCategories(id){
+  const r=cache.recipes.find(rec=>rec.id===id);
+  if(!r)return;
+  const val=document.getElementById('edit-cats-input')?.value||'';
+  r.categories=val.split(',').map(c=>c.trim()).filter(Boolean);
+  await fbSet('recipes',id,r);
+  document.querySelector('.date-picker-modal')?.remove();
+  renderRecipes();
+  showToast('Categories updated!');
 }
 
 function recipeCard(r){
@@ -4037,30 +4108,65 @@ function recipeCard(r){
     r.sugar!=null?Math.round(r.sugar)+'g sugar':'',
     r.fiber!=null?Math.round(r.fiber)+'g fiber':''
   ].filter(Boolean).join(' · ');
-  const sourceBadge=r.source==='coach'
-    ?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:2px 7px;border-radius:10px;border:1px solid rgba(85,107,47,0.2)">&#129302; Coach</span>'
-    :'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:2px 7px;border-radius:10px;border:1px solid rgba(42,90,138,0.2)">&#128101; My recipe</span>';
-  const servingNote=r.servings?'<span style="font-size:12px;color:var(--muted)">Makes '+r.servings+' serving'+(r.servings>1?'s':'')+'</span>':'';
-  return'<div class="card" style="display:flex;flex-direction:column;gap:0">'
-    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">'
-    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);line-height:1.3">'+escHtml(r.title||'Untitled recipe')+'</div>'
-    +sourceBadge
+
+  // Source badges
+  let sourceBadges='';
+  if(r.source==='coach'){
+    sourceBadges='<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:2px 7px;border-radius:10px;border:1px solid rgba(85,107,47,0.2)">&#129302; Coach</span>';
+  } else {
+    sourceBadges='<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:2px 7px;border-radius:10px;border:1px solid rgba(42,90,138,0.2)">&#128101; My recipe</span>';
+    if(r.sourceType==='photo'){
+      sourceBadges+=' <span style="font-size:10px;color:var(--muted);background:var(--surface2);padding:2px 7px;border-radius:10px;border:1px solid var(--border)">&#128247; Photo</span>';
+    } else if(r.sourceType==='link'&&r.sourceUrl){
+      sourceBadges+=' <a href="'+escHtml(r.sourceUrl)+'" target="_blank" style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.08);padding:2px 7px;border-radius:10px;border:1px solid rgba(42,90,138,0.2);text-decoration:none">&#128279; Source link</a>';
+    }
+  }
+
+  // Category chips
+  const cats=(r.categories||[]);
+  const catChips=cats.length
+    ?cats.map(c=>'<span style="font-size:10px;background:var(--surface2);color:var(--muted);padding:2px 8px;border-radius:10px;border:1px solid var(--border)">'+escHtml(c)+'</span>').join(' ')
+    :'';
+
+  const servingNote=r.servings?'<span style="font-size:12px;color:var(--muted)">Makes '+r.servings+' serving'+(r.servings>1?'s':'')+'</span> · ':'';
+
+  return'<div class="card" style="padding:0;overflow:hidden">'
+    // ── Collapsible header ──
+    +'<div data-rid="'+r.id+'" onclick="toggleRecipeCard(this.dataset.rid)" style="display:flex;align-items:center;gap:10px;padding:14px 16px;cursor:pointer;background:var(--surface2)">'
+    +'<div style="flex:1;min-width:0">'
+    +'<div style="font-family:var(--font-display);font-size:17px;color:var(--text);margin-bottom:4px">'+escHtml(r.title||'Untitled recipe')+'</div>'
+    +'<div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">'
+    +sourceBadges
+    +(catChips?catChips:'')
     +'</div>'
-    +(macroStr?'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">Per serving: '+macroStr+'</div>':'')
-    +servingNote
-    +'<div style="font-size:12px;color:var(--muted);margin-bottom:10px">'+(r.dateAdded||'')+'</div>'
+    +'</div>'
+    +'<span id="recipe-chev-'+r.id+'" style="color:var(--muted);font-size:14px;transition:transform 0.2s;flex-shrink:0">&#9660;</span>'
+    +'</div>'
+    // ── Collapsible body ──
+    +'<div id="recipe-body-'+r.id+'" style="padding:14px 16px;display:none">'
+    // Meta row
+    +'<div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">'
+    +(macroStr?'<div style="font-size:12px;color:var(--muted)">Per serving: '+macroStr+'</div>':'')
+    +(servingNote?'<div style="font-size:12px;color:var(--muted)">'+servingNote+'</div>':'')
+    +'<div style="font-size:12px;color:var(--muted)">'+(r.dateAdded||'')+'</div>'
+    +'</div>'
+    // Categories edit
+    +'<div style="display:flex;gap:6px;align-items:center;margin-bottom:12px;flex-wrap:wrap">'
+    +(cats.length?cats.map(c=>'<span style="font-size:11px;background:var(--surface2);color:var(--muted);padding:2px 8px;border-radius:10px;border:1px solid var(--border)">'+escHtml(c)+'</span>').join(' '):'<span style="font-size:11px;color:var(--muted)">No categories</span>')
+    +' <button data-rid="'+r.id+'" onclick="openEditCategories(this.dataset.rid)" style="font-size:11px;color:var(--accent);background:none;border:none;cursor:pointer;padding:0">&#9998; Edit</button>'
+    +'</div>'
     // Ingredients
-    +(r.ingredients&&r.ingredients.length?'<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Ingredients</div>'
+    +(r.ingredients&&r.ingredients.length?'<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Ingredients</div>'
       +'<ul style="margin:0;padding-left:18px;font-size:13px;color:var(--text);line-height:1.8">'
       +r.ingredients.map(i=>'<li>'+escHtml(i)+'</li>').join('')
       +'</ul></div>':'')
     // Instructions
-    +(r.instructions?'<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Instructions</div>'
+    +(r.instructions?'<div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Instructions</div>'
       +'<div style="font-size:13px;color:var(--text);line-height:1.7;white-space:pre-wrap">'+escHtml(r.instructions)+'</div></div>':'')
     // Notes
     +'<div style="margin-bottom:12px">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">My notes</div>'
-    +'<textarea id="recipe-notes-'+r.id+'" placeholder="Add your notes here — substitutions, tweaks, tips..." style="width:100%;min-height:60px;font-size:13px;resize:vertical">'+escHtml(r.notes||'')+'</textarea>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">My notes</div>'
+    +'<textarea id="recipe-notes-'+r.id+'" placeholder="Add your notes — substitutions, tweaks, tips..." style="width:100%;min-height:60px;font-size:13px;resize:vertical">'+escHtml(r.notes||'')+'</textarea>'
     +'<button data-rid="'+r.id+'" onclick="saveRecipeNotes(this.dataset.rid)" style="margin-top:4px;font-size:12px;color:var(--accent);background:none;border:none;cursor:pointer;padding:2px 0">Save notes</button>'
     +'</div>'
     // Actions
@@ -4068,6 +4174,7 @@ function recipeCard(r){
     +'<button class="btn btn-primary btn-sm" data-rid="'+r.id+'" onclick="openLogRecipe(this.dataset.rid)">&#127859; Log this meal</button>'
     +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="addRecipeIngredientsToGrocery(this.dataset.rid)">&#128722; Grocery list</button>'
     +'<button class="btn btn-ghost btn-sm" style="color:var(--red)" data-rid="'+r.id+'" onclick="deleteRecipe(this.dataset.rid)">&#128465; Delete</button>'
+    +'</div>'
     +'</div>'
     +'</div>';
 }
@@ -4200,6 +4307,21 @@ async function saveRecipe(recipe){
 // ── ADD MY OWN RECIPE (coach modal) ──────────────────────────
 let _recipeCoachMessages=[];
 
+async function saveRecipeFromChat(btn){
+  if(!btn)return;
+  try{
+    const rData=JSON.parse(decodeURIComponent(btn.dataset.recipe));
+    const recipeId=await saveRecipe(rData);
+    btn.textContent='&#10003; Saved to recipes!';
+    btn.disabled=true;
+    btn.style.background='rgba(85,107,47,0.35)';
+    showToast('&#128218; Recipe saved! View it in your Recipes tab.');
+  }catch(e){
+    console.error('saveRecipeFromChat error:',e);
+    showToast('Could not save recipe. Please try again.','error');
+  }
+}
+
 function closeRecipeCoachAndView(){document.querySelector('.date-picker-modal')?.remove();showSection('recipes');}
 function openAddMyRecipe(){
   // Open a modal with embedded mini-coach for recipe capture
@@ -4257,6 +4379,8 @@ async function handleRecipePhoto(input){
     const b64=e.target.result.split(',')[1];
     const preview=e.target.result;
     _appendRecipeCoachMsg('user','[Recipe photo]',preview);
+    window._recipeSourceType='photo';
+    window._recipeSourceUrl=null;
     _recipeCoachMessages.push({role:'user',content:[
       {type:'image',source:{type:'base64',media_type:file.type,data:b64}},
       {type:'text',text:'Here is a photo of my recipe. Please extract the full recipe from it.'}
@@ -4273,6 +4397,10 @@ async function sendRecipeCoachMessage(){
   if(!text)return;
   input.value='';
   _appendRecipeCoachMsg('user',text);
+  // Detect if message is a URL
+  const _urlMatch=text.match(/https?:\/\/[^\s]+/);
+  if(_urlMatch){window._recipeSourceType='link';window._recipeSourceUrl=_urlMatch[0];}
+  else if(!window._recipeSourceType){window._recipeSourceType='typed';window._recipeSourceUrl=null;}
   _recipeCoachMessages.push({role:'user',content:text});
   await _sendRecipeToCoach();
 }
@@ -4317,6 +4445,9 @@ async function _sendRecipeToCoach(){
         if(jsonStart>=0&&jsonEnd>jsonStart){
           const rData=JSON.parse(reply.slice(jsonStart,jsonEnd+1));
           rData.source='user';
+          rData.sourceType=window._recipeSourceType||'typed';
+          rData.sourceUrl=window._recipeSourceUrl||null;
+          window._recipeSourceType=null;window._recipeSourceUrl=null;
           const recipeId=await saveRecipe(rData);
           savedRecipe=rData;
           savedRecipe.id=recipeId;
@@ -5418,7 +5549,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4}\nEstimate macros per serving. All fields required.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. Categories should reflect meal type and main ingredient (e.g. Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert). Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
@@ -5426,17 +5557,16 @@ async function sendChat(){
     }
     let ingredients=null;
     if(reply.includes('RECIPE_INGREDIENTS:')){try{const m=reply.match(/RECIPE_INGREDIENTS:(\[[\s\S]*?\])/);if(m)ingredients=JSON.parse(m[1]);}catch(e){}}
-    // Parse and save recipe if RECIPE_SAVE tag present
+    // Parse recipe from RECIPE_SAVE tag — store in message for user to save manually
+    let parsedRecipe=null;
     if(reply.includes('RECIPE_SAVE:')){
       try{
         const rsIdx=reply.indexOf('RECIPE_SAVE:');
         const rsStart=reply.indexOf('{',rsIdx);
         const rsEnd=reply.lastIndexOf('}');
         if(rsStart>=0&&rsEnd>rsStart){
-          const rData=JSON.parse(reply.slice(rsStart,rsEnd+1));
-          rData.source='coach';
-          const recipeId=await saveRecipe(rData);
-          console.log('[Recipe] Saved from coach:',rData.title,recipeId);
+          parsedRecipe=JSON.parse(reply.slice(rsStart,rsEnd+1));
+          parsedRecipe.source='coach';
         }
       }catch(e){console.error('[Recipe] Parse error:',e);}
     }
@@ -5468,10 +5598,11 @@ function addChatMsgDOM(role,text,ingredients=null,suggestedGoals=null,suggestedD
   if(role==='ai'&&ingredients&&ingredients.length){
     const safe=JSON.stringify(ingredients).replace(/'/g,'\u0027');
     const encIngr=encodeURIComponent(JSON.stringify(ingredients));
+    const encRecipe=parsedRecipe?encodeURIComponent(JSON.stringify(parsedRecipe)):'';
     extra+='<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.1)"><div style="font-size:12px;color:rgba(255,255,255,0.5);margin-bottom:6px">'+ingredients.length+' ingredients in this recipe</div>'
       +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
-      +'<button data-enc="'+encIngr+'" onclick="addRecipeToGrocery(this.dataset.enc,this)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(126,184,164,0.2);color:var(--accent);border:1px solid rgba(126,184,164,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10133; Add ingredients to grocery list</button>'
-      +'<button onclick="showSection(&#39;recipes&#39;)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(85,107,47,0.2);color:var(--accent);border:1px solid rgba(85,107,47,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#128218; View my recipes</button>'
+      +'<button data-enc="'+encIngr+'" onclick="addRecipeToGrocery(this.dataset.enc,this)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(126,184,164,0.2);color:var(--accent);border:1px solid rgba(126,184,164,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#10133; Add to grocery list</button>'
+      +(encRecipe?'<button data-recipe="'+encRecipe+'" id="save-recipe-btn-'+Date.now()+'" onclick="saveRecipeFromChat(this)" style="display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:rgba(85,107,47,0.2);color:var(--accent);border:1px solid rgba(85,107,47,0.4);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#128218; Add to my recipes</button>':'')
       +'</div></div>';
   }
   if(role==='ai'&&suggestedGoals){
