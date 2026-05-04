@@ -1231,7 +1231,9 @@ onAuthStateChanged(auth, async user => {
     document.getElementById('login-screen').style.display = 'none';
     const profile = await window.fbGet('profile','survey');
     if (!profile || !profile.completed) { showOnboarding(); }
-    else { window._profile = profile; showApp(); window.appInit(); }
+    else { window._profile = profile; showApp();
+    try{const _lastSec=localStorage.getItem('wp_section');if(_lastSec&&_lastSec!=='dashboard')setTimeout(()=>showSection(_lastSec),100);}catch(e){}
+    window.appInit(); }
   } else {
     window._uid = null; window._profile = null;
     document.getElementById('login-screen').style.display = 'flex';
@@ -1883,7 +1885,10 @@ function closeMobileMenu(){
   document.getElementById('mobile-menu')?.classList.remove('open');
 }
 
+let currentSection='dashboard';
 function showSection(name){
+  currentSection=name;
+  try{localStorage.setItem('wp_section',name);}catch(e){}
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.mobile-menu-btn').forEach(b=>b.classList.remove('active'));
@@ -2117,7 +2122,10 @@ async function generatePlan(){
   cache.vitalSettings=vsData;
   await fbSet('vitals','settings',vsData);
   document.getElementById('generating-screen').style.display='none';
-  showApp();window.appInit();
+  showApp();
+  // Restore last visited section
+  try{const _lastSec=localStorage.getItem('wp_section');if(_lastSec&&_lastSec!=='dashboard')showSection(_lastSec);}catch(e){}
+  window.appInit();
 }
 
 function buildProfileFromObData(){
