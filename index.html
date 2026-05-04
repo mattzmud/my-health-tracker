@@ -3109,7 +3109,8 @@ function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   // food-feedback is managed by logFood — don't clear it here
   const entries=cache.food[viewDate]||[];
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),tsugar=entries.reduce((a,e)=>a+(e.sugar||0),0),tfiber=entries.reduce((a,e)=>a+(e.fiber||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),tsugar=entries.reduce((a,e)=>a+(e.sugar||0),0);
+  let tfiber=entries.reduce((a,e)=>a+(e.fiber||0),0);
   const p=window._profile||{};
   const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100, sg2=p.sugarGoal||50, fg2=p.fiberGoal||28;
   // Update log title
