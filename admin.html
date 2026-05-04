@@ -428,7 +428,7 @@ window.closePanel=function(){
 };
 
 async function loadFullUserData(uid){
-  const cols=['food','fitness','meds','weights','journal','vitals','badges','chats'];
+  const cols=['food','fitness','meds','weights','journal','vitals','badges','chats','recipes'];
   const[sData,vsData,lData,medsListData,rootDoc,...colData]=await Promise.all([
     fsGet(`users/${uid}/profile/survey`).then(d=>d?ff(d.fields):{}),
     fsGet(`users/${uid}/vitals/settings`).then(d=>d?ff(d.fields):{}),
@@ -477,6 +477,8 @@ function renderPanelBody(uid,d){
       ${di('Water goal',(s.waterGoal||'—')+' oz')}
       ${di('Carb limit',(s.carbGoal||'—')+'g')}
       ${di('Calorie goal',(s.calorieGoal||'—')+' kcal')}
+      ${di('Sugar limit',(s.sugarGoal||'—')+'g/day')}
+      ${di('Fiber goal',(s.fiberGoal||'—')+'g/day')}
       ${di('Current intake (reported)',(s.currentCalories||'—')+' kcal')}
     </div>`);
 
@@ -496,6 +498,7 @@ function renderPanelBody(uid,d){
     </div>
     <div style="margin-top:10px">${di('Active medications',meds)}</div>
     <div style="margin-top:6px">${di('Tracking','Meds: '+(s.trackMeds?'✓':'✗')+' · BP: '+(d.vitalSettings?.trackBP?'✓':'✗')+' · Blood sugar: '+(d.vitalSettings?.trackBS?'✓':'✗'))}</div>`);
+    <div style="margin-top:6px">${(()=>{const bsR=[];(d.vitals||[]).filter(v=>v.id!=='settings').forEach(day=>(day.bs||[]).forEach(r=>{if(r.value)bsR.push(r.value);}));if(!bsR.length)return '';const avg=bsR.reduce((a,b)=>a+b,0)/bsR.length;const a1c=Math.round(((avg+46.7)/28.7)*10)/10;return di('Est. A1C',''+a1c.toFixed(1)+'% (from '+bsR.length+' readings)');})()}</div>
 
   // ── WELLPATH PLAN ──
   const plan=s.wellnessPlan;
@@ -539,8 +542,12 @@ function renderPanelBody(uid,d){
       const entries=day.entries||[];
       if(!entries.length)return;
       const totalCal=entries.reduce((a,e)=>a+(e.calories||0),0);
-      foodHtml+=`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">${day.id||'—'} <span style="color:var(--muted);font-weight:400">${Math.round(totalCal)} kcal</span></div>
-        <table class="data-table"><tr><th>Item</th><th>Meal</th><th>Cal</th><th>Pro</th><th>Carbs</th></tr>
+      const totalPro=entries.reduce((a,e)=>a+(e.protein||0),0);
+      const totalCarbs=entries.reduce((a,e)=>a+(e.carbs||0),0);
+      const totalSugar=entries.reduce((a,e)=>a+(e.sugar||0),0);
+      const totalFiber=entries.reduce((a,e)=>a+(e.fiber||0),0);
+      foodHtml+=`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">${day.id||'—'} <span style="color:var(--muted);font-weight:400">${Math.round(totalCal)} kcal · ${Math.round(totalPro)}g pro · ${Math.round(totalCarbs)}g carbs · ${Math.round(totalSugar)}g sugar · ${Math.round(totalFiber)}g fiber</span></div>
+        <table class="data-table"><tr><th>Item</th><th>Meal</th><th>Cal</th><th>Pro</th><th>Carbs</th><th>Sugar</th><th>Fiber</th><th>Srv</th></tr>
         ${entries.map(e=>{
           const srcBadge=e.source==='off'
             ?'<span style="font-size:10px;color:#556b2f;background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2);margin-left:4px">✓ Verified</span>'
@@ -548,8 +555,10 @@ function renderPanelBody(uid,d){
             ?'<span style="font-size:10px;color:#556b2f;background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2);margin-left:4px">✓ USDA</span>'
             :e.source==='edited'
             ?'<span style="font-size:10px;color:#2a5a8a;background:rgba(42,90,138,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(42,90,138,0.2);margin-left:4px">✎ Edited</span>'
+            :e.source==='recipe'
+            ?'<span style="font-size:10px;color:#7a6f5e;background:var(--surface2);padding:1px 5px;border-radius:3px;border:1px solid var(--border);margin-left:4px">🍽 Recipe</span>'
             :'';
-          return`<tr><td>${esc(e.text||'')}${srcBadge}</td><td>${esc(e.time||'')}</td><td>${Math.round(e.calories||0)}</td><td>${Math.round(e.protein||0)}g</td><td>${Math.round(e.carbs||0)}g</td></tr>`;
+          return`<tr><td>${esc(e.text||'')}${srcBadge}</td><td>${esc(e.time||'')}</td><td>${Math.round(e.calories||0)}</td><td>${Math.round(e.protein||0)}g</td><td>${Math.round(e.carbs||0)}g</td><td>${e.sugar!=null?Math.round(e.sugar)+'g':'—'}</td><td>${e.fiber!=null?Math.round(e.fiber)+'g':'—'}</td><td>${e.servings||1}</td></tr>`;
         }).join('')}
         </table></div>`;
     });
@@ -589,8 +598,26 @@ function renderPanelBody(uid,d){
     const meds=Object.values(d.medsList.meds);
     html+=section('Medications',`<table class="data-table">
       <tr><th>Name</th><th>Dose</th><th>Times</th><th>Added</th><th>Deleted</th></tr>
-      ${meds.map(m=>`<tr><td>${esc(m.name||'')}</td><td>${esc(m.dose||'—')}</td><td>${(m.times||[]).join(', ')}</td><td>${m.addedDate||'—'}</td><td style="color:${m.deletedDate?'var(--red)':'var(--muted)'}">${m.deletedDate||'Active'}</td></tr>`).join('')}
+      ${meds.map(m=>`<tr><td>${esc(m.name||'')}${m.fiberGrams?`<span style="font-size:10px;color:#556b2f;background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:8px;border:1px solid rgba(85,107,47,0.2);margin-left:4px">🌿 ${m.fiberGrams}g fiber</span>`:''}</td><td>${esc(m.dose||'—')}</td><td>${(m.times||[]).join(', ')}</td><td>${m.addedDate||'—'}</td><td style="color:${m.deletedDate?'var(--red)':'var(--muted)'}">${m.deletedDate||'Active'}</td></tr>`).join('')}
     </table>`);
+  }
+
+  // ── RECIPES ──
+  const recipes=(d.recipes||[]).sort((a,b)=>(b.dateAdded||'').localeCompare(a.dateAdded||''));
+  if(recipes.length){
+    const recHtml=`<table class="data-table">
+      <tr><th>Title</th><th>Source</th><th>Categories</th><th>Cal</th><th>Pro</th><th>Carbs</th><th>Added</th></tr>
+      ${recipes.map(r=>`<tr>
+        <td>${esc(r.title||'—')}</td>
+        <td>${r.source==='coach'?'🤖 Coach':r.sourceType==='photo'?'📷 Photo':r.sourceType==='link'?'🔗 Link':'👤 Typed'}</td>
+        <td style="font-size:11px">${(r.categories||[]).join(', ')||'—'}</td>
+        <td>${r.calories?Math.round(r.calories)+' kcal':'—'}</td>
+        <td>${r.protein?Math.round(r.protein)+'g':'—'}</td>
+        <td>${r.carbs?Math.round(r.carbs)+'g':'—'}</td>
+        <td>${r.dateAdded||'—'}</td>
+      </tr>`).join('')}
+    </table>`;
+    html+=section('Recipes ('+recipes.length+')',recHtml,false);
   }
 
   // ── JOURNAL ──
@@ -642,7 +669,7 @@ window.confirmWipe=function(uid,name){
 window.doWipe=async function(uid){
   showToast('Wiping data…');
   try{
-    const cols=['food','fitness','meds','weights','favorites','grocery','journal','badges','chats','vitals'];
+    const cols=['food','fitness','meds','weights','favorites','grocery','journal','badges','chats','vitals','recipes'];
     for(const col of cols){
       const docs=await fsList(`users/${uid}/${col}`);
       for(const d of docs)await fsDelete(d.name.replace(`projects/${PROJECT}/databases/(default)/documents/`,''));
