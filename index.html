@@ -1180,6 +1180,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js";
 import { getFirestore, doc, getDoc, setDoc, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
@@ -1193,6 +1194,7 @@ const firebaseConfig = {
 };
 
 const fbApp = initializeApp(firebaseConfig);
+const storage = getStorage(fbApp);
 const db = getFirestore(fbApp);
 const auth = getAuth(fbApp);
 
@@ -4173,6 +4175,8 @@ function recipeCard(r){
     +'<div style="display:flex;gap:8px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--border)">'
     +'<button class="btn btn-primary btn-sm" data-rid="'+r.id+'" onclick="openLogRecipe(this.dataset.rid)">&#127859; Log this meal</button>'
     +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="addRecipeIngredientsToGrocery(this.dataset.rid)">&#128722; Grocery list</button>'
+    +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="shareRecipe(this.dataset.rid)">&#128279; Share</button>'
+    +'<button class="btn btn-ghost btn-sm" data-rid="'+r.id+'" onclick="printRecipe(this.dataset.rid)">&#128424; Print</button>'
     +'<button class="btn btn-ghost btn-sm" style="color:var(--red)" data-rid="'+r.id+'" onclick="deleteRecipe(this.dataset.rid)">&#128465; Delete</button>'
     +'</div>'
     +'</div>'
@@ -4291,6 +4295,208 @@ async function addRecipeIngredientsToGrocery(id){
   });
   await fbSet('grocery','list',{items:cache.grocery});
   showToast('&#128722; Added '+added+' ingredient'+(added!==1?'s':'')+' to grocery list.');
+}
+
+// ── RECIPE PDF GENERATION ────────────────────────────────────
+async function _loadJsPDF(){
+  return new Promise((resolve,reject)=>{
+    if(window.jspdf){resolve(window.jspdf.jsPDF);return;}
+    const s=document.createElement('script');
+    s.src='https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload=()=>resolve(window.jspdf.jsPDF);
+    s.onerror=reject;
+    document.head.appendChild(s);
+  });
+}
+
+function _generateRecipePDF(r){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const pw=190; // usable page width
+  let y=20;
+
+  // Helper: add wrapped text, returns new y
+  function addText(text,x,fontSize,style='normal',color=[44,36,22]){
+    doc.setFontSize(fontSize);
+    doc.setFont('helvetica',style);
+    doc.setTextColor(...color);
+    const lines=doc.splitTextToSize(text,pw-(x-10));
+    doc.text(lines,x,y);
+    y+=lines.length*(fontSize*0.4)+2;
+    return y;
+  }
+  function addSectionTitle(title){
+    y+=4;
+    doc.setFillColor(237,232,222); // surface2
+    doc.rect(10,y-4,pw,8,'F');
+    doc.setFontSize(10);doc.setFont('helvetica','bold');doc.setTextColor(85,107,47);
+    doc.text(title.toUpperCase(),12,y+1);
+    y+=8;
+  }
+  function checkPage(){if(y>270){doc.addPage();y=20;}}
+
+  // Title
+  doc.setFontSize(22);doc.setFont('helvetica','bold');doc.setTextColor(85,107,47);
+  const titleLines=doc.splitTextToSize(r.title||'Recipe',pw);
+  doc.text(titleLines,10,y);
+  y+=titleLines.length*10;
+
+  // Meta row
+  const metaParts=[];
+  if(r.servings)metaParts.push('Serves '+r.servings);
+  if(r.dateAdded)metaParts.push('Saved '+r.dateAdded);
+  if(r.categories&&r.categories.length)metaParts.push(r.categories.join(', '));
+  if(metaParts.length){
+    doc.setFontSize(10);doc.setFont('helvetica','normal');doc.setTextColor(122,111,94);
+    doc.text(metaParts.join('  ·  '),10,y);y+=8;
+  }
+
+  // Macros box
+  const macros=[];
+  if(r.calories)macros.push(Math.round(r.calories)+' kcal');
+  if(r.protein)macros.push(Math.round(r.protein)+'g protein');
+  if(r.carbs)macros.push(Math.round(r.carbs)+'g carbs');
+  if(r.sugar!=null)macros.push(Math.round(r.sugar)+'g sugar');
+  if(r.fiber!=null)macros.push(Math.round(r.fiber)+'g fiber');
+  if(macros.length){
+    y+=2;
+    doc.setFillColor(250,247,242);
+    doc.setDrawColor(85,107,47,0.3);
+    doc.roundedRect(10,y-2,pw,8,2,2,'FD');
+    doc.setFontSize(9);doc.setFont('helvetica','normal');doc.setTextColor(85,107,47);
+    doc.text('Per serving:  '+macros.join('   '),14,y+3);
+    y+=12;
+  }
+
+  // Ingredients
+  if(r.ingredients&&r.ingredients.length){
+    checkPage();addSectionTitle('Ingredients');
+    r.ingredients.forEach(ing=>{
+      checkPage();
+      doc.setFontSize(11);doc.setFont('helvetica','normal');doc.setTextColor(44,36,22);
+      const lines=doc.splitTextToSize('• '+ing,pw-4);
+      doc.text(lines,14,y);
+      y+=lines.length*5+1;
+    });
+    y+=4;
+  }
+
+  // Instructions
+  if(r.instructions){
+    checkPage();addSectionTitle('Instructions');
+    const steps=r.instructions.split(/\n+/).filter(s=>s.trim());
+    steps.forEach((step,i)=>{
+      checkPage();
+      const prefix=step.match(/^step\s*\d+/i)?'':((i+1)+'. ');
+      const lines=doc.splitTextToSize(prefix+step,pw-4);
+      doc.setFontSize(11);doc.setFont('helvetica','normal');doc.setTextColor(44,36,22);
+      doc.text(lines,12,y);
+      y+=lines.length*5.5+2;
+    });
+    y+=4;
+  }
+
+  // Notes
+  if(r.notes&&r.notes.trim()){
+    checkPage();addSectionTitle('Notes');
+    doc.setFontSize(10);doc.setFont('helvetica','italic');doc.setTextColor(122,111,94);
+    const noteLines=doc.splitTextToSize(r.notes,pw-4);
+    doc.text(noteLines,12,y);
+    y+=noteLines.length*5+4;
+  }
+
+  // Footer
+  doc.setFontSize(8);doc.setFont('helvetica','normal');doc.setTextColor(180,170,155);
+  doc.text('Generated by MyWellpath · mattzmud.github.io/my-health-tracker',10,285);
+
+  return doc;
+}
+
+async function printRecipe(id){
+  const r=cache.recipes.find(rec=>rec.id===id);
+  if(!r)return;
+  showToast('Preparing PDF...');
+  await _loadJsPDF();
+  const doc=_generateRecipePDF(r);
+  const blob=doc.output('blob');
+  const url=URL.createObjectURL(blob);
+  window.open(url,'_blank');
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
+async function shareRecipe(id){
+  const r=cache.recipes.find(rec=>rec.id===id);
+  if(!r)return;
+
+  // Check if we already have a share URL cached
+  if(r.shareUrl){
+    _showShareModal(r.shareUrl,r.title);
+    return;
+  }
+
+  showToast('Generating share link...');
+  try{
+    await _loadJsPDF();
+    const doc=_generateRecipePDF(r);
+    const pdfBlob=doc.output('blob');
+
+    // Upload to Firebase Storage
+    const fileName='recipes/'+auth.currentUser.uid+'/'+id+'.pdf';
+    const storageRef=ref(storage,fileName);
+    await uploadBytes(storageRef,pdfBlob,{contentType:'application/pdf'});
+    const url=await getDownloadURL(storageRef);
+
+    // Cache the URL on the recipe object
+    r.shareUrl=url;
+    await fbSet('recipes',id,r);
+
+    _showShareModal(url,r.title);
+  }catch(e){
+    console.error('Share error:',e);
+    showToast('Could not generate share link. Please try again.','error');
+  }
+}
+
+function _showShareModal(url,title){
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;margin-bottom:4px">&#128279; Share recipe</div>'
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:14px">'+escHtml(title||'Recipe')+'</div>'
+    +'<div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:14px;word-break:break-all;font-size:12px;color:var(--muted)">'+escHtml(url)+'</div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">'
+    +'<button class="btn btn-primary btn-sm" style="flex:1" id="copy-link-btn" data-url="'+encodeURIComponent(url)+'" onclick="_copyRecipeLink(decodeURIComponent(this.dataset.url))">&#128203; Copy link</button>'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" data-url="'+encodeURIComponent(url)+'" onclick="window.open(decodeURIComponent(this.dataset.url),\'_blank\')">&#128065; Open PDF</button>'
+    +'</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:12px">Paste this link in a text message, email, or anywhere to share the recipe PDF.</div>'
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Close</button>'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" data-url="'+encodeURIComponent(url)+'" data-title="'+encodeURIComponent(title||'Recipe')+'" onclick="_shareViaEmail(decodeURIComponent(this.dataset.url),decodeURIComponent(this.dataset.title))">&#9993; Email</button>'
+    +'</div>'
+    +'</div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+function _copyRecipeLink(url){
+  navigator.clipboard.writeText(url).then(()=>{
+    const btn=document.getElementById('copy-link-btn');
+    if(btn){btn.textContent='&#10003; Copied!';btn.disabled=true;}
+    showToast('Link copied to clipboard!');
+  }).catch(()=>{
+    // Fallback for older browsers
+    const ta=document.createElement('textarea');
+    ta.value=url;ta.style.position='fixed';ta.style.opacity='0';
+    document.body.appendChild(ta);ta.select();
+    document.execCommand('copy');document.body.removeChild(ta);
+    showToast('Link copied!');
+  });
+}
+
+function _shareViaEmail(url,title){
+  const subject=encodeURIComponent('Recipe: '+title);
+  const body=encodeURIComponent('Here\'s a recipe I wanted to share with you:\n\n'+title+'\n\n'+url);
+  window.location.href='mailto:?subject='+subject+'&body='+body;
 }
 
 async function saveRecipe(recipe){
