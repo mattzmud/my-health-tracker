@@ -2717,7 +2717,12 @@ async function logFood(){
       document.getElementById('food-input').value='';
       document.getElementById('food-feedback').innerHTML='';
       renderFoodEntries();refreshDashboard();
-      callAI('I just logged for '+mt+': '+rawText,'You are a nutrition coach. '+buildUserContext()+' Give 2-3 sentences of warm personalized feedback on this meal.').then(fb=>{const el=document.getElementById('food-feedback');if(el&&fb)el.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(fb.replace(/```/g,'').trim()));}).catch(()=>{});
+      // Build context of what else is logged for this meal and today
+      const _mealEntries=(cache.food[viewDate]||[]).filter(e=>e.time===mt&&e.text!==rawText).map(e=>e.text);
+      const _otherMeals=(cache.food[viewDate]||[]).filter(e=>e.time!==mt).reduce((acc,e)=>{if(!acc[e.time])acc[e.time]=[];acc[e.time].push(e.text);return acc;},{});
+      const _mealCtx=_mealEntries.length?' (already logged for this meal: '+_mealEntries.join(', ')+')':'';
+      const _dayCtx=Object.keys(_otherMeals).length?' | Other meals today: '+Object.entries(_otherMeals).map(([t,items])=>t+': '+items.join(', ')).join(' | '):'';
+      callAI('I just added '+rawText+' to my '+mt+_mealCtx+_dayCtx,'You are a nutrition coach. '+buildUserContext()+' Give 2-3 sentences of warm personalized feedback on this addition in context of the full meal. No nutrition estimates needed.').then(fb=>{const el=document.getElementById('food-feedback');if(el&&fb)el.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(fb.replace(/```/g,'').trim()));}).catch(()=>{});
       btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
       return;
     }
@@ -2777,8 +2782,14 @@ async function logFood(){
       // All items found in DB — get AI coaching feedback
       try{
         const fb=await callAI(
-          'I just logged for '+mt+': '+items.join(', '),
-          'You are a nutrition coach. '+buildUserContext()+' Give 2-3 sentences of warm personalized feedback on this meal. No nutrition estimates needed — just coaching feedback.'
+          (()=>{
+            const _existing=(cache.food[viewDate]||[]).filter(e=>e.time===mt&&!items.includes(e.text)).map(e=>e.text);
+            const _others=(cache.food[viewDate]||[]).filter(e=>e.time!==mt).reduce((acc,e)=>{if(!acc[e.time])acc[e.time]=[];acc[e.time].push(e.text);return acc;},{});
+            const _mealCtx=_existing.length?' (already in this meal: '+_existing.join(', ')+')':'';
+            const _dayCtx=Object.keys(_others).length?' | Other meals today: '+Object.entries(_others).map(([t,its])=>t+': '+its.join(', ')).join(' | '):'';
+            return 'I just logged for '+mt+': '+items.join(', ')+_mealCtx+_dayCtx;
+          })(),
+          'You are a nutrition coach. '+buildUserContext()+' Give 2-3 sentences of warm personalized feedback on this meal in context of the full day. No nutrition estimates needed — just coaching feedback.'
         );
         displayText=fb.replace(/```/g,'').trim();
         console.log('[logFood] AI feedback received:',displayText.slice(0,60));
