@@ -2376,6 +2376,14 @@ function refreshDashboard(){
   const _sl2=document.getElementById('stat-sugar-label');if(_sl2)_sl2.textContent=goalsDate===TODAY?'Sugar Today':'Sugar '+goalsDate.slice(5);
   document.getElementById('dash-fiber').textContent=Math.round(tf_)+'g';
   const _fl=document.getElementById('stat-fiber-label');if(_fl)_fl.textContent=goalsDate===TODAY?'Fiber Today':'Fiber '+goalsDate.slice(5);
+  // Sugar progress bar (dashboard)
+  const _sugarBar=document.getElementById('prog-sugar');
+  if(_sugarBar){_sugarBar.style.width=Math.min(100,(ts_/sg)*100)+'%';_sugarBar.style.background=ts_>sg?'var(--red)':'rgba(192,57,43,0.6)';}
+  const _sugarLbl=document.getElementById('prog-sugar-label');if(_sugarLbl)_sugarLbl.textContent=Math.round(ts_)+' / '+sg+'g'+(ts_>sg?' ⚠':'');
+  // Fiber progress bar (dashboard)
+  const _fiberBar=document.getElementById('prog-fiber');
+  if(_fiberBar){_fiberBar.style.width=Math.min(100,(tf_/fg)*100)+'%';_fiberBar.style.background=tf_>=fg?'var(--accent)':'rgba(85,107,47,0.45)';}
+  const _fiberLbl=document.getElementById('prog-fiber-label');if(_fiberLbl)_fiberLbl.textContent=Math.round(tf_)+' / '+fg+'g'+(tf_>=fg?' ✓':'');
   document.getElementById('dash-calories').textContent=Math.round(tcal)+' kcal';
   const _call=document.getElementById('stat-calories-label');if(_call)_call.textContent=goalsDate===TODAY?'Calories Today':'Cal '+goalsDate.slice(5);
   document.getElementById('prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
@@ -2997,9 +3005,6 @@ function renderFoodEntries(){
   const carbBar=document.getElementById('food-prog-carb');
   carbBar.style.width=Math.min(100,(tc/cg)*100)+'%';
   carbBar.style.background=tc>cg?'var(--red)':'var(--amber)';
-  const sugarProgEl=document.getElementById('prog-sugar');
-  if(sugarProgEl){sugarProgEl.style.width=Math.min(100,(tsugar/sg2)*100)+'%';sugarProgEl.style.background=tsugar>sg2?'var(--red)':'rgba(192,57,43,0.6)';}
-  const sugarLabelEl=document.getElementById('prog-sugar-label');if(sugarLabelEl)sugarLabelEl.textContent=Math.round(tsugar)+' / '+sg2+'g'+(tsugar>sg2?' ⚠':'');
   const calBar=document.getElementById('food-prog-cal');
   if(calBar){calBar.style.width=Math.min(100,(tcal/calg2)*100)+'%';calBar.style.background=tcal>calg2?'var(--red)':'rgba(192,57,43,0.6)';}
   // Calorie adjustment note
