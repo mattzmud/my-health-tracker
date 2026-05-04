@@ -2478,6 +2478,7 @@ async function loadAvatar(){
     const data=await fbGet('profile','avatar');
     if(data&&data.img){
       window._avatarSrc=data.img; // cache for use in chat
+      updateChatAvatars(); // update any already-rendered chat messages
       ['avatar-img','profile-avatar-img'].forEach(id=>{
         const el=document.getElementById(id);
         if(el){el.src=data.img;el.style.display='block';}
@@ -2500,6 +2501,7 @@ async function uploadAvatar(event){
       ctx.drawImage(img,(size-w)/2,(size-h)/2,w,h);
       const dataUrl=canvas.toDataURL('image/jpeg',0.8);
       window._avatarSrc=dataUrl;
+      updateChatAvatars();
       document.getElementById('avatar-img').src=dataUrl;document.getElementById('avatar-img').style.display='block';document.getElementById('avatar-placeholder').style.display='none';
       await fbSet('profile','avatar',{img:dataUrl});
     };img.src=e.target.result;
@@ -6392,10 +6394,24 @@ async function saveMessageToSession(role,content){
 }
 
 function _userAvatarHTML(){
+  // Always render the same structure — image src gets updated by updateChatAvatars()
   if(window._avatarSrc){
-    return'<img src="'+window._avatarSrc+'" alt="You" style="width:30px;height:30px;border-radius:50%;object-fit:cover;display:block"/>';
+    return'<img class="chat-user-avatar" src="'+window._avatarSrc+'" alt="You" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:block"/>';
   }
-  return'&#128100;';
+  return'<span class="chat-user-avatar-placeholder">&#128100;</span>';
+}
+
+function updateChatAvatars(){
+  // Update all existing user avatar placeholders in chat when photo becomes available
+  if(!window._avatarSrc)return;
+  document.querySelectorAll('.chat-user-avatar-placeholder').forEach(el=>{
+    const img=document.createElement('img');
+    img.className='chat-user-avatar';
+    img.src=window._avatarSrc;
+    img.alt='You';
+    img.style.cssText='width:36px;height:36px;border-radius:50%;object-fit:cover;display:block';
+    el.replaceWith(img);
+  });
 }
 
 async function sendChat(){
