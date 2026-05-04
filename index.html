@@ -2264,7 +2264,7 @@ window.appInit=async function(){
   setSyncStatus('syncing');
   // Load all critical data in parallel
   const safe=fn=>fn.catch(()=>null);
-  const [wCol,tf,tfi,tm,ml,fv,gr,bc,vs,bpd]=await Promise.all([
+  const [wCol,tf,tfi,tm,ml,fv,gr,bc,vs,bpd,nc]=await Promise.all([
     safe(fbGetCol('weights')),
     safe(fbGet('food',TODAY)),
     safe(fbGet('fitness',TODAY)),
@@ -2275,6 +2275,7 @@ window.appInit=async function(){
     safe(fbGet('badges','earned')),
     safe(fbGet('vitals','settings')),
     safe(fbGet('vitals',TODAY)),
+    safe(fbGet('food','corrections')),
   ]);
   cache.weights=Object.entries(wCol).map(([id,d])=>({date:id,val:d.val})).sort((a,b)=>a.date.localeCompare(b.date));
   cache.food[TODAY]=tf?(tf.entries||[]):[];
@@ -2286,6 +2287,7 @@ window.appInit=async function(){
   cache.grocery=gr?(gr.items||[]):[];
   cache.badges=bc?(bc.list||[]):[];
   cache.vitalSettings=vs||{trackBP:false,trackBS:false};
+  if(nc)cache.nutritionCorrections=nc;
   if(bpd){cache.vitals.bp[TODAY]=bpd.bp||[];cache.vitals.bs[TODAY]=bpd.bs||[];}
   else{cache.vitals.bp[TODAY]=[];cache.vitals.bs[TODAY]=[];}
   _loadedVitalDates.add(TODAY);
