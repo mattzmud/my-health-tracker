@@ -461,6 +461,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-water-label">Water Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-carbs" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-carbs-label">Carbs Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-sugar" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-sugar-label">Sugar Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-fiber" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-fiber-label">Fiber Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-calories" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-calories-label">Calories Today</div></div>
       </div>
       <div class="grid2">
@@ -470,6 +471,7 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Net carbs</span><span id="prog-carbs-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-carbs" style="width:0%;background:var(--amber)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Sugar</span><span id="prog-sugar-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-sugar" style="width:0%;background:var(--red)"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fiber</span><span id="prog-fiber-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-fiber" style="width:0%;background:var(--accent)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fitness</span><span id="prog-ex-label">0 done</span></div><div class="prog-bar"><div class="prog-fill" id="prog-ex" style="width:0%;background:#a0782a"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Calories</span><span id="prog-cal-label">0 kcal</span></div><div class="prog-bar"><div class="prog-fill" id="prog-cal" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" id="prog-meds-wrap" style="margin-top:10px;display:none"><div class="prog-label"><span>Medications</span><span id="prog-meds-label">0 taken</span></div><div class="prog-bar"><div class="prog-fill" id="prog-meds" style="width:0%;background:#6b4fa0"></div></div></div>
@@ -518,6 +520,10 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <canvas id="sugar-chart" height="160"></canvas>
         </div>
         <div class="card">
+        <div class="card">
+          <div class="card-title" id="fiber-chart-title" style="margin-bottom:14px">Fiber</div>
+          <canvas id="fiber-chart" height="160"></canvas>
+        </div>
           <div class="card-title" id="cal-chart-title" style="margin-bottom:14px">Calories</div>
           <canvas id="cal-chart" height="160"></canvas>
         </div>
@@ -740,6 +746,10 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
                 <div style="font-family:var(--font-display);font-size:22px;color:var(--red)" id="plan-tile-sugar">—</div>
                 <div style="font-size:11px;color:var(--muted)">sugar limit</div>
               </div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--accent)" id="plan-tile-fiber">—</div>
+                <div style="font-size:11px;color:var(--muted)">fiber goal</div>
+              </div>
             </div>
           </div>
           <div id="plan-text" style="font-size:13.5px;color:var(--text);line-height:1.8;white-space:pre-wrap"></div>
@@ -960,6 +970,13 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
               <span><span id="food-sugar-total" style="color:var(--red);font-weight:600">0g</span> <span id="food-sugar-goal-label" style="color:var(--muted)">/ 50g limit</span></span>
             </div>
             <div class="prog-bar"><div class="prog-fill" id="food-prog-sugar" style="width:0%;background:rgba(192,57,43,0.6)"></div></div>
+          </div>
+          <div class="prog-wrap" style="margin-top:10px">
+            <div class="prog-label">
+              <span>&#127807; Fiber</span>
+              <span><span id="food-fiber-total" style="color:var(--accent);font-weight:600">0g</span> <span id="food-fiber-goal-label" style="color:var(--muted)">/ 28g goal</span></span>
+            </div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-fiber" style="width:0%;background:var(--accent)"></div></div>
           </div>
           <div class="prog-wrap" style="margin-top:10px">
             <div class="prog-label">
@@ -1673,12 +1690,13 @@ async function lookupOpenFoodFacts(query){
     const n2=resolvedNutriments;
 
     // Prefer _serving fields; fall back to scaling _100g values
-    let calories,protein,carbs,sugar=0;
+    let calories,protein,carbs,sugar=0,fiber=0;
     if(n2['energy-kcal_serving']||n2['proteins_serving']){
       calories=Math.round(n2['energy-kcal_serving']||0);
       protein=Math.round((n2['proteins_serving']||0)*10)/10;
       carbs=Math.round((n2['carbohydrates_serving']||0)*10)/10;
       sugar=Math.round((n2['sugars_serving']||0)*10)/10;
+      fiber=Math.round((n2['fiber_serving']||n2['fibers_serving']||0)*10)/10;
       console.log('[OFF] Using _serving fields → '+calories+'kcal '+protein+'pro '+carbs+'carbs');
     } else {
       const scale=resolvedServingG/100;
@@ -1686,6 +1704,7 @@ async function lookupOpenFoodFacts(query){
       protein=Math.round((n2['proteins_100g']||0)*scale*10)/10;
       carbs=Math.round((n2['carbohydrates_100g']||0)*scale*10)/10;
       sugar=Math.round((n2['sugars_100g']||0)*scale*10)/10;
+      fiber=Math.round((n2['fiber_100g']||n2['fibers_100g']||0)*scale*10)/10;
       console.log('[OFF] Scaling _100g by '+scale.toFixed(2)+' → '+calories+'kcal '+protein+'pro '+carbs+'carbs');
     }
 
@@ -1700,7 +1719,7 @@ async function lookupOpenFoodFacts(query){
     const brandStr=Array.isArray(best.brands)?best.brands.join(', '):(best.brands||null);
     if(!brandStr&&bestScore<0.9){console.log('[OFF] Rejecting — no brand, low confidence');return null;}
     console.log('[OFF] Matched "'+best.product_name+'" ('+brandStr+') score='+bestScore.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
-    return{calories,protein,carbs,sugar,source:'off',
+    return{calories,protein,carbs,sugar,fiber,source:'off',
       name:best.product_name,brand:brandStr,
       servingSize:servingG,servingSizeUnit:'g'};
   }catch(e){
@@ -1796,7 +1815,8 @@ async function lookupUSDA(query){
 
     console.log('[USDA] Final:',best.description,'→',calories,'kcal',protein,'pro',carbs,'carbs');
     const usdaSugar=Math.round((raw.sugar||0)*scale*10)/10;
-    return{calories,protein,carbs,sugar:usdaSugar,source:'usda',
+    const usdaFiber=Math.round((raw.fiber||0)*scale*10)/10;
+    return{calories,protein,carbs,sugar:usdaSugar,fiber:usdaFiber,source:'usda',
       name:best.description,brand:best.brandOwner||null,
       servingSize:detail.servingSize,servingSizeUnit:detail.servingSizeUnit};
   }catch(e){
@@ -2000,7 +2020,7 @@ async function generatePlan(){
   window._profile=profile;
   // Run nutrition goals + workout plan in parallel — both independent
   const nutritionPromise=callAI(
-    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50}\nProtein in grams, water in oz, net carbs in grams, calories in kcal, sugar in grams (total daily sugar limit — typically 25-50g). Calculate calorie goal using TDEE minus appropriate deficit for their goals and activity level. Be specific to this person.',
+    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}\nProtein in grams, water in oz, net carbs in grams, calories in kcal, sugar in grams (daily limit), fiber in grams (daily target — typically 25-38g, higher for diabetics). Calculate calorie goal using TDEE. Be specific to this person.',
     'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
   ).catch(()=>null);
 
@@ -2024,6 +2044,7 @@ async function generatePlan(){
         if(ng.carbGoal&&ng.carbGoal>0)window._profile.carbGoal=Math.round(ng.carbGoal);
         if(ng.calorieGoal&&ng.calorieGoal>0)window._profile.calorieGoal=Math.round(ng.calorieGoal);
         if(ng.sugarGoal&&ng.sugarGoal>0)window._profile.sugarGoal=Math.round(ng.sugarGoal);
+        if(ng.fiberGoal&&ng.fiberGoal>0)window._profile.fiberGoal=Math.round(ng.fiberGoal);
       }
     }
   }catch(e){}
@@ -2106,7 +2127,7 @@ async function generateWellnessPlan(showModal=false,reason='Plan updated'){
   const p=window._profile;if(!p)return;
   try{
     const prevPlan=p.wellnessPlan;
-    const prevGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000,sugar:p.sugarGoal||50};
+    const prevGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000,sugar:p.sugarGoal||50,fiber:p.fiberGoal||28};
 
     const plan=await callAI(
       'Create a clear, personalized wellness plan for:\n'+buildUserContext()
@@ -2123,7 +2144,7 @@ async function generateWellnessPlan(showModal=false,reason='Plan updated'){
     const cleaned=plan.replace(/```/g,'').trim();
 
     // Build change summary
-    const currGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000,sugar:p.sugarGoal||50};
+    const currGoals={protein:p.proteinGoal||120,water:p.waterGoal||80,carbs:p.carbGoal||100,calories:p.calorieGoal||2000,sugar:p.sugarGoal||50,fiber:p.fiberGoal||28};
     let changeSummary='Initial plan created.';
     if(prevPlan&&prevPlan.text){
       const diffs=[];
@@ -2277,7 +2298,7 @@ window.appInit=async function(){
   Promise.all([
     ..._last7.map(d=>ensureDateLoaded(d)),
     fbGetCol('journal').then(jc=>Object.entries(jc).forEach(([d,v])=>{cache.journal[d]=v;})),
-  ]).then(()=>{renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();});
+  ]).then(()=>{renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();renderFiberChart();});
   setSyncStatus('synced');
   loadAvatar();// load early so avatar shows on dashboard
   updateDashRangeLabel();refreshDashboard();renderFoodEntries();renderFavorites();
@@ -2330,7 +2351,7 @@ async function uploadAvatar(event){
 // ── DASHBOARD ──────────────────────────────────────────────
 let weightChart,proteinChart,waterChart,carbsChart;
 function refreshDashboard(){
-  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80,cg=p.carbGoal||100,calg=p.calorieGoal||2000,sg=p.sugarGoal||50;
+  const p=window._profile||{},pg=p.proteinGoal||120,wg=p.waterGoal||80,cg=p.carbGoal||100,calg=p.calorieGoal||2000,sg=p.sugarGoal||50,fg=p.fiberGoal||28;
   // goalsDate = single selected day (or today for multi-day ranges)
   const _dashDays=getDashDays();
   const _isSingle=_dashDays.length===1;
@@ -2340,7 +2361,7 @@ function refreshDashboard(){
   if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
   const rawEntries=cache.food[goalsDate]||[];
   const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),ts_=entries.reduce((a,e)=>a+(e.sugar||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),ts_=entries.reduce((a,e)=>a+(e.sugar||0),0),tf_=entries.reduce((a,e)=>a+(e.fiber||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
   document.getElementById('dash-weight').textContent=cur+' lbs';
@@ -2353,6 +2374,8 @@ function refreshDashboard(){
   const _wl=document.getElementById('stat-water-label');if(_wl)_wl.textContent=goalsDate===TODAY?'Water Today':'Water '+goalsDate.slice(5);
   const _cl=document.getElementById('stat-carbs-label');if(_cl)_cl.textContent=goalsDate===TODAY?'Carbs Today':'Carbs '+goalsDate.slice(5);
   const _sl2=document.getElementById('stat-sugar-label');if(_sl2)_sl2.textContent=goalsDate===TODAY?'Sugar Today':'Sugar '+goalsDate.slice(5);
+  document.getElementById('dash-fiber').textContent=Math.round(tf_)+'g';
+  const _fl=document.getElementById('stat-fiber-label');if(_fl)_fl.textContent=goalsDate===TODAY?'Fiber Today':'Fiber '+goalsDate.slice(5);
   document.getElementById('dash-calories').textContent=Math.round(tcal)+' kcal';
   const _call=document.getElementById('stat-calories-label');if(_call)_call.textContent=goalsDate===TODAY?'Calories Today':'Cal '+goalsDate.slice(5);
   document.getElementById('prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
@@ -2383,6 +2406,17 @@ function refreshDashboard(){
   // Count each daily time slot as one dose (am, af, pm only — exclude wk and prn)
   const dailyTimes=['am','af','pm'];
   let totalMedChecks=0,doneMedChecks=0;
+  // Add fiber from checked fiber supplements
+  let medFiber=0;
+  if(cache.trackMeds!==false)Object.values(cache.medsList||{}).forEach(med=>{
+    if(!med.fiberGrams)return;
+    const times=med.times||['am'];
+    if(times.includes('wk')||times.includes('prn'))return;
+    times.filter(t=>['am','af','pm'].includes(t)).forEach(t=>{
+      if(ms[t+'-'+(med.id||med.name)])medFiber+=med.fiberGrams*(med.qty||1);
+    });
+  });
+  tf_+=medFiber;
   if(cache.trackMeds!==false)Object.values(cache.medsList||{}).forEach(med=>{
     const times=med.times||['am'];
     // Skip meds that are weekly-only or as-needed-only — not tracked in daily progress
@@ -2402,7 +2436,7 @@ function refreshDashboard(){
     wh.innerHTML='<div style="margin-bottom:4px">Recent: '+rec+'</div>';
     if(cache.weights.length>1){const diff=+(cache.weights[cache.weights.length-1].val-cache.weights[cache.weights.length-2].val).toFixed(1);wh.innerHTML+='<div style="font-size:12px;color:'+(diff<0?'var(--green)':diff>0?'var(--red)':'var(--muted)')+'">vs last: '+(diff>0?'+':'')+diff+' lbs</div>';}
   }
-  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();
+  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();renderFiberChart();
   renderDashboardVitals();
   applyMedsVisibility();
 }
@@ -2606,6 +2640,24 @@ function renderSugarChart(){
     annotation:{annotations:{goalLine:{type:'line',yMin:goal,yMax:goal,borderColor:'rgba(192,57,43,0.4)',borderWidth:1.5,borderDash:[4,4],
       label:{content:'Limit: '+goal+'g',display:true,position:'end',font:{size:10},color:'rgba(192,57,43,0.8)'}}}}}});
 }
+let fiberChart=null;
+function renderFiberChart(){
+  const days=getDashDays(),goal=(window._profile||{}).fiberGoal||28;
+  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.fiber||0),0)));
+  const ctx=document.getElementById('fiber-chart')?.getContext('2d');if(!ctx)return;
+  if(fiberChart)fiberChart.destroy();
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
+  fiberChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Fiber',data,
+    backgroundColor:data.map(v=>v>=goal?'rgba(85,107,47,0.7)':'rgba(85,107,47,0.35)'),
+    borderColor:data.map(v=>v>=goal?'rgba(85,107,47,0.9)':'rgba(85,107,47,0.6)'),
+    borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Fiber: '+ctx.raw+'g'+(ctx.raw>=goal?' ✓':'')}}},
+    scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
+      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+5)}},
+    annotation:{annotations:{goalLine:{type:'line',yMin:goal,yMax:goal,borderColor:'rgba(85,107,47,0.4)',borderWidth:1.5,borderDash:[4,4],
+      label:{content:'Goal: '+goal+'g',display:true,position:'end',font:{size:10},color:'rgba(85,107,47,0.8)'}}}}}});
+}
+
 function renderCarbsChart(){
   const days=getDashDays(),goal=(window._profile||{}).carbGoal||100;
   const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.carbs||0),0)));
@@ -2626,7 +2678,7 @@ function renderCarbsChart(){
 
 function buildUserContext(){
   const p=window._profile||{};
-  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit';
+  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit, '+(p.fiberGoal||28)+'g fiber target';
 }
 
 // ── FOOD DIARY ──────────────────────────────────────────────
@@ -2647,8 +2699,8 @@ async function logFood(){
     if(window._barcodePreFill&&items.length===1){
       const pf=window._barcodePreFill;
       cache.food[viewDate].push({time:mt,text:rawText,
-        protein:pf.protein,carbs:pf.carbs,calories:pf.calories,sugar:pf.sugar||0,
-        baseProtein:pf.protein,baseCarbs:pf.carbs,baseCalories:pf.calories,baseSugar:pf.sugar||0,
+        protein:pf.protein,carbs:pf.carbs,calories:pf.calories,sugar:pf.sugar||0,fiber:pf.fiber||0,
+        baseProtein:pf.protein,baseCarbs:pf.carbs,baseCalories:pf.calories,baseSugar:pf.sugar||0,baseFiber:pf.fiber||0,
         servings:1,water:0,ts:Date.now(),source:pf.source});
       window._barcodePreFill=null;
       await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
@@ -2729,10 +2781,10 @@ async function logFood(){
       const usda=dbResults[i];
       let macros;
       if(usda){
-        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs,sugar:usda.sugar||0};
+        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs,sugar:usda.sugar||0,fiber:usda.fiber||0};
       } else {
         const ai=aiParsed[aiIdx]||{protein:0,carbs:0,calories:0};
-        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10,sugar:Math.round((ai.sugar||0)*10)/10};
+        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10,sugar:Math.round((ai.sugar||0)*10)/10,fiber:Math.round((ai.fiber||0)*10)/10};
         aiIdx++;
       }
       cache.food[viewDate].push({
@@ -2742,10 +2794,12 @@ async function logFood(){
         carbs:macros.carbs,
         calories:macros.calories,
         sugar:macros.sugar||0,
+        fiber:macros.fiber||0,
         baseProtein:macros.protein,
         baseCarbs:macros.carbs,
         baseCalories:macros.calories,
         baseSugar:macros.sugar||0,
+        baseFiber:macros.fiber||0,
         servings:1,
         water:0,
         ts:Date.now()+i,
@@ -2914,9 +2968,9 @@ function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   // food-feedback is managed by logFood — don't clear it here
   const entries=cache.food[viewDate]||[];
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),tsugar=entries.reduce((a,e)=>a+(e.sugar||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),tsugar=entries.reduce((a,e)=>a+(e.sugar||0),0),tfiber=entries.reduce((a,e)=>a+(e.fiber||0),0);
   const p=window._profile||{};
-  const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100, sg2=p.sugarGoal||50;
+  const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100, sg2=p.sugarGoal||50, fg2=p.fiberGoal||28;
   // Update log title
   const logTitle=document.getElementById('food-log-title');
   if(logTitle)logTitle.textContent=viewDate===TODAY?"Today's log":formatDate(viewDate)+' log';
@@ -2929,7 +2983,10 @@ function renderFoodEntries(){
   document.getElementById('food-carb-total').textContent=Math.round(tc)+'g';
   const fst=document.getElementById('food-sugar-total');if(fst)fst.textContent=Math.round(tsugar)+'g';
   const fsgl=document.getElementById('food-sugar-goal-label');if(fsgl)fsgl.textContent='/ '+sg2+'g limit';
-  const fsp=document.getElementById('food-prog-sugar');if(fsp){fsp.style.width=Math.min(100,(tsugar/sg2)*100)+'%';fsp.style.background=tsugar>sg2?'var(--red)':'rgba(192,57,43,0.6)';};
+  const fsp=document.getElementById('food-prog-sugar');if(fsp){fsp.style.width=Math.min(100,(tsugar/sg2)*100)+'%';fsp.style.background=tsugar>sg2?'var(--red)':'rgba(192,57,43,0.6)';}
+  const fft=document.getElementById('food-fiber-total');if(fft)fft.textContent=Math.round(tfiber)+'g';
+  const ffgl=document.getElementById('food-fiber-goal-label');if(ffgl)ffgl.textContent='/ '+fg2+'g goal';
+  const ffp=document.getElementById('food-prog-fiber');if(ffp){ffp.style.width=Math.min(100,(tfiber/fg2)*100)+'%';ffp.style.background=tfiber>=fg2?'var(--accent)':'rgba(85,107,47,0.4)';};
   document.getElementById('food-cal-total').textContent=Math.round(tcal)+' kcal';
   document.getElementById('food-protein-goal-label').textContent='/ '+pg+'g goal';
   document.getElementById('food-water-goal-label').textContent='/ '+wg+' oz goal';
@@ -3011,6 +3068,7 @@ function renderFoodEntries(){
           +(e.protein!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g pro</span>':'')
           +(e.carbs!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
           +(e.sugar!=null&&e.sugar>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.sugar)+'g sugar</span>':'')
+          +(e.fiber!=null&&e.fiber>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.fiber)+'g fiber</span>':'')
           +'<span style="font-size:11px;color:var(--muted);font-style:italic">'+servingLabel+'</span>'
           +(e.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; Verified</span>':e.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; USDA</span>':e.source==='edited'?'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(42,90,138,0.2)">&#9998; Edited</span>':'')
           +'</div></div>'
@@ -3153,6 +3211,7 @@ async function _lookupBarcode_USDA(barcode){
         protein:Math.round((ln.protein?.value||0)*10)/10,
         carbs:Math.round((ln.carbohydrates?.value||0)*10)/10,
         sugar:Math.round((ln.sugars?.value||0)*10)/10,
+        fiber:Math.round((ln.fiber?.value||0)*10)/10,
         source:'usda',barcode
       };
     }
@@ -3195,7 +3254,7 @@ function openEditEntry(ts){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
   const servings=entry.servings||1;
-  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0};
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0};
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
   modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
@@ -3210,11 +3269,12 @@ function openEditEntry(ts){
     +'</div></div>'
     +'<div style="margin-bottom:16px">'
     +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Nutrition facts (per serving: '+Math.round(base.cal)+' kcal · '+Math.round(base.pro)+'g pro · '+Math.round(base.carbs)+'g carbs)</div>'
-    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:8px">'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr 1fr;gap:8px">'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Calories</div><input type="number" id="edit-cal" value="'+Math.round(entry.calories)+'" min="0" style="width:100%"/></div>'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Protein (g)</div><input type="number" id="edit-pro" value="'+Math.round(entry.protein)+'" min="0" style="width:100%"/></div>'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Carbs (g)</div><input type="number" id="edit-carbs" value="'+Math.round(entry.carbs)+'" min="0" style="width:100%"/></div>'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sugar (g)</div><input type="number" id="edit-sugar" value="'+Math.round(entry.sugar||0)+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Fiber (g)</div><input type="number" id="edit-fiber" value="'+Math.round(entry.fiber||0)+'" min="0" style="width:100%"/></div>'
     +'</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.querySelectorAll(&#39;.date-picker-modal&#39;)[document.querySelectorAll(&#39;.date-picker-modal&#39;).length-1].remove()">Cancel</button>'
@@ -3229,7 +3289,7 @@ function openEditEntry(ts){
 function adjustServings(ts,delta){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
-  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0};
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0};
   const current=entry.servings||1;
   const next=Math.max(0.25,Math.round((current+delta)*4)/4);
   entry.servings=next;
@@ -3244,6 +3304,7 @@ function adjustServings(ts,delta){
   if(proEl)proEl.value=Math.round(base.pro*next*10)/10;
   if(carbsEl)carbsEl.value=Math.round(base.carbs*next*10)/10;
   const sugarEl=document.getElementById('edit-sugar');if(sugarEl)sugarEl.value=Math.round(base.sugar*next*10)/10;
+  const fiberEl=document.getElementById('edit-fiber');if(fiberEl)fiberEl.value=Math.round(base.fiber*next*10)/10;
 }
 
 async function saveEditEntry(ts){
@@ -3253,18 +3314,21 @@ async function saveEditEntry(ts){
   const pro=parseFloat(document.getElementById('edit-pro').value)||0;
   const carbs=parseFloat(document.getElementById('edit-carbs').value)||0;
   const sugar2=parseFloat(document.getElementById('edit-sugar')?.value)||0;
+  const fiber2=parseFloat(document.getElementById('edit-fiber')?.value)||0;
   const servings=entry.servings||1;
   // Store base values (per single serving) derived from new manual values
   entry.calories=Math.round(cal);
   entry.protein=Math.round(pro*10)/10;
   entry.carbs=Math.round(carbs*10)/10;
   entry.sugar=Math.round(sugar2*10)/10;
+  entry.fiber=Math.round(fiber2*10)/10;
   entry.servings=servings;
   // Update base macros to match manual edit (so future serving adjustments work correctly)
   entry.baseCalories=Math.round(cal/servings);
   entry.baseProtein=Math.round((pro/servings)*10)/10;
   entry.baseCarbs=Math.round((carbs/servings)*10)/10;
   entry.baseSugar=Math.round((sugar2/servings)*10)/10;
+  entry.baseFiber=Math.round((fiber2/servings)*10)/10;
   entry.source='edited';
   // Save correction to personal cache so future logs use corrected values
   const corrKey=entry.text.toLowerCase().trim();
@@ -3273,6 +3337,7 @@ async function saveEditEntry(ts){
     protein:entry.baseProtein,
     carbs:entry.baseCarbs,
     sugar:entry.baseSugar||0,
+    fiber:entry.baseFiber||0,
     name:entry.text,
     savedAt:Date.now()
   };
@@ -3721,9 +3786,10 @@ function renderMeds(){
     const carriedNote=isCarried?('<div style="font-size:11px;color:var(--muted);margin-top:2px">Taken '+carryOver.daysAgo+' day'+(carryOver.daysAgo!==1?'s':'')+' ago — '+carryOver.takenDate+'</div>')  :'';
     return'<div class="check-item '+(done?'done':'')+'" style="'+(isCarried?'opacity:0.6;':'')+  '" onclick="toggleMed(\''+key+'\')">'  
       +'<div class="check-box" style="'+(isCarried?'border-color:var(--muted);background:rgba(122,111,94,0.08)':'')+'">'+checkDisplay+'</div>'  
-      +'<div style="flex:1"><span style="font-weight:600;color:var(--text)">'+escHtml(med.name)+'</span>'  
+      +'<div style="flex:1"><span style="font-weight:600;color:var(--text)">'+escHtml(med.name)+'</span>'+(med.fiberGrams?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:8px;border:1px solid rgba(85,107,47,0.2);margin-left:5px">&#127807; '+med.fiberGrams+'g fiber</span>':'')  
       +(med.dose?' <span style="color:var(--muted);font-size:13px">'+escHtml(med.dose)+'</span>':'')
       +qty+carriedNote+'</div>'  
+      +'<div onclick="event.stopPropagation();openEditMed(\''+med.id+'\')" style="color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px" title="Edit">&#9998;</div>'  
       +'<div onclick="event.stopPropagation();deleteMed(\''+med.id+'\')" style="color:var(--muted);cursor:pointer;font-size:13px;padding:0 4px">&#10005;</div>'  
     +'</div>';
   }
@@ -3776,6 +3842,99 @@ async function addMedicationAI(){
     renderMeds();
   }
   btn.disabled=false;btn.innerHTML='Add';
+}
+
+function openEditMed(id){
+  const med=cache.medsList?.[id];
+  if(!med)return;
+  const times=med.times||['am'];
+  const timeChecks=['am','af','pm','wk','prn'].map(t=>{
+    const labels={am:'Morning',af:'Afternoon',pm:'Evening',wk:'Weekly',prn:'As needed'};
+    return'<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer">'
+      +'<input type="checkbox" id="med-edit-time-'+t+'" '+(times.includes(t)?'checked':'')+' style="accent-color:var(--accent)"/> '+labels[t]+'</label>';
+  }).join('');
+
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:4px">Edit medication</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:16px;padding:8px 10px;background:rgba(138,106,26,0.08);border-radius:6px;border-left:3px solid var(--amber)">Changes apply from today forward. This medication will still appear correctly on past dates.</div>'
+
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Medication name</div>'
+    +'<input type="text" id="med-edit-name" value="'+escHtml(med.name)+'" style="width:100%"/>'
+    +'</div>'
+
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    +'<div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Dose</div>'
+    +'<input type="text" id="med-edit-dose" value="'+escHtml(med.dose||'')+'" placeholder="e.g. 10mg" style="width:100%"/>'
+    +'</div>'
+    +'<div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Qty per dose</div>'
+    +'<input type="number" id="med-edit-qty" value="'+(med.qty||1)+'" min="1" style="width:100%"/>'
+    +'</div>'
+    +'</div>'
+
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Schedule</div>'
+    +'<div style="display:flex;gap:12px;flex-wrap:wrap">'+timeChecks+'</div>'
+    +'</div>'
+
+    +'<div style="margin-bottom:16px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">&#127807; Fiber per dose (optional)</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">If this is a fiber supplement, enter grams of fiber per dose.</div>'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<input type="number" id="med-edit-fiber" value="'+(med.fiberGrams||0)+'" min="0" max="50" step="0.5" style="max-width:80px"/>'
+    +'<span style="font-size:13px;color:var(--muted)">grams of fiber per dose</span>'
+    +'</div>'
+    +'</div>'
+
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-primary btn-sm" style="flex:2" data-medid="'+id+'" onclick="saveEditMed(this.dataset.medid)">Save changes</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('med-edit-name')?.focus(),100);
+}
+
+async function saveEditMed(id){
+  const med=cache.medsList?.[id];
+  if(!med)return;
+
+  const name=(document.getElementById('med-edit-name')?.value||'').trim();
+  if(!name){showToast('Please enter a medication name.','error');return;}
+
+  const dose=(document.getElementById('med-edit-dose')?.value||'').trim();
+  const qty=parseInt(document.getElementById('med-edit-qty')?.value)||1;
+  const fiberGrams=parseFloat(document.getElementById('med-edit-fiber')?.value)||0;
+  const times=['am','af','pm','wk','prn'].filter(t=>document.getElementById('med-edit-time-'+t)?.checked);
+  if(!times.length){showToast('Please select at least one schedule option.','error');return;}
+
+  // Soft-delete old med entry and create new one from today forward
+  // (preserves history — old id remains in past logs)
+  const nameChanged=name!==med.name||dose!==med.dose||qty!==med.qty||JSON.stringify(times)!==JSON.stringify(med.times||['am']);
+  if(nameChanged){
+    // Mark old as deleted from today
+    med.deletedDate=viewDate;
+    // Create new entry with updated fields
+    const newId=name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+Date.now();
+    cache.medsList[newId]={
+      id:newId,name,dose,qty,times,
+      fiberGrams:fiberGrams>0?fiberGrams:undefined,
+      addedDate:viewDate
+    };
+  } else {
+    // Only fiber changed — update in place (doesn't affect past logs)
+    med.fiberGrams=fiberGrams>0?fiberGrams:undefined;
+  }
+
+  await fbSetFull('medications','list',{meds:cache.medsList});
+  document.querySelector('.date-picker-modal')?.remove();
+  renderMeds();
+  refreshDashboard();
+  showToast('Medication updated.');
 }
 
 async function deleteMed(id){
@@ -4212,6 +4371,7 @@ function renderProfile(){
       const tc=document.getElementById('plan-tile-carbs');if(tc)tc.textContent=(p.carbGoal||'—')+'g';
       const tcal=document.getElementById('plan-tile-cal');if(tcal)tcal.textContent=(p.calorieGoal||'—')+' kcal';
       const tsugar=document.getElementById('plan-tile-sugar');if(tsugar)tsugar.textContent=(p.sugarGoal||'—')+'g';
+      const tfiber=document.getElementById('plan-tile-fiber');if(tfiber)tfiber.textContent=(p.fiberGoal||'—')+'g';
     }
   }else{
     if(planCard){planCard.style.display='block';planCard.classList.add('collapsed');}
@@ -4969,6 +5129,7 @@ async function applyGoalSuggestion(encoded){
   if(goals.carbGoal){window._profile.carbGoal=Math.round(goals.carbGoal);changed.push('Carbs: '+window._profile.carbGoal+'g');}
   if(goals.calorieGoal){window._profile.calorieGoal=Math.round(goals.calorieGoal);changed.push('Calories: '+window._profile.calorieGoal+' kcal');}
   if(goals.sugarGoal){window._profile.sugarGoal=Math.round(goals.sugarGoal);changed.push('Sugar: '+window._profile.sugarGoal+'g');}
+  if(goals.fiberGoal){window._profile.fiberGoal=Math.round(goals.fiberGoal);changed.push('Fiber: '+window._profile.fiberGoal+'g');}
   await fbSet('profile','survey',window._profile);
   const card=document.getElementById('goal-suggestion-card');
   if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);text-align:center;padding:4px">&#10003; Goals updated — '+changed.join(' · ')+'<br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span></div>';
