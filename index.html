@@ -4869,7 +4869,7 @@ let _feedbackTab='submit'; // 'submit' | 'tickets'
 async function loadNotifications(){
   if(!window._uid)return;
   try{
-    const notifs=await window.fbRootGetCol('notifications',window._uid);
+    const notifs=await fbGetCol('notifications');
     const unread=Object.values(notifs||{}).filter(n=>!n.read);
     const badge=document.getElementById('feedback-badge');
     if(badge){
