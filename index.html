@@ -2455,7 +2455,8 @@ function refreshDashboard(){
   if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
   const rawEntries=cache.food[goalsDate]||[];
   const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),ts_=entries.reduce((a,e)=>a+(e.sugar||0),0),tf_=entries.reduce((a,e)=>a+(e.fiber||0),0);
+  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),ts_=entries.reduce((a,e)=>a+(e.sugar||0),0);
+  let tf_=entries.reduce((a,e)=>a+(e.fiber||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
   document.getElementById('dash-weight').textContent=cur+' lbs';
