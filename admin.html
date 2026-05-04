@@ -173,6 +173,10 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
   border-radius:var(--radius-sm);color:var(--red);font-family:var(--font-body);font-size:13px;font-weight:600;cursor:pointer;}
 
 @media(max-width:600px){.main{padding:16px;}.topbar{padding:0 16px;}}
+
+.ticket-card{padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--surface);}
+.ticket-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.05em;}
+.ticket-status-select{font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--surface2);color:var(--text);font-family:var(--font-body);}
 </style>
 </head>
 <body>
@@ -720,8 +724,120 @@ window.doDeleteHistory=async function(uid,index){
 function showToast(msg,type=''){
   const t=document.createElement('div');t.className='toast';
   if(type==='error')t.style.borderColor='rgba(192,57,43,0.4)';
-  t.textContent=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
+  t.innerHTML=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
 }
+
+// ── ADMIN FEEDBACK ──
+const FS_ROOT=`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
+
+async function getRootDocs(col){
+  const r=await fetch(`${FS_ROOT}/${col}`,{headers:{Authorization:'Bearer '+await tok()}});
+  if(!r.ok)return[];
+  const d=await r.json();return d.documents||[];
+}
+async function setRootDoc(col,id,data){
+  const fields={};
+  Object.entries(data).forEach(([k,v])=>{
+    if(typeof v==='string')fields[k]={stringValue:v};
+    else if(typeof v==='boolean')fields[k]={booleanValue:v};
+    else if(typeof v==='number')fields[k]=Number.isInteger(v)?{integerValue:v}:{doubleValue:v};
+    else if(v===null)fields[k]={nullValue:null};
+  });
+  await fetch(`${FS_ROOT}/${col}/${id}`,{
+    method:'PATCH',
+    headers:{Authorization:'Bearer '+await tok(),'Content-Type':'application/json'},
+    body:JSON.stringify({fields})
+  });
+}
+
+window.toggleAdminView=function(view){
+  const userList=document.getElementById('user-list');
+  const fbPanel=document.getElementById('admin-feedback-panel');
+  const searchBar=document.getElementById('admin-panel')?.querySelector('.search-bar');
+  if(userList)userList.style.display=view==='users'?'block':'none';
+  if(fbPanel)fbPanel.style.display=view==='feedback'?'block':'none';
+  if(searchBar)searchBar.style.display=view==='users'?'flex':'none';
+  if(view==='feedback')loadAdminFeedback();
+};
+
+window.loadAdminFeedback=async function(){
+  const el=document.getElementById('admin-feedback-list');
+  if(!el)return;
+  const typeFilter=document.getElementById('fb-filter-type')?.value||'';
+  const statusFilter=document.getElementById('fb-filter-status')?.value||'';
+  try{
+    const docs=await getRootDocs('feedback');
+    let tickets=docs.map(d=>{
+      const f=d.fields||{};
+      return{id:d.name.split('/').pop(),type:f.type?.stringValue||'—',title:f.title?.stringValue||'—',
+        description:f.description?.stringValue||'',status:f.status?.stringValue||'New',
+        uid:f.uid?.stringValue||'—',name:f.name?.stringValue||'—',page:f.page?.stringValue||'—',
+        device:f.device?.stringValue||'—',createdAt:f.createdAt?.stringValue||'—',
+        createdTs:parseInt(f.createdTs?.integerValue||0),adminNote:f.adminNote?.stringValue||'',
+        notified:f.notified?.booleanValue||false};
+    }).filter(t=>(!typeFilter||t.type===typeFilter)&&(!statusFilter||t.status===statusFilter))
+      .sort((a,b)=>b.createdTs-a.createdTs);
+    const newCount=tickets.filter(t=>t.status==='New').length;
+    const badge=document.getElementById('admin-feedback-badge');
+    if(badge){badge.textContent=newCount;badge.style.display=newCount?'flex':'none';}
+    if(!tickets.length){el.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">No tickets found.</div>';return;}
+    const statusColors={New:'#2a5a8a','In review':'#8a6a1a','In progress':'#8a6a1a',Done:'#556b2f',Closed:'#7a6f5e'};
+    const typeIcons={Bug:'🐛',Feature:'💡',Suggestion:'💬',Feedback:'👍'};
+    el.innerHTML=tickets.map(t=>`<div class="ticket-card" id="ticket-${t.id}">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap">
+        <div><div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:4px">${typeIcons[t.type]||''} ${esc(t.title)}</div>
+        <div style="font-size:11px;color:var(--muted)">${esc(t.name)} · ${esc(t.uid.slice(0,10))}… · Page: ${esc(t.page)} · ${esc(t.createdAt)}</div></div>
+        <span class="ticket-badge" style="background:${statusColors[t.status]||'#7a6f5e'};color:#fff;flex-shrink:0">${esc(t.status)}</span>
+      </div>
+      ${t.description?`<div style="font-size:12px;color:var(--text);line-height:1.6;margin-bottom:10px;padding:8px 10px;background:var(--surface2);border-radius:6px">${esc(t.description)}</div>`:''}
+      ${t.device?`<div style="font-size:10px;color:var(--muted);margin-bottom:10px">${esc(t.device)}</div>`:''}
+      <div style="border-top:1px solid var(--border);padding-top:10px;display:flex;flex-direction:column;gap:8px">
+        <textarea id="note-${t.id}" placeholder="Add a note to the user (optional)..." style="font-size:12px;min-height:50px;resize:vertical">${esc(t.adminNote)}</textarea>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <select class="ticket-status-select" id="status-${t.id}">
+            ${['New','In review','In progress','Done','Closed'].map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}
+          </select>
+          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer">
+            <input type="checkbox" id="notify-${t.id}" style="accent-color:var(--accent)"/> Notify user
+          </label>
+          <button class="btn btn-primary btn-sm" data-tid="${t.id}" data-uid="${t.uid}" onclick="saveTicket(this.dataset.tid,this.dataset.uid)">Save</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--red)" data-tid="${t.id}" onclick="deleteTicket(this.dataset.tid)">Delete</button>
+        </div>
+      </div></div>`).join('');
+  }catch(e){el.innerHTML=`<div style="padding:20px;color:var(--muted)">Error: ${e.message}</div>`;}
+};
+
+window.saveTicket=async function(id,uid){
+  const status=document.getElementById('status-'+id)?.value||'New';
+  const adminNote=document.getElementById('note-'+id)?.value||'';
+  const notify=document.getElementById('notify-'+id)?.checked||false;
+  try{
+    await setRootDoc('feedback',id,{status,adminNote,notified:notify});
+    if(notify&&uid&&uid!=='—'){
+      const notifId='notif-'+Date.now();
+      await fetch(`${FS_ROOT}/users/${uid}/notifications/${notifId}`,{
+        method:'PATCH',
+        headers:{Authorization:'Bearer '+await tok(),'Content-Type':'application/json'},
+        body:JSON.stringify({fields:{
+          ticketId:{stringValue:id},
+          message:{stringValue:'Your '+document.getElementById('status-'+id)?.value+' feedback update'+(adminNote?' — '+adminNote.slice(0,100):'')},
+          status:{stringValue:status},read:{booleanValue:false},
+          createdAt:{stringValue:new Date().toLocaleDateString('en-CA')}
+        }})
+      });
+    }
+    showToast('✓ Ticket updated'+(notify?' · User notified':'')+'.');
+  }catch(e){showToast('Error: '+e.message,'error');}
+};
+
+window.deleteTicket=async function(id){
+  if(!confirm('Delete this ticket?'))return;
+  try{
+    await fetch(`${FS_ROOT}/feedback/${id}`,{method:'DELETE',headers:{Authorization:'Bearer '+await tok()}});
+    document.getElementById('ticket-'+id)?.remove();
+    showToast('Ticket deleted.');
+  }catch(e){showToast('Error: '+e.message,'error');}
+};
 </script>
 </body>
 </html>

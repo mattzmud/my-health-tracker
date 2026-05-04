@@ -288,6 +288,21 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
   .hamburger{display:flex;}
   .section{padding:20px 14px;}
 }
+
+/* ── FEEDBACK BUTTON ── */
+.feedback-fab{position:fixed;bottom:24px;right:20px;z-index:300;background:var(--accent);color:#fff;
+  border:none;border-radius:50px;padding:10px 18px;font-size:13px;font-weight:600;font-family:var(--font-body);
+  cursor:pointer;box-shadow:0 4px 16px rgba(85,107,47,0.35);display:flex;align-items:center;gap:7px;
+  transition:transform 0.15s,box-shadow 0.15s;}
+.feedback-fab:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(85,107,47,0.45);}
+.feedback-fab-badge{position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;
+  border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;display:flex;
+  align-items:center;justify-content:center;border:2px solid var(--bg);}
+.feedback-type-pill{padding:7px 14px;border-radius:20px;border:1px solid var(--border2);background:var(--surface2);
+  color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;font-family:var(--font-body);}
+.feedback-type-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+.feedback-ticket{padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);}
+.feedback-ticket-status{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.05em;}
 </style>
 </head>
 <body>
@@ -1349,6 +1364,24 @@ window.fbGetCol = async col => {
 window.fbDel = async (col,id) => {
   try{await deleteDoc(doc(db,'users',window._uid,col,id));return true;}catch(e){return false;}
 };
+// Root-level helpers (not under users/) — for feedback, notifications
+window.fbRootSet = async (col,id,data) => {
+  try{await setDoc(doc(db,col,id),data,{merge:true});return true;}catch(e){return false;}
+};
+window.fbRootGet = async (col,id) => {
+  try{const s=await getDoc(doc(db,col,id));return s.exists()?s.data():null;}catch(e){return null;}
+};
+window.fbRootGetCol = async (col,query_uid) => {
+  try{
+    const s=await getDocs(collection(db,col));
+    const r={};
+    s.forEach(d=>{
+      const data=d.data();
+      if(!query_uid||data.uid===query_uid)r[d.id]=data;
+    });
+    return r;
+  }catch(e){return{};}
+};
 </script>
 
 <script>
@@ -2144,7 +2177,7 @@ function getDefaultWorkoutPlan(){
   ];
 }
 
-function showApp(){document.getElementById('app-screen').style.display='block';}
+function showApp(){document.getElementById('app-screen').style.display='block';const fab=document.getElementById('feedback-fab');if(fab)fab.style.display='flex';}
 
 // ── CACHE ──────────────────────────────────────────────────
 let cache={weights:[],food:{},fitness:{},meds:{},medsList:{},favorites:[],grocery:[],journal:{},badges:[],vitals:{bp:{},bs:{}},vitalSettings:{trackBP:false,trackBS:false},trackMeds:true,groceryAnalysis:'',nutritionCorrections:{},recipes:[]};
@@ -2363,6 +2396,7 @@ window.appInit=async function(){
   // initChat deferred — loads lazily when user opens chat tab
   applyMedsVisibility();
   await checkAndAwardBadges();
+  loadNotifications();
   renderBadges();
   applyVitalSettings();
   incrementLoginCount();
@@ -4701,6 +4735,168 @@ async function _sendRecipeToCoach(){
     console.error('Recipe coach error:',e);
   }
   if(btn)btn.disabled=false;
+}
+
+// ── FEEDBACK ─────────────────────────────────────────────────
+let _feedbackType='Bug';
+let _feedbackTab='submit'; // 'submit' | 'tickets'
+
+async function loadNotifications(){
+  if(!window._uid)return;
+  try{
+    const notifs=await window.fbRootGetCol('notifications',window._uid);
+    const unread=Object.values(notifs||{}).filter(n=>!n.read);
+    const badge=document.getElementById('feedback-badge');
+    if(badge){
+      badge.textContent=unread.length;
+      badge.style.display=unread.length?'flex':'none';
+    }
+  }catch(e){}
+}
+
+function openFeedbackModal(){
+  const modal=document.createElement('div');
+  modal.id='feedback-modal';
+  modal.className='date-picker-modal';
+  modal.style.zIndex='400';
+  modal.innerHTML=`<div class="date-picker-card" style="max-width:440px;max-height:85vh;overflow-y:auto">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-family:var(--font-display);font-size:20px;color:var(--text)">&#128172; Feedback</div>
+      <button onclick="this.closest('.date-picker-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">&#10005;</button>
+    </div>
+    <!-- Tabs -->
+    <div style="display:flex;gap:8px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:12px">
+      <button id="fb-tab-submit" onclick="switchFeedbackTab('submit')" style="font-size:13px;font-weight:600;color:var(--accent);background:none;border:none;cursor:pointer;padding:4px 0;border-bottom:2px solid var(--accent)">Submit feedback</button>
+      <button id="fb-tab-tickets" onclick="switchFeedbackTab('tickets')" style="font-size:13px;font-weight:600;color:var(--muted);background:none;border:none;cursor:pointer;padding:4px 0;border-bottom:2px solid transparent">My tickets</button>
+    </div>
+    <!-- Submit tab -->
+    <div id="fb-submit-pane">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Your name and account info will be attached to help us follow up.</div>
+      <!-- Type pills -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+        <button class="feedback-type-pill active" id="fb-pill-Bug" onclick="setFeedbackType('Bug')">&#128030; Bug</button>
+        <button class="feedback-type-pill" id="fb-pill-Feature" onclick="setFeedbackType('Feature')">&#128161; Feature</button>
+        <button class="feedback-type-pill" id="fb-pill-Suggestion" onclick="setFeedbackType('Suggestion')">&#128172; Suggestion</button>
+        <button class="feedback-type-pill" id="fb-pill-Feedback" onclick="setFeedbackType('Feedback')">&#128077; Feedback</button>
+      </div>
+      <div style="margin-bottom:12px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Title</div>
+        <input type="text" id="fb-title" placeholder="Brief summary..." style="width:100%"/>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Details</div>
+        <textarea id="fb-description" placeholder="Describe in detail..." style="width:100%;min-height:90px;resize:vertical"></textarea>
+      </div>
+      <button class="btn btn-primary" style="width:100%" id="fb-submit-btn" onclick="submitFeedback()">Submit</button>
+    </div>
+    <!-- My tickets tab -->
+    <div id="fb-tickets-pane" style="display:none">
+      <div id="fb-tickets-list"><div style="text-align:center;padding:20px;color:var(--muted)">Loading...</div></div>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  _feedbackType='Bug';
+  _feedbackTab='submit';
+  // Mark notifications as read
+  markNotificationsRead();
+}
+
+function switchFeedbackTab(tab){
+  _feedbackTab=tab;
+  document.getElementById('fb-submit-pane').style.display=tab==='submit'?'block':'none';
+  document.getElementById('fb-tickets-pane').style.display=tab==='tickets'?'block':'none';
+  document.getElementById('fb-tab-submit').style.color=tab==='submit'?'var(--accent)':'var(--muted)';
+  document.getElementById('fb-tab-submit').style.borderBottom=tab==='submit'?'2px solid var(--accent)':'2px solid transparent';
+  document.getElementById('fb-tab-tickets').style.color=tab==='tickets'?'var(--accent)':'var(--muted)';
+  document.getElementById('fb-tab-tickets').style.borderBottom=tab==='tickets'?'2px solid var(--accent)':'2px solid transparent';
+  if(tab==='tickets')loadMyTickets();
+}
+
+function setFeedbackType(type){
+  _feedbackType=type;
+  ['Bug','Feature','Suggestion','Feedback'].forEach(t=>{
+    const pill=document.getElementById('fb-pill-'+t);
+    if(pill){pill.classList.toggle('active',t===type);}
+  });
+}
+
+async function submitFeedback(){
+  const title=(document.getElementById('fb-title')?.value||'').trim();
+  const desc=(document.getElementById('fb-description')?.value||'').trim();
+  if(!title){showToast('Please enter a title.','error');return;}
+  const btn=document.getElementById('fb-submit-btn');
+  if(btn){btn.disabled=true;btn.textContent='Submitting...';}
+  const ticket={
+    id:'fb-'+Date.now(),
+    type:_feedbackType,
+    title,
+    description:desc,
+    status:'New',
+    uid:window._uid||'unknown',
+    name:window._profile?.name||'Unknown',
+    page:currentSection||'unknown',
+    device:navigator.userAgent.slice(0,80),
+    createdAt:new Date().toLocaleDateString('en-CA'),
+    createdTs:Date.now(),
+    adminNote:'',
+    notified:false,
+  };
+  try{
+    await window.fbRootSet('feedback',ticket.id,ticket);
+    document.getElementById('fb-title').value='';
+    document.getElementById('fb-description').value='';
+    if(btn){btn.disabled=false;btn.textContent='Submit';}
+    showToast('&#128172; Feedback submitted. Thank you!');
+    document.getElementById('feedback-modal')?.remove();
+  }catch(e){
+    if(btn){btn.disabled=false;btn.textContent='Submit';}
+    showToast('Could not submit. Please try again.','error');
+  }
+}
+
+async function loadMyTickets(){
+  const el=document.getElementById('fb-tickets-list');
+  if(!el)return;
+  try{
+    // Fetch all feedback docs for this user
+    const allFb=await window.fbRootGetCol('feedback',window._uid);
+    const myTickets=Object.values(allFb||{})
+      .filter(t=>t.uid===window._uid)
+      .sort((a,b)=>(b.createdTs||0)-(a.createdTs||0));
+    if(!myTickets.length){
+      el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">No feedback submitted yet.</div>';
+      return;
+    }
+    const statusColors={New:'var(--blue)','In review':'var(--amber)','In progress':'var(--amber)',Done:'var(--accent)',Closed:'var(--muted)'};
+    el.innerHTML=myTickets.map(t=>`
+      <div class="feedback-ticket">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;gap:8px;flex-wrap:wrap">
+          <div style="font-size:13px;font-weight:600;color:var(--text)">${escHtml(t.title||'—')}</div>
+          <span class="feedback-ticket-status" style="background:${statusColors[t.status]||'var(--muted)'};color:#fff">${t.status}</span>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:6px">
+          <span style="font-size:11px;color:var(--muted)">${t.type||'—'}</span>
+          <span style="font-size:11px;color:var(--muted)">·</span>
+          <span style="font-size:11px;color:var(--muted)">${t.createdAt||'—'}</span>
+        </div>
+        ${t.adminNote?`<div style="font-size:12px;color:var(--text);background:rgba(85,107,47,0.08);border-left:3px solid var(--accent);padding:6px 10px;border-radius:4px;margin-top:6px"><strong>Team note:</strong> ${escHtml(t.adminNote)}</div>`:''}
+      </div>`).join('');
+  }catch(e){
+    el.innerHTML='<div style="text-align:center;padding:20px;color:var(--muted)">Could not load tickets.</div>';
+  }
+}
+
+async function markNotificationsRead(){
+  try{
+    const notifs=await window.fbRootGetCol('notifications',window._uid);
+    const unread=Object.entries(notifs||{}).filter(([,n])=>!n.read);
+    for(const[id,n]of unread){
+      await fbSet('notifications',id,{...n,read:true});
+    }
+    const badge=document.getElementById('feedback-badge');
+    if(badge)badge.style.display='none';
+  }catch(e){}
 }
 
 // ── GROCERY ──────────────────────────────────────────────────
