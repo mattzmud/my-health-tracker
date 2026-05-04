@@ -541,7 +541,16 @@ function renderPanelBody(uid,d){
       const totalCal=entries.reduce((a,e)=>a+(e.calories||0),0);
       foodHtml+=`<div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:4px">${day.id||'—'} <span style="color:var(--muted);font-weight:400">${Math.round(totalCal)} kcal</span></div>
         <table class="data-table"><tr><th>Item</th><th>Meal</th><th>Cal</th><th>Pro</th><th>Carbs</th></tr>
-        ${entries.map(e=>`<tr><td>${esc(e.text||'')}</td><td>${esc(e.time||'')}</td><td>${Math.round(e.calories||0)}</td><td>${Math.round(e.protein||0)}g</td><td>${Math.round(e.carbs||0)}g</td></tr>`).join('')}
+        ${entries.map(e=>{
+          const srcBadge=e.source==='off'
+            ?'<span style="font-size:10px;color:#556b2f;background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2);margin-left:4px">✓ Verified</span>'
+            :e.source==='usda'
+            ?'<span style="font-size:10px;color:#556b2f;background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2);margin-left:4px">✓ USDA</span>'
+            :e.source==='edited'
+            ?'<span style="font-size:10px;color:#2a5a8a;background:rgba(42,90,138,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(42,90,138,0.2);margin-left:4px">✎ Edited</span>'
+            :'';
+          return`<tr><td>${esc(e.text||'')}${srcBadge}</td><td>${esc(e.time||'')}</td><td>${Math.round(e.calories||0)}</td><td>${Math.round(e.protein||0)}g</td><td>${Math.round(e.carbs||0)}g</td></tr>`;
+        }).join('')}
         </table></div>`;
     });
     html+=section('Recent food logs (last 5 days)',foodHtml||'<div style="font-size:12px;color:var(--muted)">No data.</div>');
