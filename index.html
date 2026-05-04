@@ -5756,36 +5756,67 @@ function openGenderGoalsPrompt(){
 }
 
 async function triggerGenderGoalUpdate(type){
-  showToast('Recalculating your goals...');
   const p=window._profile;
   if(!p)return;
+  const ca=document.getElementById('chat-area');
+
+  function coachMsg(text){
+    if(ca){
+      ca.innerHTML+='<div class="msg ai"><div class="msg-avatar"><span style="font-size:11px;font-weight:700;letter-spacing:-0.5px">WP</span></div><div class="msg-bubble">'+text+'</div></div>';
+      ca.scrollTop=ca.scrollHeight;
+    }
+  }
+
   if(type==='nutrition'||type==='all'){
-    // Recalculate nutrition goals
+    coachMsg('&#127806; Recalculating your nutrition goals based on your updated profile...');
     try{
       const res=await callAI(
         'Recalculate nutrition goals for this user with updated gender/hormone info.',
-        `You are a nutrition expert. ${buildUserContext()}\n\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}\nUse TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activity level. Be specific to this person.`
+        `You are a nutrition expert. ${buildUserContext()}
+
+Return ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}
+Use TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activity level. Be specific to this person.`
       );
       const clean=res.replace(/```json|```/g,'').trim();
       const ng=JSON.parse(clean);
-      const changes=[];
-      if(ng.proteinGoal){const old=p.proteinGoal||120;p.proteinGoal=Math.round(ng.proteinGoal);if(p.proteinGoal!==old)changes.push('Protein: '+old+'g → '+p.proteinGoal+'g');}
-      if(ng.waterGoal){const old=p.waterGoal||80;p.waterGoal=Math.round(ng.waterGoal);if(p.waterGoal!==old)changes.push('Water: '+old+'oz → '+p.waterGoal+'oz');}
-      if(ng.carbGoal){const old=p.carbGoal||100;p.carbGoal=Math.round(ng.carbGoal);if(p.carbGoal!==old)changes.push('Carbs: '+old+'g → '+p.carbGoal+'g');}
-      if(ng.calorieGoal){const old=p.calorieGoal||2000;p.calorieGoal=Math.round(ng.calorieGoal);if(p.calorieGoal!==old)changes.push('Calories: '+old+' → '+p.calorieGoal+' kcal');}
-      if(ng.sugarGoal){const old=p.sugarGoal||50;p.sugarGoal=Math.round(ng.sugarGoal);if(p.sugarGoal!==old)changes.push('Sugar: '+old+'g → '+p.sugarGoal+'g');}
-      if(ng.fiberGoal){const old=p.fiberGoal||28;p.fiberGoal=Math.round(ng.fiberGoal);if(p.fiberGoal!==old)changes.push('Fiber: '+old+'g → '+p.fiberGoal+'g');}
+      // Capture old values BEFORE assignment
+      const oldProtein=p.proteinGoal||120,oldWater=p.waterGoal||80,oldCarbs=p.carbGoal||100;
+      const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28;
+      if(ng.proteinGoal)p.proteinGoal=Math.round(ng.proteinGoal);
+      if(ng.waterGoal)p.waterGoal=Math.round(ng.waterGoal);
+      if(ng.carbGoal)p.carbGoal=Math.round(ng.carbGoal);
+      if(ng.calorieGoal)p.calorieGoal=Math.round(ng.calorieGoal);
+      if(ng.sugarGoal)p.sugarGoal=Math.round(ng.sugarGoal);
+      if(ng.fiberGoal)p.fiberGoal=Math.round(ng.fiberGoal);
       await fbSet('profile','survey',p);
       refreshDashboard();
-      showToast(changes.length?'&#127806; Nutrition goals updated: '+changes.join(', '):'&#127806; Nutrition goals confirmed — no changes needed.');
-    }catch(e){showToast('Could not recalculate nutrition goals.','error');console.error(e);}
+      // Build change summary for chat
+      const changes=[];
+      if(p.proteinGoal!==oldProtein)changes.push('<strong>Protein:</strong> '+oldProtein+'g → '+p.proteinGoal+'g');
+      if(p.waterGoal!==oldWater)changes.push('<strong>Water:</strong> '+oldWater+' → '+p.waterGoal+' oz');
+      if(p.carbGoal!==oldCarbs)changes.push('<strong>Carbs:</strong> '+oldCarbs+'g → '+p.carbGoal+'g');
+      if(p.calorieGoal!==oldCal)changes.push('<strong>Calories:</strong> '+oldCal+' → '+p.calorieGoal+' kcal');
+      if(p.sugarGoal!==oldSugar)changes.push('<strong>Sugar limit:</strong> '+oldSugar+'g → '+p.sugarGoal+'g');
+      if(p.fiberGoal!==oldFiber)changes.push('<strong>Fiber goal:</strong> '+oldFiber+'g → '+p.fiberGoal+'g');
+      const msg=changes.length
+        ?'Your nutrition goals have been updated based on your profile:<br><br>'+changes.join('<br>')+'<br><br>These are now reflected on your dashboard.'
+        :'Your nutrition goals look accurate for your profile — no changes were needed.';
+      if(ca){
+        // Replace the "recalculating..." message with the result
+        const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
+        const last=msgs[msgs.length-1];
+        if(last&&last.textContent.includes('Recalculating your nutrition'))last.innerHTML=msg;
+        else coachMsg(msg);
+        ca.scrollTop=ca.scrollHeight;
+      }
+    }catch(e){coachMsg('Sorry, I couldn\'t recalculate your nutrition goals. Please try again.');console.error(e);}
   }
+
   if(type==='fitness'||type==='all'){
-    // Regenerate fitness plan starting tomorrow
+    coachMsg('&#127939; Regenerating your fitness plan based on your updated profile...');
     try{
       const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
       const tomorrowStr=tomorrow.getFullYear()+'-'+String(tomorrow.getMonth()+1).padStart(2,'0')+'-'+String(tomorrow.getDate()).padStart(2,'0');
-      // Archive current plan with effective date
       if(p.workoutPlan){
         if(!p.workoutPlanHistory)p.workoutPlanHistory=[];
         p.workoutPlanHistory.push({plan:p.workoutPlan,archivedAt:new Date().toLocaleDateString('en-CA'),effectiveThrough:new Date().toLocaleDateString('en-CA')});
@@ -5793,8 +5824,15 @@ async function triggerGenderGoalUpdate(type){
       p.workoutPlanEffectiveDate=tomorrowStr;
       await fbSet('profile','survey',p);
       await generateWellnessPlan(false,'Gender profile updated');
-      showToast('&#127939; Fitness plan regenerated — starts tomorrow ('+tomorrowStr+').');
-    }catch(e){showToast('Could not regenerate fitness plan.','error');console.error(e);}
+      const fitnessMsg='Your fitness plan has been regenerated! Your new plan starts <strong>tomorrow ('+tomorrowStr+')</strong>. Your previous plan and all logged workouts remain in your history. Head to the Fitness tab tomorrow to see your new plan.';
+      if(ca){
+        const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
+        const last=msgs[msgs.length-1];
+        if(last&&last.textContent.includes('Regenerating your fitness'))last.innerHTML=fitnessMsg;
+        else coachMsg(fitnessMsg);
+        ca.scrollTop=ca.scrollHeight;
+      }
+    }catch(e){coachMsg('Sorry, I couldn\'t regenerate your fitness plan. Please try again.');console.error(e);}
   }
 }
 
@@ -6352,6 +6390,8 @@ function renderChatSession(sessionId){
     chatHistory.push({role:m.role,content:m.content});
   });
   ca.scrollTop=ca.scrollHeight;
+  // Update avatars after render in case photo loaded after chat
+  setTimeout(updateChatAvatars,100);
 }
 
 function loadChatSession(sessionId){currentSessionId=sessionId;renderChatSession(sessionId);}
