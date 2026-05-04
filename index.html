@@ -1676,7 +1676,7 @@ function computeAge(dob){
 function showToast(msg,type='success'){
   const t=document.createElement('div');
   t.style.cssText='position:fixed;bottom:24px;right:24px;padding:11px 16px;background:var(--surface);border:1px solid '+(type==='error'?'rgba(192,57,43,0.4)':'rgba(85,107,47,0.3)')+';border-radius:8px;font-size:13px;color:var(--text);box-shadow:0 4px 16px rgba(85,107,47,0.12);z-index:9999;animation:slideUp 0.2s ease;max-width:300px';
-  t.textContent=msg;
+  t.innerHTML=msg;
   document.body.appendChild(t);
   setTimeout(()=>t.remove(),3000);
 }
@@ -2362,7 +2362,7 @@ window.appInit=async function(){
     safe(fbGet('food','corrections')),
     safe(fbGetCol('recipes')),
   ]);
-  cache.weights=Object.entries(wCol).map(([id,d])=>({date:id,val:d.val})).sort((a,b)=>a.date.localeCompare(b.date));
+  cache.weights=Object.entries(wCol||{}).map(([id,d])=>({date:id,val:d.val})).sort((a,b)=>a.date.localeCompare(b.date));
   cache.food[TODAY]=tf?(tf.entries||[]):[];
   cache.fitness[TODAY]=tfi?(tfi.done||{}):{};;
   if(tfi&&tfi.extras)cache.fitness[TODAY].extras=tfi.extras;
@@ -2924,7 +2924,19 @@ async function logFood(){
     console.log('[logFood] displayText:',displayText?displayText.slice(0,80):'EMPTY');
     if(displayText){const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));}
     renderFoodEntries();// update log entries
-  }catch(e){console.error('[logFood] Error:',e.message,e.stack);document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">Error analyzing. Check your connection.</div>';}
+  }catch(e){
+    console.error('[logFood] Error:',e.message,e.stack);
+    const errMsg=e.message?.includes('fetch')||e.message?.includes('network')||e.message?.includes('Failed to fetch')
+      ?'Network error — check your connection and try again.'
+      :e.message?.includes('413')||e.message?.includes('too large')
+      ?'Request too large. Try logging fewer items at once.'
+      :e.message?.includes('401')||e.message?.includes('403')
+      ?'Authentication error. Please refresh the page.'
+      :'Error analyzing: '+e.message;
+    document.getElementById('food-feedback').innerHTML='<div class="ai-feedback" style="color:var(--red)">'+escHtml(errMsg)+'</div>';
+    const btn=document.getElementById('log-food-btn');
+    if(btn){btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';}
+  }
   btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
 }
 
@@ -4673,7 +4685,7 @@ async function _sendRecipeToCoach(){
   const systemPrompt='You are a helpful recipe assistant. When given a recipe (typed, pasted, linked, or from a photo), extract and format it as a clean structured recipe. '
     +buildUserContext()
     +' IMPORTANT: After providing the recipe in a friendly readable format, you MUST end your response with a JSON block in this exact format:\n'
-    +'RECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour","2 eggs"],"instructions":"Step 1...\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4}'
+    +'RECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour","2 eggs"],"instructions":"Step 1...\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}'
     +' Estimate macros per serving using your knowledge. All macro fields are required. If the recipe has a link and you cannot access it, ask the user to paste the content. '
     +'After saving, tell the user the recipe has been saved and they can view it in their Recipes tab.';
 
