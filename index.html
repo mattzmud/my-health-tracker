@@ -2827,15 +2827,20 @@ function renderFiberChart(){
   const ctx=document.getElementById('fiber-chart')?.getContext('2d');if(!ctx)return;
   if(fiberChart)fiberChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
-  fiberChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Fiber',data,
-    backgroundColor:data.map(v=>v>=goal?'rgba(85,107,47,0.7)':'rgba(85,107,47,0.35)'),
-    borderColor:data.map(v=>v>=goal?'rgba(85,107,47,0.9)':'rgba(85,107,47,0.6)'),
-    borderWidth:1,borderRadius:4}]},
-    options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>'Fiber: '+ctx.raw+'g'+(ctx.raw>=goal?' ✓':'')}}},
+  const goalLine=days.map(()=>goal);
+  fiberChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[
+    {label:'Fiber',data,
+      backgroundColor:data.map(v=>v>=goal?'rgba(85,107,47,0.7)':'rgba(85,107,47,0.35)'),
+      borderColor:data.map(v=>v>=goal?'rgba(85,107,47,0.9)':'rgba(85,107,47,0.6)'),
+      borderWidth:1,borderRadius:4,order:2},
+    {label:'Goal',data:goalLine,type:'line',borderColor:'rgba(85,107,47,0.5)',
+      borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false,order:1}
+  ]},
+  options:{responsive:true,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='Goal'?'Goal: '+ctx.raw+'g':'Fiber: '+ctx.raw+'g'+(ctx.raw>=goal?' ✓':'')}}},
     scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
-      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+5)}},
-    annotation:{annotations:{goalLine:{type:'line',yMin:goal,yMax:goal,borderColor:'rgba(85,107,47,0.4)',borderWidth:1.5,borderDash:[4,4],
-      label:{content:'Goal: '+goal+'g',display:true,position:'end',font:{size:10},color:'rgba(85,107,47,0.8)'}}}}}});
+      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},
+        suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+5)}}}});
 }
 
 function renderCarbsChart(){
