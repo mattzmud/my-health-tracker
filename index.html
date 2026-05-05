@@ -5770,13 +5770,16 @@ async function triggerGenderGoalUpdate(type){
   if(type==='nutrition'||type==='all'){
     coachMsg('&#127806; Recalculating your nutrition goals based on your updated profile...');
     try{
-      const _nutCtx='Set personalized daily nutrition goals for: '+buildUserContext()+'\nBiological sex: '+(p.biologicalSex||'not specified')+(p.hrt==='Yes'?', Hormone therapy: '+(p.hrtDetail||'yes'):'')+'\nReturn ONLY valid JSON, no other text, no markdown: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}';
-      const res=await callAI(_nutCtx,'You are a nutrition expert. Return ONLY a valid JSON object with exactly these keys: proteinGoal, waterGoal, carbGoal, calorieGoal, sugarGoal, fiberGoal. No explanation, no markdown, no other text. Just the JSON object.');
-      // Robust JSON extraction — find first { to last }
-      const _jsonMatch=res.match(/\{[\s\S]*\}/);
+      const _nutCtx='Recalculate daily nutrition goals for this person: '+buildUserContext()+'\nBiological sex: '+(p.biologicalSex||'not specified')+(p.hrt==='Yes'?', Hormone therapy: '+(p.hrtDetail||'yes'):'')+'\n\nRespond in exactly this format — JSON first, then one blank line, then 1-2 sentences explaining why the numbers are what they are based on their biological sex and profile:\n{"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}\n\nBrief explanation here.';
+      const res=await callAI(_nutCtx,'You are a nutrition expert. First output ONLY the JSON object on its own line. Then a blank line. Then 1-2 sentences explaining the rationale based on biological sex, activity level, and health conditions. No markdown, no bullet points.');
+      // Extract JSON object
+      const _jsonMatch=res.match(/\{[^{}]+\}/);
       if(!_jsonMatch)throw new Error('No JSON in response: '+res.slice(0,100));
       const ng=JSON.parse(_jsonMatch[0]);
       if(!ng.proteinGoal&&!ng.calorieGoal)throw new Error('Invalid goal data returned');
+      // Extract explanation — everything after the JSON block
+      const _afterJson=res.slice(res.indexOf(_jsonMatch[0])+_jsonMatch[0].length).trim();
+      const _explanation=_afterJson.replace(/^\n+/,'').trim();
       // Capture old values BEFORE assignment
       const oldProtein=p.proteinGoal||120,oldWater=p.waterGoal||80,oldCarbs=p.carbGoal||100;
       const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28;
@@ -5797,8 +5800,11 @@ async function triggerGenderGoalUpdate(type){
       if(p.sugarGoal!==oldSugar)changes.push('<strong>Sugar limit:</strong> '+oldSugar+'g → '+p.sugarGoal+'g');
       if(p.fiberGoal!==oldFiber)changes.push('<strong>Fiber goal:</strong> '+oldFiber+'g → '+p.fiberGoal+'g');
       const msg=changes.length
-        ?'Your nutrition goals have been updated based on your profile:<br><br>'+changes.join('<br>')+'<br><br>These are now reflected on your dashboard.'
-        :'Your nutrition goals look accurate for your profile — no changes were needed.';
+        ?'Your nutrition goals have been updated:<br><br>'+changes.join('<br>')
+          +(_explanation?'<br><br><em style="opacity:0.85">'+_explanation+'</em>':'')
+          +'<br><br>These are now reflected on your dashboard.'
+        :'Your nutrition goals look accurate for your profile — no changes were needed.'
+          +(_explanation?'<br><br><em style="opacity:0.85">'+_explanation+'</em>':'');
       if(ca){
         // Replace the "recalculating..." message with the result
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
@@ -6623,9 +6629,9 @@ async function applyGoalSuggestion(encoded){
   if(p.fiberGoal!==oldFiber)changes.push('<strong>Fiber goal:</strong> '+oldFiber+'g → '+p.fiberGoal+'g');
   const card=document.getElementById('goal-suggestion-card');
   const summary=changes.length
-    ?'Goals updated!<br><br>'+changes.join('<br>')+'<br><br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span>'
-    :'Your goals are already set to these values — no changes needed.';
-  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.8);padding:4px">&#10003; '+summary+'</div>';
+    ?'&#10003; Goals updated!<br><br>'+changes.join('<br>')+'<br><br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span>'
+    :'&#10003; Your goals are already set correctly — no changes needed.';
+  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.9);padding:4px;line-height:1.7">'+summary+'</div>';
   refreshDashboard();
   generateWellnessPlan(false,'Goals updated via coach');
 }
