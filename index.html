@@ -856,6 +856,14 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
                 <div style="font-family:var(--font-display);font-size:22px;color:var(--accent)" id="plan-tile-fiber">—</div>
                 <div style="font-size:11px;color:var(--muted)">fiber goal</div>
               </div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--amber)" id="plan-tile-fat">—</div>
+                <div style="font-size:11px;color:var(--muted)">fat limit</div>
+              </div>
+              <div style="background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center">
+                <div style="font-family:var(--font-display);font-size:22px;color:var(--blue)" id="plan-tile-sodium">—</div>
+                <div style="font-size:11px;color:var(--muted)">sodium limit</div>
+              </div>
             </div>
           </div>
           <div id="plan-text" style="font-size:13.5px;color:var(--text);line-height:1.8;white-space:pre-wrap"></div>
@@ -5617,10 +5625,12 @@ async function loadAppNotifications(){
 
     const todayStr=new Date().toLocaleDateString('en-CA');
 
-    // Filter: exclude dismissed, exclude snoozed until today
+    // Filter: exclude dismissed, exclude snoozed until today, exclude expired
     _appNotifications=all.filter(n=>{
       if(seen.includes(n.id))return false;
       if(snoozed[n.id]&&snoozed[n.id]>=todayStr)return false;
+      if(n.expiryDate&&n.expiryDate<todayStr)return false;
+      if(n.active===false)return false;
       return true;
     }).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
 
@@ -6453,21 +6463,9 @@ async function triggerGenderGoalUpdate(type){
       await fbSet('profile','survey',p);
       refreshDashboard();
       // Build change summary for chat
-      const changes=[];
-      if(p.proteinGoal!==oldProtein)changes.push('<strong>Protein:</strong> '+oldProtein+'g → '+p.proteinGoal+'g');
-      if(p.waterGoal!==oldWater)changes.push('<strong>Water:</strong> '+oldWater+' → '+p.waterGoal+' oz');
-      if(p.carbGoal!==oldCarbs)changes.push('<strong>Carbs:</strong> '+oldCarbs+'g → '+p.carbGoal+'g');
-      if(p.calorieGoal!==oldCal)changes.push('<strong>Calories:</strong> '+oldCal+' → '+p.calorieGoal+' kcal');
-      if(p.sugarGoal!==oldSugar)changes.push('<strong>Sugar limit:</strong> '+oldSugar+'g → '+p.sugarGoal+'g');
-      if(p.fiberGoal!==oldFiber)changes.push('<strong>Fiber goal:</strong> '+oldFiber+'g → '+p.fiberGoal+'g');
-      if(p.fatGoal!==(oldFat||65))changes.push('<strong>Fat limit:</strong> '+(oldFat||65)+'g → '+p.fatGoal+'g');
-      if(p.sodiumGoal!==(oldSodium||2300))changes.push('<strong>Sodium limit:</strong> '+(oldSodium||2300)+'mg → '+p.sodiumGoal+'mg');
-      const msg=changes.length
-        ?'Your nutrition goals have been updated:<br><br>'+changes.join('<br>')
-          +(_explanation?'<br><br><em style="opacity:0.85">'+_explanation+'</em>':'')
-          +'<br><br>These are now reflected on your dashboard.'
-        :'Your nutrition goals look accurate for your profile — no changes were needed.'
-          +(_explanation?'<br><br><em style="opacity:0.85">'+_explanation+'</em>':'');
+      const _oldGoals={calories:oldCal,protein:oldProtein,carbs:oldCarbs,fat:oldFat,sugar:oldSugar,fiber:oldFiber,sodium:oldSodium,water:oldWater};
+      const _newGoals={calories:p.calorieGoal,protein:p.proteinGoal,carbs:p.carbGoal,fat:p.fatGoal||65,sugar:p.sugarGoal,fiber:p.fiberGoal,sodium:p.sodiumGoal||2300,water:p.waterGoal};
+      const msg=buildGoalsSummaryHTML(_oldGoals,_newGoals,_explanation);
       if(ca){
         // Replace the "recalculating..." message with the result
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
@@ -7276,6 +7274,37 @@ async function applyDOBUpdate(encodedDob){
   if(dobCard)dobCard.style.display='none';
 }
 
+function buildGoalsSummaryHTML(oldGoals, newGoals, explanation){
+  // oldGoals / newGoals: {protein, water, carbs, calories, sugar, fiber, fat, sodium}
+  const rows=[
+    {label:'Calories',   old:oldGoals.calories,  neu:newGoals.calories,  unit:'kcal', reason:'Energy needs based on your TDEE, weight goal, and activity level.'},
+    {label:'Protein',    old:oldGoals.protein,   neu:newGoals.protein,   unit:'g',    reason:'Supports muscle maintenance and satiety relative to your body weight and activity.'},
+    {label:'Carbs',      old:oldGoals.carbs,     neu:newGoals.carbs,     unit:'g',    reason:'Net carb limit tuned to your dietary preferences and metabolic needs.'},
+    {label:'Fat',        old:oldGoals.fat,        neu:newGoals.fat,        unit:'g',    reason:'Healthy fat allowance based on calorie goal and cardiovascular health.'},
+    {label:'Sugar',      old:oldGoals.sugar,      neu:newGoals.sugar,      unit:'g',    reason:'Daily added sugar limit to support blood sugar stability.'},
+    {label:'Fiber',      old:oldGoals.fiber,      neu:newGoals.fiber,      unit:'g',    reason:'Fiber target for digestive health, adjusted for any relevant conditions.'},
+    {label:'Sodium',     old:oldGoals.sodium,     neu:newGoals.sodium,     unit:'mg',   reason:'Sodium limit considering cardiovascular health and dietary patterns.'},
+    {label:'Water',      old:oldGoals.water,      neu:newGoals.water,      unit:' oz',  reason:'Hydration target based on body weight and activity level.'},
+  ];
+  const rowsHTML=rows.map(r=>{
+    const changed=r.old!==r.neu;
+    const changeStr=changed
+      ?'<span style="color:rgba(255,255,255,0.6);text-decoration:line-through;font-size:11px">'+r.old+r.unit+'</span> <strong>'+r.neu+r.unit+'</strong>'
+      :'<strong>'+r.neu+r.unit+'</strong> <span style="font-size:11px;opacity:0.6">(no change)</span>';
+    return '<div style="display:grid;grid-template-columns:90px 1fr;gap:8px;padding:7px 0;border-bottom:1px solid rgba(255,255,255,0.1);align-items:start">'
+      +'<div style="font-size:12px;font-weight:600;opacity:0.8">'+r.label+'</div>'
+      +'<div>'
+      +'<div style="font-size:13px;line-height:1.4">'+changeStr+'</div>'
+      +(changed?'<div style="font-size:11px;opacity:0.6;margin-top:2px">'+r.reason+'</div>':'')
+      +'</div>'
+      +'</div>';
+  }).join('');
+  return '&#10003; Your nutrition goals have been reviewed and updated.'
+    +(explanation?'<br><br><em style="opacity:0.85;font-size:12px">'+explanation+'</em>':'')
+    +'<br><br><div style="background:rgba(0,0,0,0.15);border-radius:8px;padding:10px 12px;margin-top:4px">'+rowsHTML+'</div>'
+    +'<br><span style="font-size:11px;opacity:0.6">Goals are now reflected on your dashboard and food log.</span>';
+}
+
 async function applyGoalSuggestion(encoded){
   if(!window._profile)return;
   let goals;
@@ -7283,7 +7312,7 @@ async function applyGoalSuggestion(encoded){
   const p=window._profile;
   // Capture old values before assignment
   const oldProtein=p.proteinGoal||120,oldWater=p.waterGoal||80,oldCarbs=p.carbGoal||100;
-  const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28;
+  const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28,oldFat=p.fatGoal||65,oldSodium=p.sodiumGoal||2300;
   if(goals.proteinGoal)p.proteinGoal=Math.round(goals.proteinGoal);
   if(goals.waterGoal)p.waterGoal=Math.round(goals.waterGoal);
   if(goals.carbGoal)p.carbGoal=Math.round(goals.carbGoal);
@@ -7293,19 +7322,13 @@ async function applyGoalSuggestion(encoded){
   if(goals.fatGoal)p.fatGoal=Math.round(goals.fatGoal);
   if(goals.sodiumGoal)p.sodiumGoal=Math.round(goals.sodiumGoal);
   await fbSet('profile','survey',p);
-  // Build change summary with before/after
-  const changes=[];
-  if(p.proteinGoal!==oldProtein)changes.push('<strong>Protein:</strong> '+oldProtein+'g → '+p.proteinGoal+'g');
-  if(p.waterGoal!==oldWater)changes.push('<strong>Water:</strong> '+oldWater+' → '+p.waterGoal+' oz');
-  if(p.carbGoal!==oldCarbs)changes.push('<strong>Carbs:</strong> '+oldCarbs+'g → '+p.carbGoal+'g');
-  if(p.calorieGoal!==oldCal)changes.push('<strong>Calories:</strong> '+oldCal+' → '+p.calorieGoal+' kcal');
-  if(p.sugarGoal!==oldSugar)changes.push('<strong>Sugar limit:</strong> '+oldSugar+'g → '+p.sugarGoal+'g');
-  if(p.fiberGoal!==oldFiber)changes.push('<strong>Fiber goal:</strong> '+oldFiber+'g → '+p.fiberGoal+'g');
+  const oldGoals={calories:oldCal,protein:oldProtein,carbs:oldCarbs,fat:oldFat,sugar:oldSugar,fiber:oldFiber,sodium:oldSodium,water:oldWater};
+  const newGoals={calories:p.calorieGoal,protein:p.proteinGoal,carbs:p.carbGoal,fat:p.fatGoal||65,sugar:p.sugarGoal,fiber:p.fiberGoal,sodium:p.sodiumGoal||2300,water:p.waterGoal};
+  // Extract explanation from the coach's message that preceded this card
+  // The coach's text above the card already explains the rationale — use a brief note
+  const summary=buildGoalsSummaryHTML(oldGoals,newGoals,'See the message above for the full rationale behind these recommendations.');
   const card=document.getElementById('goal-suggestion-card');
-  const summary=changes.length
-    ?'&#10003; Goals updated!<br><br>'+changes.join('<br>')+'<br><br><span style="font-size:11px;opacity:0.7">Updating your Wellpath Plan…</span>'
-    :'&#10003; Your goals are already set correctly — no changes needed.';
-  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.9);padding:4px;line-height:1.7">'+summary+'</div>';
+  if(card)card.innerHTML='<div style="font-size:13px;color:rgba(255,255,255,0.9);padding:4px;line-height:1.6">'+summary+'</div>';
   refreshDashboard();
   generateWellnessPlan(false,'Goals updated via coach');
 }

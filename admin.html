@@ -824,6 +824,23 @@ window.loadAdminNotifications=async function(){
       if(aEl)aEl.textContent='0';if(iEl)iEl.textContent='0';
       el.innerHTML='<div class="empty-state">No notifications yet. Create your first one.</div>';return;
     }
+    const todayStr=new Date().toLocaleDateString('en-CA');
+
+    // Auto-deactivate any expired notifications
+    const toDeactivate=docs.filter(d=>{
+      const f=d.fields||{};
+      const expiry=f.expiryDate?.stringValue||'';
+      const active=f.active?.booleanValue!==false;
+      return expiry&&expiry<todayStr&&active;
+    });
+    if(toDeactivate.length){
+      await Promise.all(toDeactivate.map(d=>{
+        const id=d.name.split('/').pop();
+        return setRootDoc('app_notifications',id,{active:false});
+      }));
+      if(toDeactivate.length)showToast('&#128276; '+toDeactivate.length+' expired notification'+(toDeactivate.length>1?'s':'')+' auto-deactivated.');
+    }
+
     const allNotifs=docs.map(d=>{
       const f=d.fields||{};
       return{
@@ -838,6 +855,7 @@ window.loadAdminNotifications=async function(){
         autoOpen:f.autoOpen?.booleanValue||false,
         active:f.active?.booleanValue!==false,
         createdAt:f.createdAt?.stringValue||'',
+        expiryDate:f.expiryDate?.stringValue||'',
       };
     }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
 
@@ -867,7 +885,7 @@ window.loadAdminNotifications=async function(){
             </div>
             <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">${esc(n.title)}</div>
             <div style="font-size:12px;color:var(--muted);line-height:1.5">${esc(n.body.slice(0,120))}${n.body.length>120?'…':''}</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:6px">ID: ${esc(n.id)} · Created: ${esc(n.createdAt)}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">ID: ${esc(n.id)} · Created: ${esc(n.createdAt)}${n.expiryDate?' · Expires: '+esc(n.expiryDate):''}</div>
           </div>
           <div style="display:flex;gap:6px;flex-shrink:0">
             <button class="btn btn-ghost btn-sm" data-nid="${n.id}" onclick="openNotifForm('${n.id}')">&#9998; Edit</button>
@@ -898,6 +916,7 @@ window.openNotifForm=async function(editId){
         actionSection:f.actionSection?.stringValue||'dashboard',
         autoOpen:f.autoOpen?.booleanValue||false,
         active:f.active?.booleanValue!==false,
+        expiryDate:f.expiryDate?.stringValue||'',
       };
     }
   }
@@ -976,10 +995,15 @@ window.openNotifForm=async function(editId){
           <input type="checkbox" id="nf-auto-open" ${existing?.autoOpen?'checked':''} style="accent-color:var(--accent);width:16px;height:16px"/>
           <div><div style="font-size:13px;font-weight:600;color:var(--text)">Auto-open on login</div><div style="font-size:12px;color:var(--muted)">Modal displays automatically when user logs in. Use sparingly.</div></div>
         </label>
-        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:12px">
           <input type="checkbox" id="nf-active" ${existing?.active!==false?'checked':''} style="accent-color:var(--accent);width:16px;height:16px"/>
           <div><div style="font-size:13px;font-weight:600;color:var(--text)">Active</div><div style="font-size:12px;color:var(--muted)">Inactive notifications are not shown to users.</div></div>
         </label>
+        <div>
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px">Expiration date <span style="font-size:11px;font-weight:400;color:var(--muted)">(optional)</span></div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Notification auto-deactivates at midnight ET on this date.</div>
+          <input type="date" id="nf-expiry" value="${existing?.expiryDate||''}" style="width:100%;font-family:var(--font-body);font-size:13px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--surface);color:var(--text)"/>
+        </div>
       </div>
 
       <!-- Buttons -->
@@ -1018,6 +1042,7 @@ window.saveNotif=async function(editId){
   const type=document.querySelector('[name="nf-type"]:checked')?.value||'informational';
   const autoOpen=document.getElementById('nf-auto-open')?.checked||false;
   const active=document.getElementById('nf-active')?.checked!==false;
+  const expiryDate=document.getElementById('nf-expiry')?.value||'';
   const actionType=document.getElementById('nf-action-type')?.value||'coach_prefill';
   const actionLabel=(document.getElementById('nf-action-label')?.value||'').trim();
   const actionPayload=(document.getElementById('nf-action-payload')?.value||'').trim();
@@ -1027,6 +1052,7 @@ window.saveNotif=async function(editId){
   const notif={
     id,title,body,type,autoOpen,active,
     createdAt:editId?undefined:new Date().toLocaleDateString('en-CA'),
+    ...(expiryDate?{expiryDate}:{}),
     ...(type==='action'?{actionType,actionLabel,actionPayload,actionSection}:{}),
   };
   if(editId)delete notif.createdAt; // don't overwrite createdAt on edit
