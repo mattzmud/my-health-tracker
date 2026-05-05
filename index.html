@@ -2003,7 +2003,7 @@ function showSection(name){
 // ── ONBOARDING ──────────────────────────────────────────────
 const OB_STEPS=[
   {id:'basics',title:'Tell us about yourself',sub:'This helps us personalize your nutrition goals, workout plan, and coaching.',
-   fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_dob',label:'Date of birth',type:'date',placeholder:''},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
+   fields:[{id:'ob_name',label:'Your first name',type:'text',placeholder:'e.g. Sarah'},{id:'ob_dob',label:'Date of birth',type:'dob',placeholder:''},{id:'ob_weight',label:'Current weight (lbs)',type:'number',placeholder:'e.g. 175'},{id:'ob_goal_weight',label:'Goal weight (lbs)',type:'number',placeholder:'e.g. 145'},{id:'ob_height',label:'Height',type:'text',placeholder:'e.g. 5\'6"'}]},
   {id:'gender',title:'A bit about you',sub:'This helps us give you the most accurate nutrition and fitness recommendations.',
    fields:[
      {id:'ob_gender_identity',label:'I identify as',type:'select',options:['Man','Woman','Non-binary','Prefer to self-describe','Prefer not to say'],placeholder:''},
@@ -2090,6 +2090,33 @@ function renderObStep(){
         if(f.label)html+=`<label class="form-label">${f.label}</label>`;
         if(f.note)html+=`<div style="font-size:11px;color:var(--muted);margin-bottom:6px;padding:6px 8px;background:rgba(85,107,47,0.06);border-radius:6px;border-left:2px solid var(--accent);line-height:1.5">${f.note}</div>`;
         if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
+        else if(f.type==='dob'){
+          // Split MM DD YYYY inputs that auto-advance on fill
+          const existing=obData[f.id]||'';
+          let mm='',dd='',yyyy='';
+          if(existing){const parts=existing.split('-');yyyy=parts[0]||'';mm=parts[1]||'';dd=parts[2]||'';}
+          html+=`<div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+            <div style="flex:1;text-align:center">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Month</div>
+              <input type="number" id="ob_dob_mm" class="form-input" placeholder="MM" min="1" max="12" maxlength="2" value="${mm}" style="text-align:center;font-size:20px;padding:10px 8px;margin:0"
+                oninput="if(this.value.length>=2){document.getElementById('ob_dob_dd').focus();document.getElementById('ob_dob_dd').select();}obDobAssemble()"/>
+            </div>
+            <div style="font-size:20px;color:var(--muted);padding-top:18px">/</div>
+            <div style="flex:1;text-align:center">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Day</div>
+              <input type="number" id="ob_dob_dd" class="form-input" placeholder="DD" min="1" max="31" maxlength="2" value="${dd}" style="text-align:center;font-size:20px;padding:10px 8px;margin:0"
+                oninput="if(this.value.length>=2){document.getElementById('ob_dob_yyyy').focus();document.getElementById('ob_dob_yyyy').select();}obDobAssemble()"
+                onkeydown="if(event.key==='Backspace'&&this.value===''){document.getElementById('ob_dob_mm').focus();}"/>
+            </div>
+            <div style="font-size:20px;color:var(--muted);padding-top:18px">/</div>
+            <div style="flex:2;text-align:center">
+              <div style="font-size:11px;color:var(--muted);margin-bottom:3px">Year</div>
+              <input type="number" id="ob_dob_yyyy" class="form-input" placeholder="YYYY" min="1900" max="2099" maxlength="4" value="${yyyy}" style="text-align:center;font-size:20px;padding:10px 8px;margin:0"
+                oninput="if(this.value.length>=4)obDobAssemble()"
+                onkeydown="if(event.key==='Backspace'&&this.value===''){document.getElementById('ob_dob_dd').focus();}"/>
+            </div>
+          </div>`;
+        }
         else if(f.type==='select'){
           const selVal=obData[f.id]||'';
           const fid=f.id;
@@ -2103,6 +2130,14 @@ function renderObStep(){
   document.getElementById('ob-steps').innerHTML=html;
 }
 
+function obDobAssemble(){
+  const mm=(document.getElementById('ob_dob_mm')?.value||'').padStart(2,'0');
+  const dd=(document.getElementById('ob_dob_dd')?.value||'').padStart(2,'0');
+  const yyyy=document.getElementById('ob_dob_yyyy')?.value||'';
+  if(mm&&dd&&yyyy&&yyyy.length===4){
+    obData.ob_dob=yyyy+'-'+mm+'-'+dd;
+  }
+}
 function selectSingle(stepId,val){obData[stepId+'_single']=val;renderObStep();}
 function toggleMulti(stepId,val){
   if(!obData[stepId+'_multi'])obData[stepId+'_multi']=[];
@@ -2114,6 +2149,7 @@ function obSaveCurrentFields(){
   const step=OB_STEPS[obStep];
   if(step.fields)step.fields.forEach(f=>{
     if(f.type==='photo')return;
+    if(f.type==='dob'){obDobAssemble();return;}
     const el=document.getElementById(f.id);if(el)obData[f.id]=el.value.trim();
   });
   if(step.fields_conditional){
