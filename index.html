@@ -3762,6 +3762,8 @@ async function _lookupBarcode_USDA(barcode){
         carbs:Math.round((ln.carbohydrates?.value||0)*10)/10,
         sugar:Math.round((ln.sugars?.value||0)*10)/10,
         fiber:Math.round((ln.fiber?.value||0)*10)/10,
+        fat:Math.round((ln.fat?.value||0)*10)/10,
+        sodium:Math.round(ln.sodium?.value||0),
         source:'usda',barcode
       };
     }
