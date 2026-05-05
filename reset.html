@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Reset your password — MyWellpath</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:#f5f0e8;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;}
+  .card{background:#faf7f2;border-radius:20px;padding:40px 36px;max-width:420px;width:100%;box-shadow:0 8px 40px rgba(85,107,47,0.12);border:1px solid rgba(85,107,47,0.1);}
+  .logo{font-family:'DM Serif Display',serif;font-size:28px;color:#556b2f;margin-bottom:6px;}
+  .logo span{font-size:13px;font-weight:600;color:#7a6f5e;display:block;letter-spacing:0.08em;text-transform:uppercase;margin-top:2px;}
+  h1{font-family:'DM Serif Display',serif;font-size:22px;color:#2c2416;margin:24px 0 8px;}
+  p{font-size:14px;color:#7a6f5e;line-height:1.6;margin-bottom:20px;}
+  label{font-size:12px;font-weight:600;color:#7a6f5e;text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:5px;}
+  input{width:100%;padding:11px 14px;border:1px solid rgba(85,107,47,0.25);border-radius:10px;font-size:15px;font-family:'DM Sans',sans-serif;background:#fff;color:#2c2416;margin-bottom:14px;outline:none;transition:border-color 0.2s;}
+  input:focus{border-color:#556b2f;}
+  .btn{width:100%;padding:13px;background:#556b2f;color:#fff;border:none;border-radius:10px;font-size:15px;font-weight:600;font-family:'DM Sans',sans-serif;cursor:pointer;transition:background 0.2s;}
+  .btn:hover{background:#4a5e28;}
+  .btn:disabled{opacity:0.6;cursor:not-allowed;}
+  .msg{font-size:13px;padding:10px 14px;border-radius:8px;margin-top:14px;display:none;}
+  .msg.success{background:rgba(85,107,47,0.1);color:#556b2f;border:1px solid rgba(85,107,47,0.2);}
+  .msg.error{background:rgba(192,57,43,0.08);color:#c0392b;border:1px solid rgba(192,57,43,0.2);}
+  .back{text-align:center;margin-top:20px;font-size:13px;color:#7a6f5e;}
+  .back a{color:#556b2f;text-decoration:none;font-weight:600;}
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo">MyWellpath<span>Your personal health coach</span></div>
+  <h1>Reset your password</h1>
+  <p>Enter your new password below. Make it something strong — at least 8 characters.</p>
+
+  <div id="form-area">
+    <label for="pw">New password</label>
+    <input type="password" id="pw" placeholder="Enter new password" minlength="8"/>
+    <label for="pw2">Confirm password</label>
+    <input type="password" id="pw2" placeholder="Confirm new password" minlength="8"/>
+    <button class="btn" id="reset-btn" onclick="doReset()">Set new password</button>
+  </div>
+
+  <div class="msg" id="msg"></div>
+
+  <div class="back"><a href="https://mywellpath.app">← Back to MyWellpath</a></div>
+</div>
+
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, confirmPasswordReset, verifyPasswordResetCode } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCtF07EW4j93mdLhPgEPKWC5npOnXRUb3Y",
+  authDomain: "my-health-tracker-d8d0d.firebaseapp.com",
+  projectId: "my-health-tracker-d8d0d",
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+function showMsg(text, type) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.className = 'msg ' + type;
+  el.style.display = 'block';
+}
+
+// Get oobCode from URL
+const params = new URLSearchParams(window.location.search);
+const oobCode = params.get('oobCode');
+
+if (!oobCode) {
+  showMsg('Invalid or expired reset link. Please request a new one.', 'error');
+  document.getElementById('form-area').style.display = 'none';
+}
+
+window.doReset = async function() {
+  const pw = document.getElementById('pw').value;
+  const pw2 = document.getElementById('pw2').value;
+  const btn = document.getElementById('reset-btn');
+
+  if (pw.length < 8) return showMsg('Password must be at least 8 characters.', 'error');
+  if (pw !== pw2) return showMsg('Passwords do not match.', 'error');
+
+  btn.disabled = true;
+  btn.textContent = 'Updating...';
+
+  try {
+    await verifyPasswordResetCode(auth, oobCode);
+    await confirmPasswordReset(auth, oobCode, pw);
+    document.getElementById('form-area').style.display = 'none';
+    showMsg('✓ Password updated successfully! You can now sign in to MyWellpath.', 'success');
+    setTimeout(() => window.location.href = 'https://mywellpath.app', 3000);
+  } catch(e) {
+    let m = 'Something went wrong. Please try again.';
+    if (e.code === 'auth/expired-action-code') m = 'This reset link has expired. Please request a new one.';
+    if (e.code === 'auth/invalid-action-code') m = 'Invalid reset link. Please request a new one from the app.';
+    if (e.code === 'auth/weak-password') m = 'Password is too weak. Please choose a stronger one.';
+    showMsg(m, 'error');
+    btn.disabled = false;
+    btn.textContent = 'Set new password';
+  }
+};
+</script>
+</body>
+</html>

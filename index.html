@@ -1375,8 +1375,21 @@ window.doRegister = async () => {
 window.doForgotPassword = async () => {
   const email=document.getElementById('login-email').value.trim();
   if(!email){showMsg('login-msg','Enter your email above first.','info');return;}
-  try{await sendPasswordResetEmail(auth,email);showMsg('login-msg','Reset email sent!','success');}
-  catch(e){showMsg('login-msg','Could not send reset email.','error');}
+  try{
+    // Use custom action URL so reset lands on branded mywellpath.app/reset.html page
+    const {ActionCodeSettings}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
+    const actionSettings={url:'https://mywellpath.app/reset.html',handleCodeInApp:false};
+    await sendPasswordResetEmail(auth,email,actionSettings);
+    // Also send our branded email via Resend
+    // We can't get the reset URL directly — Firebase sends its own with our custom page as redirect
+    showMsg('login-msg','✓ Reset email sent! Check your inbox.','success');
+  }
+  catch(e){
+    let m='Could not send reset email.';
+    if(e.code==='auth/user-not-found')m='No account found with that email.';
+    if(e.code==='auth/invalid-email')m='Please enter a valid email address.';
+    showMsg('login-msg',m,'error');
+  }
 };
 
 window.setSyncStatus = s => {
@@ -2222,6 +2235,16 @@ async function generatePlan(){
   // Restore last visited section
   try{const _lastSec=localStorage.getItem('wp_section');const _lastDay=localStorage.getItem('wellpath_last_login_'+(window._uid||''));if(_lastSec&&_lastSec!=='dashboard'&&_lastDay===TODAY)showSection(_lastSec);}catch(e){}
   window.appInit();
+  // Send welcome email — fire and forget, don't block app load
+  try{
+    const _welEmail=window._authUser?.email||'';
+    const _welName=obData.ob_name||'';
+    if(_welEmail&&_welName){
+      fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'send_welcome',name:_welName,email:_welEmail})
+      }).catch(e=>console.log('Welcome email failed silently:',e));
+    }
+  }catch(e){}
 }
 
 function buildProfileFromObData(){
