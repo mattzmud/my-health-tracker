@@ -1291,7 +1291,7 @@ onAuthStateChanged(auth, async user => {
     const profile = await window.fbGet('profile','survey');
     if (!profile || !profile.completed) { showOnboarding(); }
     else { window._profile = profile; showApp();
-    try{const _lastSec=localStorage.getItem('wp_section');const _lastDay=localStorage.getItem('wellpath_last_login_'+(window._uid||''));if(_lastSec&&_lastSec!=='dashboard'&&_lastDay===TODAY)setTimeout(()=>showSection(_lastSec),100);}catch(e){}
+    try{const _lastSec=localStorage.getItem('wp_section');const _lastDay=localStorage.getItem('wellpath_last_login_'+(window._uid||''));if(_lastSec&&_lastSec!=='dashboard'&&_lastDay===TODAY&&window._profile?.name)setTimeout(()=>showSection(_lastSec),100);}catch(e){}
     window.appInit(); }
   } else {
     window._uid = null; window._profile = null;
@@ -2272,7 +2272,7 @@ async function generatePlan(){
   document.getElementById('generating-screen').style.display='none';
   showApp();
   // Restore last visited section
-  try{const _lastSec=localStorage.getItem('wp_section');const _lastDay=localStorage.getItem('wellpath_last_login_'+(window._uid||''));if(_lastSec&&_lastSec!=='dashboard'&&_lastDay===TODAY)showSection(_lastSec);}catch(e){}
+  try{const _lastSec=localStorage.getItem('wp_section');const _lastDay=localStorage.getItem('wellpath_last_login_'+(window._uid||''));if(_lastSec&&_lastSec!=='dashboard'&&_lastDay===TODAY&&window._profile?.name)showSection(_lastSec);}catch(e){}
   window.appInit();
   // Send welcome email — fire and forget, don't block app load
   try{
