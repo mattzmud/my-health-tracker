@@ -5711,6 +5711,8 @@ async function saveCoachGenderForm(){
     const genderDesc=gi?(gi+(bs&&bs!==gi?' (biological sex: '+bs+')':'')):(bs||'not specified');
     const hrtDesc=hrt==='Yes'?(' You\'re currently on hormone therapy'+(hrtDetail?' ('+hrtDetail+')':'')+'.'):'';
     const msg='Got it! I\'ve updated your profile.'+hrtDesc+' Your biological sex and hormone information play a role in what your nutrition and fitness goals should be — they affect things like calorie needs, protein targets, and exercise recommendations. Would you like me to recalculate your goals based on your updated profile?';
+    const plainFormMsg=msg.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+    saveMessageToSession('assistant',plainFormMsg+' [Goal update options presented]').catch(()=>{});
     ca.innerHTML+='<div class="msg ai"><div class="msg-avatar"><span style="font-size:11px;font-weight:700;letter-spacing:-0.5px">WP</span></div><div class="msg-bubble">'+msg
       +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">'
       +'<button class="btn btn-primary btn-sm" onclick="triggerGenderGoalUpdate(&#39;nutrition&#39;);this.closest(&#39;.msg-bubble&#39;).querySelectorAll(&#39;button&#39;).forEach(b=>b.remove())">&#x1F966; Nutrition goals</button>'
@@ -5760,10 +5762,15 @@ async function triggerGenderGoalUpdate(type){
   if(!p)return;
   const ca=document.getElementById('chat-area');
 
-  function coachMsg(text){
+  function coachMsg(text,save=true){
     if(ca){
       ca.innerHTML+='<div class="msg ai"><div class="msg-avatar"><span style="font-size:11px;font-weight:700;letter-spacing:-0.5px">WP</span></div><div class="msg-bubble">'+text+'</div></div>';
       ca.scrollTop=ca.scrollHeight;
+    }
+    // Strip HTML tags for storage — keep plain text version in history
+    if(save){
+      const plain=text.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+      saveMessageToSession('assistant',plain).catch(()=>{});
     }
   }
 
@@ -5809,8 +5816,12 @@ async function triggerGenderGoalUpdate(type){
         // Replace the "recalculating..." message with the result
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
         const last=msgs[msgs.length-1];
-        if(last&&last.textContent.includes('Recalculating your nutrition'))last.innerHTML=msg;
-        else coachMsg(msg);
+        if(last&&last.textContent.includes('Recalculating your nutrition')){
+          last.innerHTML=msg;
+          // Save the result — strip HTML for storage
+          const plain=msg.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+          saveMessageToSession('assistant',plain).catch(()=>{});
+        } else coachMsg(msg);
         ca.scrollTop=ca.scrollHeight;
       }
     }catch(e){
@@ -5819,8 +5830,10 @@ async function triggerGenderGoalUpdate(type){
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
         const last=msgs[msgs.length-1];
         const retryMsg='I had trouble recalculating your nutrition goals ('+escHtml(e.message||'unknown error')+'). <button onclick="triggerGenderGoalUpdate(&#39;nutrition&#39;);this.parentElement.innerHTML=&#39;Retrying...&#39;" style="background:#fff;border:1px solid rgba(255,255,255,0.9);color:#2c2416;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--font-body);margin-left:8px">Retry</button>';
-        if(last&&last.textContent.includes('Recalculating'))last.innerHTML=retryMsg;
-        else coachMsg(retryMsg);
+        if(last&&last.textContent.includes('Recalculating')){
+          last.innerHTML=retryMsg;
+          saveMessageToSession('assistant','I had trouble recalculating nutrition goals. Retry button shown.').catch(()=>{});
+        } else coachMsg(retryMsg);
         ca.scrollTop=ca.scrollHeight;
       }
     }
@@ -5851,8 +5864,11 @@ async function triggerGenderGoalUpdate(type){
       if(ca){
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
         const last=msgs[msgs.length-1];
-        if(last&&last.textContent.includes('Regenerating your fitness'))last.innerHTML=fitnessMsg;
-        else coachMsg(fitnessMsg);
+        if(last&&last.textContent.includes('Regenerating your fitness')){
+          last.innerHTML=fitnessMsg;
+          const plain=fitnessMsg.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();
+          saveMessageToSession('assistant',plain).catch(()=>{});
+        } else coachMsg(fitnessMsg);
         ca.scrollTop=ca.scrollHeight;
       }
     }catch(e){coachMsg('Sorry, I couldn\'t regenerate your fitness plan. Please try again.');console.error(e);}
