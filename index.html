@@ -309,6 +309,27 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
 .feedback-type-pill.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .feedback-ticket{padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--surface);}
 .feedback-ticket-status{display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.05em;}
+
+/* ── NOTIFICATION BELL ── */
+.nav-bell{position:relative;background:none;border:none;cursor:pointer;padding:6px;border-radius:8px;color:var(--muted);display:flex;align-items:center;justify-content:center;transition:color 0.15s,background 0.15s;}
+.nav-bell:hover{background:var(--surface2);color:var(--accent);}
+.nav-bell-badge{position:absolute;top:0;right:0;background:var(--red);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg);}
+/* ── NOTIFICATION DROPDOWN ── */
+.notif-dropdown{position:fixed;top:60px;right:16px;width:340px;max-width:calc(100vw - 32px);background:var(--surface);border:1px solid var(--border);border-radius:14px;box-shadow:0 8px 32px rgba(85,107,47,0.15);z-index:500;overflow:hidden;display:none;}
+.notif-dropdown.open{display:block;}
+.notif-dropdown-header{padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.notif-dropdown-header-title{font-family:var(--font-display);font-size:16px;color:var(--text);}
+.notif-item{padding:12px 16px;border-bottom:1px solid var(--border);cursor:pointer;transition:background 0.15s;display:flex;align-items:flex-start;gap:10px;}
+.notif-item:last-child{border-bottom:none;}
+.notif-item:hover{background:var(--surface2);}
+.notif-item-dot{width:8px;height:8px;border-radius:50%;background:var(--red);flex-shrink:0;margin-top:5px;}
+.notif-item-dot.read{background:transparent;}
+.notif-item-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
+.notif-item-preview{font-size:12px;color:var(--muted);line-height:1.4;}
+.notif-item-date{font-size:10px;color:var(--muted);margin-top:4px;}
+/* ── NOTIFICATION MODAL ── */
+.notif-modal-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px;}
+.notif-modal-card:last-child{margin-bottom:0;}
 </style>
 </head>
 <body>
@@ -403,6 +424,11 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
     </button>
     <button class="nav-btn" onclick="showSection('profile')" id="nav-profile">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg><span>Profile</span>
+    </button>
+    <!-- Notification Bell -->
+    <button class="nav-bell" id="nav-bell-btn" onclick="toggleNotifDropdown(event)" aria-label="Notifications" style="display:none">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span class="nav-bell-badge" id="notif-badge" style="display:none">0</span>
     </button>
     <button class="signout-btn" onclick="doSignOut()">Sign out</button>
     <!-- Hamburger (mobile only) -->
@@ -2262,8 +2288,16 @@ function obDobAssemble(){
 function selectSingle(stepId,val){obData[stepId+'_single']=val;renderObStep();}
 function toggleMulti(stepId,val){
   if(!obData[stepId+'_multi'])obData[stepId+'_multi']=[];
-  const idx=obData[stepId+'_multi'].indexOf(val);
-  if(idx>-1)obData[stepId+'_multi'].splice(idx,1);else obData[stepId+'_multi'].push(val);
+  // "No restrictions" clears all others; selecting anything else clears "No restrictions"
+  const noRestrict='No restrictions';
+  if(val===noRestrict){
+    obData[stepId+'_multi']=[noRestrict];
+  } else {
+    // Remove "No restrictions" if it was selected
+    obData[stepId+'_multi']=obData[stepId+'_multi'].filter(v=>v!==noRestrict);
+    const idx=obData[stepId+'_multi'].indexOf(val);
+    if(idx>-1)obData[stepId+'_multi'].splice(idx,1);else obData[stepId+'_multi'].push(val);
+  }
   renderObStep();
 }
 function obSaveCurrentFields(){
@@ -2634,6 +2668,7 @@ window.appInit=async function(){
   applyMedsVisibility();
   await checkAndAwardBadges();
   loadNotifications();
+  loadAppNotifications();
   renderBadges();
   applyVitalSettings();
   incrementLoginCount();
@@ -5428,6 +5463,224 @@ async function markNotificationsRead(){
   }catch(e){}
 }
 
+// ── APP NOTIFICATIONS ────────────────────────────────────────
+let _appNotifications=[]; // all active notifs from Firestore
+let _notifDropdownOpen=false;
+
+async function loadAppNotifications(){
+  if(!window._uid)return;
+  try{
+    // Fetch all active app notifications
+    const docs=await window.fbRootGetCol('app_notifications');
+    const all=Object.values(docs||{}).filter(n=>n.active!==false);
+
+    // Get user's seen/snoozed record
+    const userNotifData=await fbGet('notifications','app_notifs')||{};
+    const seen=userNotifData.seen||[];  // IDs dismissed forever
+    const snoozed=userNotifData.snoozed||{}; // {id: date_string}
+
+    const todayStr=new Date().toLocaleDateString('en-CA');
+
+    // Filter: exclude dismissed, exclude snoozed until today
+    _appNotifications=all.filter(n=>{
+      if(seen.includes(n.id))return false;
+      if(snoozed[n.id]&&snoozed[n.id]>=todayStr)return false;
+      return true;
+    }).sort((a,b)=>(b.createdAt||'').localeCompare(a.createdAt||''));
+
+    // Unread = not in snoozed for today (snoozed items visible but not counted)
+    const unread=_appNotifications.filter(n=>!snoozed[n.id]||snoozed[n.id]<todayStr);
+
+    // Update badge
+    const badge=document.getElementById('notif-badge');
+    const bellBtn=document.getElementById('nav-bell-btn');
+    if(bellBtn)bellBtn.style.display='flex';
+    if(badge){
+      badge.textContent=unread.length;
+      badge.style.display=unread.length?'flex':'none';
+    }
+
+    // Render dropdown list
+    _renderNotifDropdown();
+
+    // Auto-open modals
+    const autoOpenItems=_appNotifications.filter(n=>n.autoOpen&&(!snoozed[n.id]||snoozed[n.id]<todayStr));
+    if(autoOpenItems.length>0){
+      setTimeout(()=>openNotifModal(autoOpenItems),500);
+    }
+  }catch(e){console.error('loadAppNotifications:',e);}
+}
+
+function _renderNotifDropdown(){
+  const list=document.getElementById('notif-dropdown-list');
+  if(!list)return;
+  if(!_appNotifications.length){
+    list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">You\'re all caught up! &#127881;</div>';
+    return;
+  }
+  const userNotifData_snoozed={}; // read from cache below
+  const todayStr=new Date().toLocaleDateString('en-CA');
+
+  list.innerHTML=_appNotifications.map(n=>{
+    const typeIcon=n.type==='action'?'&#9888;&#65039;':'&#8505;&#65039;';
+    const isUnread=true; // shown = unread dot (dismissed = gone)
+    return`<div class="notif-item" onclick="openNotifModal([${JSON.stringify(n).replace(/"/g,'&quot;')}])" data-nid="${n.id}">
+      <div class="notif-item-dot"></div>
+      <div style="flex:1;min-width:0">
+        <div class="notif-item-title">${typeIcon} ${escHtml(n.title)}</div>
+        <div class="notif-item-preview">${escHtml((n.body||'').slice(0,80))}${(n.body||'').length>80?'…':''}</div>
+        <div class="notif-item-date">${escHtml(n.createdAt||'')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleNotifDropdown(e){
+  e.stopPropagation();
+  const dd=document.getElementById('notif-dropdown');
+  if(!dd)return;
+  const isOpen=dd.classList.contains('open');
+  dd.classList.toggle('open');
+  _notifDropdownOpen=!isOpen;
+}
+
+// Close dropdown on outside click
+document.addEventListener('click',e=>{
+  if(_notifDropdownOpen&&!e.target.closest('#notif-dropdown')&&!e.target.closest('#nav-bell-btn')){
+    document.getElementById('notif-dropdown')?.classList.remove('open');
+    _notifDropdownOpen=false;
+  }
+});
+
+function openNotifModal(notifs){
+  // notifs is an array of notification objects
+  if(!notifs||!notifs.length)return;
+
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.style.zIndex='600';
+
+  function renderCards(){
+    const remaining=notifs.filter(n=>n._visible!==false);
+    if(!remaining.length){modal.remove();return;}
+
+    const cardsHtml=remaining.map(n=>`
+      <div class="notif-modal-card" id="nmc-${n.id}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px">
+          <div style="font-family:var(--font-display);font-size:17px;color:var(--text);line-height:1.3">${escHtml(n.title)}</div>
+          <span style="font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;background:${n.type==='action'?'rgba(85,107,47,0.1)':'rgba(42,90,138,0.1)'};color:${n.type==='action'?'var(--accent)':'var(--blue)'};flex-shrink:0;text-transform:uppercase;letter-spacing:0.05em">${n.type==='action'?'Action':'Info'}</span>
+        </div>
+        <div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:14px">${escHtml(n.body||'')}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          ${n.type==='action'&&n.actionLabel?`<button class="btn btn-primary btn-sm" data-nid="${n.id}" onclick="handleNotifAction('${n.id}','${n.actionType}',this)">${escHtml(n.actionLabel)}</button>`:''}
+          <button class="btn btn-ghost btn-sm" data-nid="${n.id}" onclick="snoozeNotif('${n.id}',this)">Remind me later</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--muted)" data-nid="${n.id}" onclick="dismissNotif('${n.id}',this)">Dismiss</button>
+        </div>
+      </div>`).join('');
+
+    modal.innerHTML=`<div class="date-picker-card" style="max-width:460px;max-height:80vh;overflow-y:auto">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-family:var(--font-display);font-size:20px;color:var(--text)">&#128276; What\'s new</div>
+        <button onclick="this.closest('.date-picker-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">&#10005;</button>
+      </div>
+      ${cardsHtml}
+    </div>`;
+    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  }
+
+  // Store visible state on each notif
+  notifs.forEach(n=>n._visible=true);
+  renderCards();
+  document.body.appendChild(modal);
+
+  // Make renderCards accessible from button handlers
+  modal._renderCards=renderCards;
+  modal._notifs=notifs;
+}
+
+async function handleNotifAction(id,actionType,btn){
+  // Find the notif
+  const n=_appNotifications.find(n=>n.id===id);
+  if(!n)return;
+  // Close modal
+  btn.closest('.date-picker-modal')?.remove();
+  // Close dropdown
+  document.getElementById('notif-dropdown')?.classList.remove('open');
+  _notifDropdownOpen=false;
+
+  if(actionType==='coach_prefill'){
+    showSection('chat');
+    // Pre-fill the coach input
+    setTimeout(()=>{
+      const input=document.getElementById('chat-input');
+      if(input){
+        input.value=n.actionPayload||'';
+        input.focus();
+      }
+    },300);
+  } else if(actionType==='open_section'){
+    showSection(n.actionSection||'dashboard');
+  }
+  // Don't auto-dismiss — user may still want to remind later
+}
+
+async function dismissNotif(id,btn){
+  try{
+    const data=await fbGet('notifications','app_notifs')||{};
+    const seen=[...(data.seen||[])];
+    if(!seen.includes(id))seen.push(id);
+    await fbSet('notifications','app_notifs',{...data,seen});
+    // Remove from local array
+    _appNotifications=_appNotifications.filter(n=>n.id!==id);
+    // Remove card from modal
+    const modal=btn.closest('.date-picker-modal');
+    const notifList=modal?._notifs;
+    if(notifList){
+      const n=notifList.find(n=>n.id===id);
+      if(n)n._visible=false;
+      modal._renderCards();
+    }
+    // Update dropdown
+    _renderNotifDropdown();
+    // Update badge
+    const badge=document.getElementById('notif-badge');
+    const unread=_appNotifications.length;
+    if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
+    // Close dropdown if empty
+    if(!_appNotifications.length){
+      document.getElementById('notif-dropdown')?.classList.remove('open');
+      _notifDropdownOpen=false;
+    }
+  }catch(e){console.error('dismissNotif:',e);}
+}
+
+async function snoozeNotif(id,btn){
+  try{
+    const data=await fbGet('notifications','app_notifs')||{};
+    const snoozed={...(data.snoozed||{})};
+    // Snooze until tomorrow
+    const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
+    snoozed[id]=tomorrow.toLocaleDateString('en-CA');
+    await fbSet('notifications','app_notifs',{...data,snoozed});
+    // Remove from modal card
+    const modal=btn.closest('.date-picker-modal');
+    const notifList=modal?._notifs;
+    if(notifList){
+      const n=notifList.find(n=>n.id===id);
+      if(n)n._visible=false;
+      modal._renderCards();
+    }
+    // Remove from unread count (snoozed don't count)
+    const badge=document.getElementById('notif-badge');
+    const unread=_appNotifications.filter(n=>{
+      if(n.id===id)return false;
+      return true;
+    }).length;
+    if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
+    _renderNotifDropdown();
+  }catch(e){console.error('snoozeNotif:',e);}
+}
+
 // ── GROCERY ──────────────────────────────────────────────────
 async function addGroceryItem(){
   const input=document.getElementById('grocery-input'),text=input.value.trim();if(!text)return;
@@ -6914,6 +7167,17 @@ async function applyGoalSuggestion(encoded){
   </div>
   <div class="scanner-status" id="scanner-status"></div>
   <button class="scanner-close" onclick="closeBarcodeScanner()">&#10005;</button>
+</div>
+
+<!-- ── NOTIFICATION DROPDOWN ── -->
+<div class="notif-dropdown" id="notif-dropdown">
+  <div class="notif-dropdown-header">
+    <div class="notif-dropdown-header-title">&#128276; Notifications</div>
+    <button onclick="document.getElementById('notif-dropdown').classList.remove('open')" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer">&#10005;</button>
+  </div>
+  <div id="notif-dropdown-list" style="max-height:360px;overflow-y:auto">
+    <div style="padding:20px;text-align:center;color:var(--muted);font-size:13px">Loading...</div>
+  </div>
 </div>
 
 <!-- ── FLOATING FEEDBACK BUTTON ── -->

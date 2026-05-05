@@ -177,6 +177,14 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
 .ticket-card{padding:12px 16px;border:1px solid var(--border);border-radius:10px;margin-bottom:10px;background:var(--surface);}
 .ticket-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.05em;}
 .ticket-status-select{font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--surface2);color:var(--text);font-family:var(--font-body);}
+
+.admin-nav-btn{padding:12px 18px;background:none;border:none;border-bottom:3px solid transparent;font-size:13px;font-weight:600;color:var(--muted);cursor:pointer;font-family:var(--font-body);transition:color 0.15s,border-color 0.15s;white-space:nowrap;}
+.admin-nav-btn:hover{color:var(--text);}
+.admin-nav-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.notif-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:10px;cursor:pointer;transition:box-shadow 0.15s;}
+.notif-card:hover{box-shadow:0 2px 12px rgba(85,107,47,0.1);}
+.notif-type-pill{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;text-transform:uppercase;letter-spacing:0.05em;}
+.notif-form-section{background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:16px;margin-bottom:14px;}
 </style>
 </head>
 <body>
@@ -209,15 +217,16 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
       <button class="signout-link" onclick="doSignOut()">Sign out</button>
     </div>
   </div>
+  <!-- Admin Nav Bar -->
+  <div style="background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;gap:4px;position:sticky;top:56px;z-index:90">
+    <button id="admin-nav-users" onclick="toggleAdminView('users')" class="admin-nav-btn active">&#128100; Users</button>
+    <button id="admin-nav-feedback" onclick="toggleAdminView('feedback')" class="admin-nav-btn" style="position:relative">
+      &#128172; Feedback
+      <span id="admin-feedback-badge" style="display:none;position:absolute;top:8px;right:6px;background:var(--red);color:#fff;border-radius:50%;width:16px;height:16px;font-size:9px;font-weight:700;display:none;align-items:center;justify-content:center">0</span>
+    </button>
+    <button id="admin-nav-notifications" onclick="toggleAdminView('notifications')" class="admin-nav-btn">&#128276; Notifications</button>
+  </div>
   <div class="main">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:10px">
-      <div class="page-title" style="margin-bottom:0">User management</div>
-      <button onclick="toggleAdminView('feedback')" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--surface2);border:1px solid var(--border2);border-radius:20px;font-size:13px;font-weight:600;color:var(--text);cursor:pointer;font-family:var(--font-body);position:relative">
-        &#128172; Feedback
-        <span id="admin-feedback-badge" style="display:none;background:var(--red);color:#fff;border-radius:50%;width:18px;height:18px;font-size:10px;font-weight:700;align-items:center;justify-content:center">0</span>
-      </button>
-    </div>
-    <div class="page-sub">View and manage all MyWellpath accounts. Click any user to see full details.</div>
     <div class="stats-row" id="stats-row"></div>
     <!-- Users view -->
     <div id="admin-users-view">
@@ -232,7 +241,6 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
     <!-- Feedback view -->
     <div id="admin-feedback-panel" style="display:none">
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
-        <button onclick="toggleAdminView('users')" style="background:none;border:none;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font-body)">&#8592; Back to users</button>
         <div style="font-size:18px;font-family:var(--font-display);color:var(--text)">&#128172; Feedback tickets</div>
         <select id="fb-filter-type" onchange="loadAdminFeedback()" style="font-size:12px;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;background:var(--surface2);color:var(--text);font-family:var(--font-body)">
           <option value="">All types</option>
@@ -252,6 +260,15 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
         <button onclick="loadAdminFeedback()" class="refresh-btn">↻ Refresh</button>
       </div>
       <div id="admin-feedback-list"><div class="empty-state"><div class="spinner"></div>Loading tickets…</div></div>
+    </div>
+    <!-- Notifications panel -->
+    <div id="admin-notifications-panel" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+        <div style="font-size:22px;font-family:var(--font-display);color:var(--text)">&#128276; Notification Deployment</div>
+        <button class="btn btn-primary btn-sm" onclick="openNotifForm()">&#10133; New notification</button>
+      </div>
+      <!-- Notification list -->
+      <div id="admin-notif-list"><div class="empty-state"><div class="spinner"></div>Loading…</div></div>
     </div>
   </div>
 </div>
@@ -772,6 +789,237 @@ function showToast(msg,type=''){
   t.innerHTML=msg;document.body.appendChild(t);setTimeout(()=>t.remove(),3500);
 }
 
+// ── ADMIN NOTIFICATIONS ──────────────────────────────────────
+
+function _slugify(str){
+  return str.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,40)+'_'+Date.now().toString(36);
+}
+
+window.loadAdminNotifications=async function(){
+  const el=document.getElementById('admin-notif-list');
+  if(!el)return;
+  el.innerHTML='<div class="empty-state"><div class="spinner"></div>Loading…</div>';
+  try{
+    const docs=await getRootDocs('app_notifications');
+    if(!docs.length){el.innerHTML='<div class="empty-state">No notifications yet. Create your first one.</div>';return;}
+    const notifs=docs.map(d=>{
+      const f=d.fields||{};
+      return{
+        id:d.name.split('/').pop(),
+        title:f.title?.stringValue||'—',
+        body:f.body?.stringValue||'',
+        type:f.type?.stringValue||'informational',
+        actionLabel:f.actionLabel?.stringValue||'',
+        actionType:f.actionType?.stringValue||'none',
+        actionPayload:f.actionPayload?.stringValue||'',
+        actionSection:f.actionSection?.stringValue||'',
+        autoOpen:f.autoOpen?.booleanValue||false,
+        active:f.active?.booleanValue!==false,
+        createdAt:f.createdAt?.stringValue||'',
+      };
+    }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+
+    el.innerHTML=notifs.map(n=>`
+      <div class="notif-card" id="nc-${n.id}">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;flex-wrap:wrap">
+          <div style="flex:1">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap">
+              <span class="notif-type-pill" style="background:${n.type==='action'?'rgba(85,107,47,0.15)':'rgba(42,90,138,0.12)'};color:${n.type==='action'?'var(--accent)':'var(--blue)'}">${n.type==='action'?'&#9888;&#65039; Action required':'&#8505;&#65039; Informational'}</span>
+              ${n.autoOpen?'<span class="notif-type-pill" style="background:rgba(192,57,43,0.1);color:var(--red)">&#128276; Auto-open</span>':''}
+              <span class="notif-type-pill" style="background:${n.active?'rgba(85,107,47,0.1)':'rgba(122,111,94,0.1)'};color:${n.active?'var(--accent)':'var(--muted)'}">${n.active?'Active':'Inactive'}</span>
+            </div>
+            <div style="font-size:15px;font-weight:600;color:var(--text);margin-bottom:4px">${esc(n.title)}</div>
+            <div style="font-size:12px;color:var(--muted);line-height:1.5">${esc(n.body.slice(0,120))}${n.body.length>120?'…':''}</div>
+            <div style="font-size:11px;color:var(--muted);margin-top:6px">ID: ${esc(n.id)} · Created: ${esc(n.createdAt)}</div>
+          </div>
+          <div style="display:flex;gap:6px;flex-shrink:0">
+            <button class="btn btn-ghost btn-sm" data-nid="${n.id}" onclick="openNotifForm('${n.id}')">&#9998; Edit</button>
+            <button class="btn btn-ghost btn-sm" data-nid="${n.id}" data-active="${n.active}" onclick="toggleNotifActive('${n.id}',${!n.active})">${n.active?'Deactivate':'Activate'}</button>
+            <button class="btn btn-ghost btn-sm" style="color:var(--red)" data-nid="${n.id}" onclick="deleteNotif('${n.id}')">Delete</button>
+          </div>
+        </div>
+      </div>`).join('');
+  }catch(e){el.innerHTML=`<div class="empty-state">Error: ${e.message}</div>`;}
+};
+
+window.openNotifForm=async function(editId){
+  let existing=null;
+  if(editId){
+    // Fetch existing notification
+    const docs=await getRootDocs('app_notifications');
+    const doc=docs.find(d=>d.name.split('/').pop()===editId);
+    if(doc){
+      const f=doc.fields||{};
+      existing={
+        id:editId,
+        title:f.title?.stringValue||'',
+        body:f.body?.stringValue||'',
+        type:f.type?.stringValue||'informational',
+        actionLabel:f.actionLabel?.stringValue||'',
+        actionType:f.actionType?.stringValue||'none',
+        actionPayload:f.actionPayload?.stringValue||'',
+        actionSection:f.actionSection?.stringValue||'dashboard',
+        autoOpen:f.autoOpen?.booleanValue||false,
+        active:f.active?.booleanValue!==false,
+      };
+    }
+  }
+
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';
+  modal.style.zIndex='500';
+  const t=existing?.type||'informational';
+  const at=existing?.actionType||'coach_prefill';
+
+  modal.innerHTML=`<div class="side-panel" style="max-width:520px;border-radius:14px;margin:auto;top:40px;bottom:40px;right:auto;left:auto;position:relative;overflow-y:auto">
+    <div class="panel-header" style="position:sticky;top:0">
+      <div style="font-family:var(--font-display);font-size:18px;color:var(--text)">${editId?'Edit notification':'New notification'}</div>
+      <button class="panel-close" onclick="this.closest('.modal-overlay').remove()">✕ Close</button>
+    </div>
+    <div style="padding:20px;display:flex;flex-direction:column;gap:14px">
+
+      ${editId?`<div class="notif-form-section" style="padding:10px 14px">
+        <div style="font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:2px">Notification ID</div>
+        <div style="font-size:13px;color:var(--text);font-family:monospace">${esc(editId)}</div>
+      </div>`:''}
+
+      <!-- Type -->
+      <div class="notif-form-section">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Notification type</div>
+        <div style="display:flex;gap:10px">
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid ${t==='action'?'var(--accent)':'var(--border)'};border-radius:10px;cursor:pointer;background:${t==='action'?'rgba(85,107,47,0.06)':'var(--surface)'}">
+            <input type="radio" name="nf-type" value="action" ${t==='action'?'checked':''} onchange="nfUpdateType(this.value)" style="accent-color:var(--accent)"/>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text)">⚠️ Action required</div><div style="font-size:11px;color:var(--muted)">User needs to do something</div></div>
+          </label>
+          <label style="flex:1;display:flex;align-items:center;gap:8px;padding:10px 14px;border:2px solid ${t==='informational'?'var(--blue)':'var(--border)'};border-radius:10px;cursor:pointer;background:${t==='informational'?'rgba(42,90,138,0.06)':'var(--surface)'}">
+            <input type="radio" name="nf-type" value="informational" ${t==='informational'?'checked':''} onchange="nfUpdateType(this.value)" style="accent-color:var(--blue)"/>
+            <div><div style="font-size:13px;font-weight:600;color:var(--text)">ℹ️ Informational</div><div style="font-size:11px;color:var(--muted)">FYI only, no action needed</div></div>
+          </label>
+        </div>
+      </div>
+
+      <!-- Title + Body -->
+      <div class="notif-form-section">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Title</div>
+        <input type="text" id="nf-title" value="${esc(existing?.title||'')}" placeholder="e.g. New Metrics Available! Update your Goals Today" style="width:100%;margin-bottom:12px"/>
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:6px">Body</div>
+        <textarea id="nf-body" placeholder="Full notification message..." style="width:100%;min-height:90px;resize:vertical">${esc(existing?.body||'')}</textarea>
+      </div>
+
+      <!-- Action (only for action type) -->
+      <div class="notif-form-section" id="nf-action-section" style="display:${t==='action'?'block':'none'}">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Action button</div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">Action type</div>
+          <select id="nf-action-type" onchange="nfUpdateActionType(this.value)" style="width:100%;font-family:var(--font-body);font-size:13px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)">
+            <option value="coach_prefill" ${at==='coach_prefill'?'selected':''}>Open coach with prefilled message</option>
+            <option value="open_section" ${at==='open_section'?'selected':''}>Open a specific section</option>
+          </select>
+        </div>
+        <div style="margin-bottom:10px">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">Button label</div>
+          <input type="text" id="nf-action-label" value="${esc(existing?.actionLabel||'')}" placeholder="e.g. Review my goals with coach" style="width:100%"/>
+        </div>
+        <div id="nf-payload-section" style="display:${at==='coach_prefill'?'block':'none'}">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">Coach message (pre-filled for user)</div>
+          <textarea id="nf-action-payload" placeholder="e.g. Please recalculate my goals to take into account the new Fat and Sodium metrics." style="width:100%;min-height:60px;resize:vertical">${esc(existing?.actionPayload||'')}</textarea>
+        </div>
+        <div id="nf-section-section" style="display:${at==='open_section'?'block':'none'}">
+          <div style="font-size:12px;color:var(--muted);margin-bottom:5px">Section to open</div>
+          <select id="nf-action-section" style="width:100%;font-family:var(--font-body);font-size:13px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)">
+            ${['dashboard','food','fitness','chat','vitals','recipes','profile','meds'].map(s=>`<option value="${s}" ${(existing?.actionSection||'')==s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          </select>
+        </div>
+      </div>
+
+      <!-- Settings -->
+      <div class="notif-form-section">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:10px">Settings</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;margin-bottom:10px">
+          <input type="checkbox" id="nf-auto-open" ${existing?.autoOpen?'checked':''} style="accent-color:var(--accent);width:16px;height:16px"/>
+          <div><div style="font-size:13px;font-weight:600;color:var(--text)">Auto-open on login</div><div style="font-size:12px;color:var(--muted)">Modal displays automatically when user logs in. Use sparingly.</div></div>
+        </label>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" id="nf-active" ${existing?.active!==false?'checked':''} style="accent-color:var(--accent);width:16px;height:16px"/>
+          <div><div style="font-size:13px;font-weight:600;color:var(--text)">Active</div><div style="font-size:12px;color:var(--muted)">Inactive notifications are not shown to users.</div></div>
+        </label>
+      </div>
+
+      <!-- Buttons -->
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" data-edit="${editId||''}" onclick="saveNotif(this.dataset.edit)">${editId?'Save changes':'Publish notification'}</button>
+      </div>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+};
+
+function nfUpdateType(type){
+  const section=document.getElementById('nf-action-section');
+  if(section)section.style.display=type==='action'?'block':'none';
+  // Update radio label borders
+  document.querySelectorAll('[name="nf-type"]').forEach(r=>{
+    const lbl=r.closest('label');
+    if(lbl){
+      const isSelected=r.value===type;
+      lbl.style.borderColor=isSelected?(r.value==='action'?'var(--accent)':'var(--blue)'):'var(--border)';
+      lbl.style.background=isSelected?(r.value==='action'?'rgba(85,107,47,0.06)':'rgba(42,90,138,0.06)'):'var(--surface)';
+    }
+  });
+}
+
+function nfUpdateActionType(type){
+  document.getElementById('nf-payload-section').style.display=type==='coach_prefill'?'block':'none';
+  document.getElementById('nf-section-section').style.display=type==='open_section'?'block':'none';
+}
+
+window.saveNotif=async function(editId){
+  const title=(document.getElementById('nf-title')?.value||'').trim();
+  const body=(document.getElementById('nf-body')?.value||'').trim();
+  if(!title||!body){showToast('Title and body are required.','error');return;}
+  const type=document.querySelector('[name="nf-type"]:checked')?.value||'informational';
+  const autoOpen=document.getElementById('nf-auto-open')?.checked||false;
+  const active=document.getElementById('nf-active')?.checked!==false;
+  const actionType=document.getElementById('nf-action-type')?.value||'coach_prefill';
+  const actionLabel=(document.getElementById('nf-action-label')?.value||'').trim();
+  const actionPayload=(document.getElementById('nf-action-payload')?.value||'').trim();
+  const actionSection=document.getElementById('nf-action-section')?.value||'dashboard';
+
+  const id=editId||_slugify(title);
+  const notif={
+    id,title,body,type,autoOpen,active,
+    createdAt:editId?undefined:new Date().toLocaleDateString('en-CA'),
+    ...(type==='action'?{actionType,actionLabel,actionPayload,actionSection}:{}),
+  };
+  if(editId)delete notif.createdAt; // don't overwrite createdAt on edit
+
+  try{
+    await setRootDoc('app_notifications',id,notif);
+    document.querySelector('.modal-overlay')?.remove();
+    showToast(editId?'✓ Notification updated.':'✓ Notification published!');
+    loadAdminNotifications();
+  }catch(e){showToast('Error: '+e.message,'error');}
+};
+
+window.toggleNotifActive=async function(id,active){
+  try{
+    await setRootDoc('app_notifications',id,{active});
+    showToast('✓ Notification '+(active?'activated':'deactivated')+'.');
+    loadAdminNotifications();
+  }catch(e){showToast('Error: '+e.message,'error');}
+};
+
+window.deleteNotif=async function(id){
+  if(!confirm('Delete this notification? Users who have already dismissed it won\'t be affected.'))return;
+  try{
+    await fetch(`${FS_ROOT}/app_notifications/${id}`,{method:'DELETE',headers:{Authorization:'Bearer '+await tok()}});
+    showToast('Notification deleted.');
+    loadAdminNotifications();
+  }catch(e){showToast('Error: '+e.message,'error');}
+};
+
 // ── ADMIN FEEDBACK ──
 const FS_ROOT=`https://firestore.googleapis.com/v1/projects/${PROJECT}/databases/(default)/documents`;
 
@@ -811,11 +1059,19 @@ async function setRootDoc(col,id,data){
 }
 
 window.toggleAdminView=function(view){
-  const usersView=document.getElementById('admin-users-view');
-  const fbPanel=document.getElementById('admin-feedback-panel');
-  if(usersView)usersView.style.display=view==='users'?'block':'none';
-  if(fbPanel)fbPanel.style.display=view==='feedback'?'block':'none';
+  ['admin-users-view','admin-feedback-panel','admin-notifications-panel'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.style.display='none';
+  });
+  ['users','feedback','notifications'].forEach(v=>{
+    const btn=document.getElementById('admin-nav-'+v);
+    if(btn)btn.classList.toggle('active',v===view);
+  });
+  const target=view==='users'?'admin-users-view':view==='feedback'?'admin-feedback-panel':'admin-notifications-panel';
+  const el=document.getElementById(target);
+  if(el)el.style.display='block';
   if(view==='feedback')loadAdminFeedback();
+  if(view==='notifications')loadAdminNotifications();
 };
 
 window.loadAdminFeedback=async function(){
