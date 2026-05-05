@@ -2015,7 +2015,7 @@ const OB_STEPS=[
    multi:['Type 2 Diabetes','Type 1 Diabetes','High blood pressure','High cholesterol','Heart condition','Thyroid condition','PCOS','Anxiety / Depression','Chronic pain','None of the above']},
   {id:'medications',title:'Medication tracking',sub:'Do you take any medications or supplements that you would like to log using MyWellpath?',subNote:'We recommend logging your medications — some (like diuretics, GLP-1s, and blood pressure meds) directly affect hydration, nutrition needs, and how your body responds to exercise. Logging them helps MyWellpath build a more accurate, personalized plan for you.',
    single_label:'',single:['Yes, I take medications I want to track','No, skip this for now'],
-   fields_conditional:{condition:'medications_single',value:'Yes, I take medications I want to track',fields:[{id:'ob_meds_all',label:'Your medications & supplements (one per line)',type:'textarea',placeholder:'e.g.\nMetformin 1000mg, twice daily\nAtorvastatin 20mg, once at night\nVitamin D, once in morning\nMounjaro 15mg, once weekly\nFish oil, as needed'}]}},
+   fields_conditional:{condition:'medications_single',value:'Yes, I take medications I want to track',fields:[{id:'ob_meds_list',label:'',type:'ob_meds_list',placeholder:''}]}},
   {id:'nutrition',title:'Your eating habits',sub:'Help us understand your preferences.',
    fields:[{id:'ob_fav_foods',label:'Foods you love',type:'textarea',placeholder:'e.g. chicken, Greek yogurt, berries, wraps'},{id:'ob_avoid_foods',label:'Foods you avoid or dislike',type:'textarea',placeholder:'e.g. fish, mushrooms, spicy food'},{id:'ob_current_calories',label:'Roughly how many calories do you currently eat per day? (optional)',type:'number',placeholder:'e.g. 2500 — leave blank if you are not sure'}],
    multi_label:'Any dietary preferences?',multi:['No restrictions','Low carb / Keto','Vegetarian','Vegan','Gluten free','Dairy free','Low sodium']},
@@ -2034,10 +2034,25 @@ const OB_STEPS=[
 
 let obStep=0, obData={};
 
-function showOnboarding(){
+async function showOnboarding(){
   document.getElementById('login-screen').style.display='none';
   document.getElementById('onboarding-screen').classList.add('active');
-  obStep=0; obData={}; renderObStep();
+  obStep=0; obData={};
+  // Try to restore a saved draft
+  try{
+    const draft=await window.fbGet('profile','ob_draft');
+    if(draft&&draft.obData){
+      obData=JSON.parse(draft.obData);
+      obStep=Math.min(draft.obStep||0, OB_STEPS.length-1);
+      // Show a subtle resume notice
+      const notice=document.createElement('div');
+      notice.style.cssText='position:fixed;top:16px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 18px;font-size:13px;color:var(--text);z-index:999;box-shadow:0 4px 16px rgba(85,107,47,0.12);white-space:nowrap';
+      notice.innerHTML='&#10003; Resuming where you left off';
+      document.body.appendChild(notice);
+      setTimeout(()=>notice.remove(),2500);
+    }
+  }catch(e){}
+  renderObStep();
 }
 
 function renderObStep(){
@@ -2058,9 +2073,29 @@ function renderObStep(){
     const fc=step.fields_conditional;
     if(obData[fc.condition]===fc.value){
       fc.fields.forEach(f=>{
-        if(f.label)html+=`<label class="form-label">${f.label}</label>`;
-        if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
-        else html+=`<input class="form-input" type="${f.type}" id="${f.id}" placeholder="${f.placeholder}" value="${obData[f.id]||''}" style="margin-bottom:12px"/>`;
+        if(f.type==='ob_meds_list'){
+          // Structured medication list UI
+          const meds=obData.ob_meds_structured||[];
+          const timeLabel={am:'Morning',af:'Afternoon',pm:'Evening',wk:'Weekly',prn:'As needed'};
+          html+='<div style="margin-bottom:10px">';
+          if(meds.length){
+            html+=meds.map((m,i)=>`<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;gap:10px">
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--text)">${escHtml(m.name)}${m.dose?' <span style="font-weight:400;color:var(--muted)">'+escHtml(m.dose)+'</span>':''}</div>
+                <div style="font-size:12px;color:var(--muted);margin-top:2px">${(m.times||[]).map(t=>timeLabel[t]||t).join(' · ')}${m.qty>1?' · '+m.qty+' per dose':''}</div>
+              </div>
+              <button onclick="obRemoveMed(${i})" style="background:none;border:none;color:var(--muted);font-size:16px;cursor:pointer;flex-shrink:0;padding:4px">&#10005;</button>
+            </div>`).join('');
+          } else {
+            html+='<div style="font-size:13px;color:var(--muted);margin-bottom:10px">No medications added yet.</div>';
+          }
+          html+='<button class="btn btn-ghost btn-sm" onclick="obOpenAddMed()" style="width:100%">&#10133; Add medication</button>';
+          html+='</div>';
+        } else {
+          if(f.label)html+=`<label class="form-label">${f.label}</label>`;
+          if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
+          else html+=`<input class="form-input" type="${f.type}" id="${f.id}" placeholder="${f.placeholder}" value="${obData[f.id]||''}" style="margin-bottom:12px"/>`;
+        }
       });
     }
   }
@@ -2130,6 +2165,92 @@ function renderObStep(){
   document.getElementById('ob-steps').innerHTML=html;
 }
 
+function obOpenAddMed(editIdx){
+  const isEdit=editIdx!==undefined;
+  const existing=isEdit?(obData.ob_meds_structured||[])[editIdx]:null;
+  const times=existing?.times||[];
+  const timeChecks=['am','af','pm','wk','prn'].map(t=>{
+    const labels={am:'Morning',af:'Afternoon',pm:'Evening',wk:'Weekly',prn:'As needed'};
+    return'<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer">'
+      +'<input type="checkbox" id="ob-med-time-'+t+'" '+(times.includes(t)?'checked':'')+' style="accent-color:var(--accent)"/> '+labels[t]+'</label>';
+  }).join('');
+
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.style.zIndex='600';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:14px">'+(isEdit?'Edit medication':'Add medication')+'</div>'
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Medication name</div>'
+    +'<input type="text" id="ob-med-name" placeholder="e.g. Metformin" value="'+escHtml(existing?.name||'')+'" style="width:100%"/>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    +'<div><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Dose</div>'
+    +'<input type="text" id="ob-med-dose" placeholder="e.g. 10mg" value="'+escHtml(existing?.dose||'')+'" style="width:100%"/></div>'
+    +'<div><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Qty per dose</div>'
+    +'<input type="number" id="ob-med-qty" value="'+(existing?.qty||1)+'" min="1" style="width:100%"/></div>'
+    +'</div>'
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Schedule</div>'
+    +'<div style="display:flex;gap:12px;flex-wrap:wrap">'+timeChecks+'</div>'
+    +'</div>'
+    +'<div style="margin-bottom:16px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">&#127807; Fiber per dose (optional)</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">If this is a fiber supplement, enter grams of fiber per dose.</div>'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<input type="number" id="ob-med-fiber" value="'+(existing?.fiberGrams||0)+'" min="0" max="50" step="0.5" style="max-width:80px"/>'
+    +'<span style="font-size:13px;color:var(--muted)">grams per dose</span>'
+    +'</div></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap">'
+    +(isEdit
+      ?'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+       +'<button class="btn btn-primary btn-sm" style="flex:2" data-idx="'+editIdx+'" onclick="obSaveMed(parseInt(this.dataset.idx))">Save changes</button>'
+      :'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+       +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="obSaveMed(-1,true)">Save &amp; add another</button>'
+       +'<button class="btn btn-primary btn-sm" style="flex:1" onclick="obSaveMed(-1,false)">Add this med</button>'
+    )
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('ob-med-name')?.focus(),100);
+  document.getElementById('ob-med-name')?.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('ob-med-dose')?.focus();});
+}
+
+function obSaveMed(editIdx,addAnother=false){
+  const name=(document.getElementById('ob-med-name')?.value||'').trim();
+  if(!name){showToast('Please enter a medication name.','error');return;}
+  const dose=(document.getElementById('ob-med-dose')?.value||'').trim();
+  const qty=parseInt(document.getElementById('ob-med-qty')?.value)||1;
+  const times=['am','af','pm','wk','prn'].filter(t=>document.getElementById('ob-med-time-'+t)?.checked);
+  if(!times.length){showToast('Please select at least one schedule.','error');return;}
+  const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-')+'-'+Date.now();
+  const fiberGrams=parseFloat(document.getElementById('ob-med-fiber')?.value)||0;
+  const med={id,name,dose,qty,times,...(fiberGrams>0?{fiberGrams}:{})};
+  if(!obData.ob_meds_structured)obData.ob_meds_structured=[];
+  if(editIdx>=0){obData.ob_meds_structured[editIdx]=med;}
+  else{obData.ob_meds_structured.push(med);}
+  document.querySelector('.date-picker-modal[style*="z-index: 600"], .date-picker-modal[style*="z-index:600"]')?.remove();
+  if(addAnother){obOpenAddMed();}
+  renderObStep();
+}
+
+function obRemoveMed(idx){
+  if(!obData.ob_meds_structured)return;
+  obData.ob_meds_structured.splice(idx,1);
+  renderObStep();
+}
+
+function obSaveDraft(){
+  // Save obData + current step to Firestore so user can resume later
+  // fire-and-forget — don't block UI
+  if(!window.fbSet||!window._uid)return;
+  window.fbSet('profile','ob_draft',{
+    obData:JSON.stringify(obData),
+    obStep,
+    savedAt:Date.now()
+  }).catch(()=>{});
+}
+
 function obDobAssemble(){
   const mm=(document.getElementById('ob_dob_mm')?.value||'').padStart(2,'0');
   const dd=(document.getElementById('ob_dob_dd')?.value||'').padStart(2,'0');
@@ -2177,10 +2298,10 @@ function obHandlePhoto(event){
   };
   reader.readAsDataURL(file);
 }
-function obBack(){obSaveCurrentFields();obStep--;renderObStep();}
+function obBack(){obSaveCurrentFields();obStep--;renderObStep();obSaveDraft();}
 async function obNext(){
   obSaveCurrentFields();
-  if(obStep<OB_STEPS.length-1){obStep++;renderObStep();return;}
+  if(obStep<OB_STEPS.length-1){obStep++;renderObStep();obSaveDraft();return;}
   document.getElementById('onboarding-screen').classList.remove('active');
   document.getElementById('generating-screen').style.display='flex';
   await generatePlan();
@@ -2193,25 +2314,16 @@ async function generatePlan(){
   profile.completed=true;
   profile.createdAt=TODAY;
   await fbSet('profile','survey',profile);
+  // Clear the draft now that onboarding is complete
+  window.fbDel&&window.fbDel('profile','ob_draft').catch(()=>{});
   // Save medications
-  // AI-parse medications from survey
-  // Save trackMeds setting
+  // Save structured medications from survey — no AI parse needed
   profile.trackMeds=obData.medications_single==='Yes, I take medications I want to track';
-  const allMedsRaw=(obData.ob_meds_all||'').trim();
-  if(allMedsRaw){
-    try{
-      const medLines=allMedsRaw.split('\n').map(m=>m.trim()).filter(Boolean);
-      const medRes=await callAI('Parse these medication entries. Return JSON array ONLY, no other text:\n'+medLines.join('\n')+'\n\nFor EACH entry return an object: {"id":"unique-slug","name":"Drug name only","dose":"dose or empty","qty":1,"times":[...]}. Time codes: am=morning, af=afternoon, pm=evening, wk=weekly, prn=as needed. If twice daily use ["am","pm"]. If once weekly use ["wk"]. If as needed use ["prn"]. Return ONLY a JSON array.');
-      const parsedMeds=JSON.parse(medRes.replace(/```json|```/g,'').trim());
-      const allMeds={};
-      parsedMeds.forEach(med=>{if(med.id&&med.name)allMeds[med.id]=med;});
-      if(Object.keys(allMeds).length>0)await fbSet('medications','list',{meds:allMeds});
-    }catch(e){
-      const allMeds={};
-      const lines=allMedsRaw.split('\n').map(m=>m.trim()).filter(Boolean);
-      lines.forEach((line,i)=>{const id='med-'+i;allMeds[id]={id,name:line,dose:'',qty:1,times:['am']};});
-      if(Object.keys(allMeds).length>0)await fbSet('medications','list',{meds:allMeds});
-    }
+  const structuredMeds=obData.ob_meds_structured||[];
+  if(structuredMeds.length>0){
+    const allMeds={};
+    structuredMeds.forEach(med=>{if(med.id&&med.name)allMeds[med.id]=med;});
+    await fbSet('medications','list',{meds:allMeds});
   }
   window._profile=profile;
   // Run nutrition goals + workout plan in parallel — both independent
