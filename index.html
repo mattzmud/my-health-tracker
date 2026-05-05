@@ -5552,17 +5552,31 @@ document.addEventListener('click',e=>{
   }
 });
 
+// Active modal notif state — stored outside modal element so innerHTML refresh doesn't wipe it
+let _activeNotifModal=null;
+let _activeNotifList=[];
+
 function openNotifModal(notifs){
-  // notifs is an array of notification objects
   if(!notifs||!notifs.length)return;
+  // Close any existing notif modal
+  _activeNotifModal?.remove();
+
+  // Store notifs in closure-safe variable with visible flag
+  _activeNotifList=notifs.map(n=>({...n,_visible:true}));
 
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
   modal.style.zIndex='600';
+  _activeNotifModal=modal;
 
   function renderCards(){
-    const remaining=notifs.filter(n=>n._visible!==false);
-    if(!remaining.length){modal.remove();return;}
+    const remaining=_activeNotifList.filter(n=>n._visible!==false);
+    if(!remaining.length){modal.remove();_activeNotifModal=null;return;}
+
+    const header=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div style="font-family:var(--font-display);font-size:20px;color:var(--text)">&#128276; What's new</div>
+      <button onclick="document.querySelector('.date-picker-modal[style*=\'z-index: 600\'], .date-picker-modal[style*=\'z-index:600\']')?.remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">&#10005;</button>
+    </div>`;
 
     const cardsHtml=remaining.map(n=>`
       <div class="notif-modal-card" id="nmc-${n.id}">
@@ -5572,30 +5586,31 @@ function openNotifModal(notifs){
         </div>
         <div style="font-size:13px;color:var(--text);line-height:1.7;margin-bottom:14px">${escHtml(n.body||'')}</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          ${n.type==='action'&&n.actionLabel?`<button class="btn btn-primary btn-sm" data-nid="${n.id}" onclick="handleNotifAction('${n.id}','${n.actionType}',this)">${escHtml(n.actionLabel)}</button>`:''}
-          <button class="btn btn-ghost btn-sm" data-nid="${n.id}" onclick="snoozeNotif('${n.id}',this)">Remind me later</button>
-          <button class="btn btn-ghost btn-sm" style="color:var(--muted)" data-nid="${n.id}" onclick="dismissNotif('${n.id}',this)">Dismiss</button>
+          ${n.type==='action'&&n.actionLabel?`<button class="btn btn-primary btn-sm" onclick="handleNotifAction('${n.id}','${escHtml(n.actionType||'')}',this)">${escHtml(n.actionLabel)}</button>`:''}
+          <button class="btn btn-ghost btn-sm" onclick="snoozeNotif('${n.id}',this)">Remind me later</button>
+          <button class="btn btn-ghost btn-sm" style="color:var(--muted)" onclick="dismissNotif('${n.id}',this)">Dismiss</button>
         </div>
       </div>`).join('');
 
-    modal.innerHTML=`<div class="date-picker-card" style="max-width:460px;max-height:80vh;overflow-y:auto">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div style="font-family:var(--font-display);font-size:20px;color:var(--text)">&#128276; What\'s new</div>
-        <button onclick="this.closest('.date-picker-modal').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">&#10005;</button>
-      </div>
-      ${cardsHtml}
-    </div>`;
-    modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+    const card=modal.querySelector('.date-picker-card');
+    if(card){
+      // Update cards section only — preserve wrapper
+      const existing=modal.querySelector('#notif-cards-body');
+      if(existing)existing.innerHTML=cardsHtml;
+    } else {
+      modal.innerHTML=`<div class="date-picker-card" style="max-width:460px;max-height:80vh;overflow-y:auto">
+        ${header}
+        <div id="notif-cards-body">${cardsHtml}</div>
+      </div>`;
+      modal.addEventListener('click',e=>{if(e.target===modal){modal.remove();_activeNotifModal=null;}});
+    }
   }
 
-  // Store visible state on each notif
-  notifs.forEach(n=>n._visible=true);
+  // Expose renderCards globally so dismiss/snooze can call it
+  window._notifRenderCards=renderCards;
+
   renderCards();
   document.body.appendChild(modal);
-
-  // Make renderCards accessible from button handlers
-  modal._renderCards=renderCards;
-  modal._notifs=notifs;
 }
 
 async function handleNotifAction(id,actionType,btn){
@@ -5630,27 +5645,18 @@ async function dismissNotif(id,btn){
     const seen=[...(data.seen||[])];
     if(!seen.includes(id))seen.push(id);
     await fbSet('notifications','app_notifs',{...data,seen});
-    // Remove from local array
+    // Remove from local arrays
     _appNotifications=_appNotifications.filter(n=>n.id!==id);
-    // Remove card from modal
-    const modal=btn.closest('.date-picker-modal');
-    const notifList=modal?._notifs;
-    if(notifList){
-      const n=notifList.find(n=>n.id===id);
-      if(n)n._visible=false;
-      modal._renderCards();
-    }
-    // Update dropdown
+    const activeItem=_activeNotifList.find(n=>n.id===id);
+    if(activeItem)activeItem._visible=false;
+    // Re-render modal cards
+    window._notifRenderCards?.();
+    // Update dropdown and badge
     _renderNotifDropdown();
-    // Update badge
-    const badge=document.getElementById('notif-badge');
     const unread=_appNotifications.length;
+    const badge=document.getElementById('notif-badge');
     if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
-    // Close dropdown if empty
-    if(!_appNotifications.length){
-      document.getElementById('notif-dropdown')?.classList.remove('open');
-      _notifDropdownOpen=false;
-    }
+    if(!unread){document.getElementById('notif-dropdown')?.classList.remove('open');_notifDropdownOpen=false;}
   }catch(e){console.error('dismissNotif:',e);}
 }
 
@@ -5658,24 +5664,16 @@ async function snoozeNotif(id,btn){
   try{
     const data=await fbGet('notifications','app_notifs')||{};
     const snoozed={...(data.snoozed||{})};
-    // Snooze until tomorrow
     const tomorrow=new Date();tomorrow.setDate(tomorrow.getDate()+1);
     snoozed[id]=tomorrow.toLocaleDateString('en-CA');
     await fbSet('notifications','app_notifs',{...data,snoozed});
-    // Remove from modal card
-    const modal=btn.closest('.date-picker-modal');
-    const notifList=modal?._notifs;
-    if(notifList){
-      const n=notifList.find(n=>n.id===id);
-      if(n)n._visible=false;
-      modal._renderCards();
-    }
-    // Remove from unread count (snoozed don't count)
+    // Hide card from modal
+    const activeItem=_activeNotifList.find(n=>n.id===id);
+    if(activeItem)activeItem._visible=false;
+    window._notifRenderCards?.();
+    // Remove from badge count (snoozed don't count toward unread)
+    const unread=_appNotifications.filter(n=>n.id!==id).length;
     const badge=document.getElementById('notif-badge');
-    const unread=_appNotifications.filter(n=>{
-      if(n.id===id)return false;
-      return true;
-    }).length;
     if(badge){badge.textContent=unread;badge.style.display=unread?'flex':'none';}
     _renderNotifDropdown();
   }catch(e){console.error('snoozeNotif:',e);}
