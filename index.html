@@ -2092,7 +2092,8 @@ function renderObStep(){
         if(f.type==='textarea')html+=`<textarea class="form-input" id="${f.id}" placeholder="${f.placeholder}" style="margin-bottom:12px">${obData[f.id]||''}</textarea>`;
         else if(f.type==='select'){
           const selVal=obData[f.id]||'';
-          html+=`<select class="form-input" id="${f.id}" style="margin-bottom:12px">${(f.options||[]).map(opt=>`<option value="${opt}"${selVal===opt?' selected':''}>${opt}</option>`).join('')}</select>`;
+          const fid=f.id;
+          html+=`<select class="form-input" id="${fid}" style="margin-bottom:12px" onchange="obData['${fid}']=this.value;obSaveCurrentFields();renderObStep()">${(f.options||[]).map(opt=>`<option value="${opt}"${selVal===opt?' selected':''}>${opt}</option>`).join('')}</select>`;
         }
         else html+=`<input class="form-input" type="${f.type}" id="${f.id}" placeholder="${f.placeholder}" value="${obData[f.id]||''}" style="margin-bottom:12px"/>`;
       }
