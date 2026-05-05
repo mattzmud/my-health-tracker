@@ -802,19 +802,20 @@ function _slugify(str){
 
 let _notifTabView='active';
 
-function switchNotifTab(tab){
+window.switchNotifTab=function(tab){
   _notifTabView=tab;
   document.getElementById('notif-tab-active')?.classList.toggle('active',tab==='active');
   document.getElementById('notif-tab-inactive')?.classList.toggle('active',tab==='inactive');
   loadAdminNotifications();
-}
+};
 
 window.loadAdminNotifications=async function(){
   const el=document.getElementById('admin-notif-list');
-  if(!el)return;
+  if(!el){console.error('admin-notif-list not found');return;}
   el.innerHTML='<div class="empty-state"><div class="spinner"></div>Loading…</div>';
   try{
     const docs=await getRootDocs('app_notifications');
+    console.log('[Notifications] docs fetched:',docs.length,'tab:',_notifTabView);
     if(!docs.length){
       const aEl=document.getElementById('notif-tab-active-count');
       const iEl=document.getElementById('notif-tab-inactive-count');
