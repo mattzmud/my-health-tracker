@@ -839,7 +839,7 @@ window.loadAdminNotifications=async function(){
           </div>
         </div>
       </div>`).join('');
-  }catch(e){el.innerHTML=`<div class="empty-state">Error: ${e.message}</div>`;}
+  }catch(e){console.error('loadAdminNotifications:',e);el.innerHTML=`<div class="empty-state">Error loading notifications: ${e.message}</div>`;}
 };
 
 window.openNotifForm=async function(editId){
@@ -996,12 +996,29 @@ window.saveNotif=async function(editId){
   if(editId)delete notif.createdAt; // don't overwrite createdAt on edit
 
   try{
-    await setRootDoc('app_notifications',id,notif);
+    const saveRes=await fetch(`${FS_ROOT}/app_notifications/${id}`,{
+      method:'PATCH',
+      headers:{Authorization:'Bearer '+await tok(),'Content-Type':'application/json'},
+      body:JSON.stringify({fields:await _notifToFields(notif)})
+    });
+    if(!saveRes.ok){
+      const err=await saveRes.text();
+      throw new Error('Firestore error: '+saveRes.status+' '+err.slice(0,100));
+    }
     document.querySelector('.modal-overlay')?.remove();
     showToast(editId?'✓ Notification updated.':'✓ Notification published!');
     loadAdminNotifications();
-  }catch(e){showToast('Error: '+e.message,'error');}
+  }catch(e){console.error('saveNotif error:',e);showToast('Error: '+e.message,'error');}
 };
+
+async function _notifToFields(notif){
+  const fields={};
+  for(const[k,v]of Object.entries(notif)){
+    if(v===undefined)continue;
+    fields[k]=await toFsVal(v);
+  }
+  return fields;
+}
 
 window.toggleNotifActive=async function(id,active){
   try{
@@ -1128,9 +1145,6 @@ window.loadAdminFeedback=async function(){
           <select class="ticket-status-select" id="status-${t.id}">
             ${['New','In review','In progress','Done','Closed'].map(s=>`<option${s===t.status?' selected':''}>${s}</option>`).join('')}
           </select>
-          <label style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--text);cursor:pointer">
-            <input type="checkbox" id="notify-${t.id}" style="accent-color:var(--accent)"/> Notify user
-          </label>
           <button class="btn btn-primary btn-sm" data-tid="${t.id}" data-uid="${t.uid}" onclick="saveTicket(this.dataset.tid,this.dataset.uid)">Send reply</button>
           <button class="btn btn-ghost btn-sm" style="color:var(--red)" data-tid="${t.id}" onclick="deleteTicket(this.dataset.tid)">Delete</button>
         </div>
@@ -1148,7 +1162,7 @@ window.loadAdminFeedback=async function(){
 window.saveTicket=async function(id,uid){
   const status=document.getElementById('status-'+id)?.value||'New';
   const replyText=(document.getElementById('note-'+id)?.value||'').trim();
-  const notify=document.getElementById('notify-'+id)?.checked||false;
+    const notify=!!replyText; // always notify user when a reply is typed
   try{
     // Fetch current ticket to get full messages array
     const docs=await getRootDocs('feedback');
@@ -1182,7 +1196,7 @@ window.saveTicket=async function(id,uid){
       });
     }
     const noteEl=document.getElementById('note-'+id);if(noteEl)noteEl.value='';
-    showToast('✓ '+(replyText?'Reply sent':'Status updated')+(notify?' · User notified':'')+'.');
+    showToast('✓ '+(replyText?'Reply sent':'Status updated')+(replyText?' · User notified':'')+'.');
     loadAdminFeedback();
   }catch(e){console.error('saveTicket:',e);showToast('Error: '+e.message,'error');}
 };
