@@ -348,7 +348,7 @@ function fv(f){
 }
 function ff(fields){const o={};Object.entries(fields||{}).forEach(([k,v])=>o[k]=fv(v));return o;}
 function docId(d){return d.name.split('/').pop();}
-function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+window.esc=function(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
 
 // ── AUTH ──
 onAuthStateChanged(auth,async user=>{
