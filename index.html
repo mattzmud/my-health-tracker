@@ -5770,15 +5770,13 @@ async function triggerGenderGoalUpdate(type){
   if(type==='nutrition'||type==='all'){
     coachMsg('&#127806; Recalculating your nutrition goals based on your updated profile...');
     try{
-      const res=await callAI(
-        'Recalculate nutrition goals for this user with updated gender/hormone info.',
-        `You are a nutrition expert. ${buildUserContext()}
-
-Return ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}
-Use TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activity level. Be specific to this person.`
-      );
-      const clean=res.replace(/```json|```/g,'').trim();
-      const ng=JSON.parse(clean);
+      const _nutCtx='Set personalized daily nutrition goals for: '+buildUserContext()+'\nBiological sex: '+(p.biologicalSex||'not specified')+(p.hrt==='Yes'?', Hormone therapy: '+(p.hrtDetail||'yes'):'')+'\nReturn ONLY valid JSON, no other text, no markdown: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}';
+      const res=await callAI(_nutCtx,'You are a nutrition expert. Return ONLY a valid JSON object with exactly these keys: proteinGoal, waterGoal, carbGoal, calorieGoal, sugarGoal, fiberGoal. No explanation, no markdown, no other text. Just the JSON object.');
+      // Robust JSON extraction — find first { to last }
+      const _jsonMatch=res.match(/\{[\s\S]*\}/);
+      if(!_jsonMatch)throw new Error('No JSON in response: '+res.slice(0,100));
+      const ng=JSON.parse(_jsonMatch[0]);
+      if(!ng.proteinGoal&&!ng.calorieGoal)throw new Error('Invalid goal data returned');
       // Capture old values BEFORE assignment
       const oldProtein=p.proteinGoal||120,oldWater=p.waterGoal||80,oldCarbs=p.carbGoal||100;
       const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28;
@@ -5814,7 +5812,7 @@ Use TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activ
       if(ca){
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
         const last=msgs[msgs.length-1];
-        const retryMsg='I had trouble recalculating your nutrition goals ('+escHtml(e.message||'unknown error')+'). <button onclick="triggerGenderGoalUpdate(&#39;nutrition&#39;);this.parentElement.innerHTML=&#39;Retrying...&#39;" style="background:rgba(255,255,255,0.2);border:1px solid rgba(255,255,255,0.4);color:#fff;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--font-body);margin-left:8px">Retry</button>';
+        const retryMsg='I had trouble recalculating your nutrition goals ('+escHtml(e.message||'unknown error')+'). <button onclick="triggerGenderGoalUpdate(&#39;nutrition&#39;);this.parentElement.innerHTML=&#39;Retrying...&#39;" style="background:#fff;border:1px solid rgba(255,255,255,0.9);color:#2c2416;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer;font-family:var(--font-body);margin-left:8px">Retry</button>';
         if(last&&last.textContent.includes('Recalculating'))last.innerHTML=retryMsg;
         else coachMsg(retryMsg);
         ca.scrollTop=ca.scrollHeight;
@@ -5834,11 +5832,15 @@ Use TDEE based on biological sex (${p.biologicalSex||'not specified'}) and activ
       p.workoutPlanEffectiveDate=tomorrowStr;
       await fbSet('profile','survey',p);
       await generateWellnessPlan(false,'Gender profile updated');
-      // Get the newly generated plan summary
-      const newPlan=window._profile?.wellnessPlan?.text||'';
-      const planPreview=newPlan?newPlan.split('\n').slice(0,4).join('<br>'):'';
+      // Build workout schedule preview from workoutPlan
+      const workoutDays=window._profile?.workoutPlan||[];
+      let planPreview='';
+      if(workoutDays.length){
+        planPreview=workoutDays.filter(d=>!d.rest).slice(0,4).map(d=>'<strong>'+d.day+':</strong> '+d.focus).join('<br>');
+        if(workoutDays.some(d=>d.rest))planPreview+=(planPreview?'<br>':'')+'<strong>Rest days:</strong> '+workoutDays.filter(d=>d.rest).map(d=>d.day).join(', ');
+      }
       const fitnessMsg='Your fitness plan has been regenerated! Your new plan starts <strong>tomorrow ('+tomorrowStr+')</strong>. Your previous plan and all logged workouts remain in your history.'
-        +(planPreview?'<br><br><div style="font-size:12px;opacity:0.85;background:rgba(0,0,0,0.15);padding:8px;border-radius:6px;margin-top:6px">'+planPreview+'...</div>':'')
+        +(planPreview?'<br><br><div style="font-size:12px;opacity:0.85;background:rgba(0,0,0,0.15);padding:8px 10px;border-radius:6px;margin-top:8px;line-height:1.8">'+planPreview+'</div>':'')
         +'<br><br>Head to the <strong>Fitness</strong> tab tomorrow to see your full new plan.';
       if(ca){
         const msgs=ca.querySelectorAll('.msg.ai .msg-bubble');
