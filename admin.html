@@ -263,9 +263,14 @@ body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-hei
     </div>
     <!-- Notifications panel -->
     <div id="admin-notifications-panel" style="display:none">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
         <div style="font-size:22px;font-family:var(--font-display);color:var(--text)">&#128276; Notification Deployment</div>
         <button class="btn btn-primary btn-sm" onclick="openNotifForm()">&#10133; New notification</button>
+      </div>
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:16px">
+        <button id="notif-tab-active" onclick="switchNotifTab('active')" class="admin-nav-btn active" style="padding:8px 16px">Active <span id="notif-tab-active-count" style="font-size:11px;background:rgba(85,107,47,0.15);color:var(--accent);border-radius:10px;padding:1px 6px;margin-left:4px"></span></button>
+        <button id="notif-tab-inactive" onclick="switchNotifTab('inactive')" class="admin-nav-btn" style="padding:8px 16px">Deactivated <span id="notif-tab-inactive-count" style="font-size:11px;background:rgba(122,111,94,0.12);color:var(--muted);border-radius:10px;padding:1px 6px;margin-left:4px"></span></button>
       </div>
       <!-- Notification list -->
       <div id="admin-notif-list"><div class="empty-state"><div class="spinner"></div>Loading…</div></div>
@@ -795,14 +800,28 @@ function _slugify(str){
   return str.toLowerCase().replace(/[^a-z0-9]+/g,'_').replace(/^_|_$/g,'').slice(0,40)+'_'+Date.now().toString(36);
 }
 
+let _notifTabView='active';
+
+function switchNotifTab(tab){
+  _notifTabView=tab;
+  document.getElementById('notif-tab-active')?.classList.toggle('active',tab==='active');
+  document.getElementById('notif-tab-inactive')?.classList.toggle('active',tab==='inactive');
+  loadAdminNotifications();
+}
+
 window.loadAdminNotifications=async function(){
   const el=document.getElementById('admin-notif-list');
   if(!el)return;
   el.innerHTML='<div class="empty-state"><div class="spinner"></div>Loading…</div>';
   try{
     const docs=await getRootDocs('app_notifications');
-    if(!docs.length){el.innerHTML='<div class="empty-state">No notifications yet. Create your first one.</div>';return;}
-    const notifs=docs.map(d=>{
+    if(!docs.length){
+      const aEl=document.getElementById('notif-tab-active-count');
+      const iEl=document.getElementById('notif-tab-inactive-count');
+      if(aEl)aEl.textContent='0';if(iEl)iEl.textContent='0';
+      el.innerHTML='<div class="empty-state">No notifications yet. Create your first one.</div>';return;
+    }
+    const allNotifs=docs.map(d=>{
       const f=d.fields||{};
       return{
         id:d.name.split('/').pop(),
@@ -818,6 +837,21 @@ window.loadAdminNotifications=async function(){
         createdAt:f.createdAt?.stringValue||'',
       };
     }).sort((a,b)=>b.createdAt.localeCompare(a.createdAt));
+
+    // Update tab counts
+    const activeCount=allNotifs.filter(n=>n.active).length;
+    const inactiveCount=allNotifs.filter(n=>!n.active).length;
+    const activeCountEl=document.getElementById('notif-tab-active-count');
+    const inactiveCountEl=document.getElementById('notif-tab-inactive-count');
+    if(activeCountEl)activeCountEl.textContent=activeCount;
+    if(inactiveCountEl)inactiveCountEl.textContent=inactiveCount;
+
+    const notifs=allNotifs.filter(n=>_notifTabView==='active'?n.active:!n.active);
+
+    if(!notifs.length){
+      el.innerHTML=`<div class="empty-state">${_notifTabView==='active'?'No active notifications. Create your first one.':'No deactivated notifications.'}</div>`;
+      return;
+    }
 
     el.innerHTML=notifs.map(n=>`
       <div class="notif-card" id="nc-${n.id}">
@@ -926,8 +960,8 @@ window.openNotifForm=async function(editId){
         </div>
         <div id="nf-section-section" style="display:${at==='open_section'?'block':'none'}">
           <div style="font-size:12px;color:var(--muted);margin-bottom:5px">Section to open</div>
-          <select id="nf-action-section" style="width:100%;font-family:var(--font-body);font-size:13px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)">
-            ${['dashboard','food','fitness','chat','vitals','recipes','profile','meds'].map(s=>`<option value="${s}" ${(existing?.actionSection||'')==s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
+          <select id="nf-action-section-select" style="width:100%;font-family:var(--font-body);font-size:13px;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)">
+            ${['dashboard','food','fitness','chat','vitals','recipes','profile','meds'].map(s=>`<option value="${s}" ${(existing?.actionSection||'dashboard')===s?'selected':''}>${s.charAt(0).toUpperCase()+s.slice(1)}</option>`).join('')}
           </select>
         </div>
       </div>
@@ -985,7 +1019,7 @@ window.saveNotif=async function(editId){
   const actionType=document.getElementById('nf-action-type')?.value||'coach_prefill';
   const actionLabel=(document.getElementById('nf-action-label')?.value||'').trim();
   const actionPayload=(document.getElementById('nf-action-payload')?.value||'').trim();
-  const actionSection=document.getElementById('nf-action-section')?.value||'dashboard';
+  const actionSection=document.getElementById('nf-action-section-select')?.value||'dashboard';
 
   const id=editId||_slugify(title);
   const notif={
