@@ -513,6 +513,8 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div class="stat-card"><div class="stat-num" id="dash-protein" style="color:var(--blue)">&#8212;</div><div class="stat-label" id="stat-protein-label">Protein Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-water" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-water-label">Water Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-fiber" style="color:var(--accent)">&#8212;</div><div class="stat-label" id="stat-fiber-label">Fiber Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-fat" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-fat-label">Fat Today</div></div>
+        <div class="stat-card"><div class="stat-num" id="dash-sodium" style="color:var(--blue)">&#8212;</div><div class="stat-label" id="stat-sodium-label">Sodium Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-calories" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-calories-label">Calories Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-carbs" style="color:var(--amber)">&#8212;</div><div class="stat-label" id="stat-carbs-label">Carbs Today</div></div>
         <div class="stat-card"><div class="stat-num" id="dash-sugar" style="color:var(--red)">&#8212;</div><div class="stat-label" id="stat-sugar-label">Sugar Today</div></div>
@@ -523,6 +525,8 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
           <div class="prog-wrap"><div class="prog-label"><span>Protein</span><span id="prog-protein-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-protein" style="width:0%;background:var(--accent)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Water</span><span id="prog-water-label">0 oz</span></div><div class="prog-bar"><div class="prog-fill" id="prog-water" style="width:0%;background:var(--accent-light)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fiber</span><span id="prog-fiber-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-fiber" style="width:0%;background:var(--accent)"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Fat</span><span id="prog-fat-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-fat" style="width:0%;background:var(--amber)"></div></div></div>
+          <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Sodium</span><span id="prog-sodium-label">0mg</span></div><div class="prog-bar"><div class="prog-fill" id="prog-sodium" style="width:0%;background:var(--blue)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Calories</span><span id="prog-cal-label">0 kcal</span></div><div class="prog-bar"><div class="prog-fill" id="prog-cal" style="width:0%;background:var(--red)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Net carbs</span><span id="prog-carbs-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-carbs" style="width:0%;background:var(--amber)"></div></div></div>
           <div class="prog-wrap" style="margin-top:10px"><div class="prog-label"><span>Sugar</span><span id="prog-sugar-label">0g</span></div><div class="prog-bar"><div class="prog-fill" id="prog-sugar" style="width:0%;background:var(--red)"></div></div></div>
@@ -571,6 +575,14 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div class="card">
           <div class="card-title" id="sugar-chart-title" style="margin-bottom:14px">Sugar</div>
           <canvas id="sugar-chart" height="160"></canvas>
+        </div>
+        <div class="card" style="flex:1;min-width:280px">
+          <div class="card-title" style="margin-bottom:14px">Fat</div>
+          <canvas id="fat-chart" height="160"></canvas>
+        </div>
+        <div class="card" style="flex:1;min-width:280px">
+          <div class="card-title" style="margin-bottom:14px">Sodium</div>
+          <canvas id="sodium-chart" height="160"></canvas>
         </div>
         <div class="card">
           <div class="card-title" id="fiber-chart-title" style="margin-bottom:14px">Fiber</div>
@@ -1071,6 +1083,14 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
               <span><span id="food-fiber-total" style="color:var(--accent);font-weight:600">0g</span> <span id="food-fiber-goal-label" style="color:var(--muted)">/ 28g goal</span></span>
             </div>
             <div class="prog-bar"><div class="prog-fill" id="food-prog-fiber" style="width:0%;background:var(--accent)"></div></div>
+          </div>
+          <div class="prog-wrap">
+            <div class="prog-label"><span>Fat</span><span id="food-fat-total">0g</span></div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-fat" style="width:0%;background:var(--amber)"></div></div>
+          </div>
+          <div class="prog-wrap">
+            <div class="prog-label"><span>Sodium</span><span id="food-sodium-total">0mg</span></div>
+            <div class="prog-bar"><div class="prog-fill" id="food-prog-sodium" style="width:0%;background:var(--blue)"></div></div>
           </div>
           <div class="prog-wrap" style="margin-top:10px">
             <div class="prog-label">
@@ -1867,6 +1887,8 @@ async function lookupOpenFoodFacts(query){
       carbs=Math.round((n2['carbohydrates_100g']||0)*scale*10)/10;
       sugar=Math.round((n2['sugars_100g']||0)*scale*10)/10;
       fiber=Math.round((n2['fiber_100g']||n2['fibers_100g']||0)*scale*10)/10;
+      fat=Math.round((n2['fat_100g']||0)*scale*10)/10;
+      sodium=Math.round((n2['sodium_100g']||0)*scale*1000); // OFF stores sodium in g/100g, convert to mg
       console.log('[OFF] Scaling _100g by '+scale.toFixed(2)+' → '+calories+'kcal '+protein+'pro '+carbs+'carbs');
     }
 
@@ -1881,7 +1903,7 @@ async function lookupOpenFoodFacts(query){
     const brandStr=Array.isArray(best.brands)?best.brands.join(', '):(best.brands||null);
     if(!brandStr&&bestScore<0.9){console.log('[OFF] Rejecting — no brand, low confidence');return null;}
     console.log('[OFF] Matched "'+best.product_name+'" ('+brandStr+') score='+bestScore.toFixed(2)+' → '+calories+'kcal '+protein+'g pro '+carbs+'g carbs');
-    return{calories,protein,carbs,sugar,fiber,source:'off',
+    return{calories,protein,carbs,sugar,fiber,fat:fat||0,sodium:sodium||0,source:'off',
       name:best.product_name,brand:brandStr,
       servingSize:servingG,servingSizeUnit:'g'};
   }catch(e){
@@ -1946,11 +1968,14 @@ async function lookupUSDA(query){
     // Only use labelNutrients if they have actual values
     const ln=detail.labelNutrients;
     const lnHasData=ln&&((ln.calories?.value||0)>0||(ln.protein?.value||0)>0);
+    let fat=0,sodium=0;
     if(lnHasData){
       calories=Math.round(ln.calories?.value||0);
       protein=Math.round((ln.protein?.value||0)*10)/10;
       carbs=Math.round((ln.carbohydrates?.value||0)*10)/10;
-      console.log('[USDA] Using labelNutrients (per-serving):',calories,'kcal',protein,'pro',carbs,'carbs');
+      fat=Math.round((ln.fat?.value||0)*10)/10;
+      sodium=Math.round(ln.sodium?.value||0);
+      console.log('[USDA] Using labelNutrients (per-serving):',calories,'kcal',protein,'pro',carbs,'carbs',fat,'fat',sodium,'sodium');
     } else {
       // For SR Legacy / Foundation: foodNutrients are per 100g, scale by serving
       const servingG=detail.servingSize||100;
@@ -1962,6 +1987,8 @@ async function lookupUSDA(query){
         if(name.includes('energy')&&!name.includes('alcohol'))calories=Math.round(val*scale);
         if(name==='protein')protein=Math.round(val*scale*10)/10;
         if(name.includes('carbohydrate, by difference'))carbs=Math.round(val*scale*10)/10;
+        if(name==='total lipid (fat)'||name==='fatty acids, total saturated'&&!fat)fat=Math.round(val*scale*10)/10;
+        if(name.includes('sodium'))sodium=Math.round(val*scale);
       });
       console.log('[USDA] Using foodNutrients scale='+scale.toFixed(2)+':',calories,'kcal',protein,'pro',carbs,'carbs');
     }
@@ -1978,7 +2005,7 @@ async function lookupUSDA(query){
     console.log('[USDA] Final:',best.description,'→',calories,'kcal',protein,'pro',carbs,'carbs');
     const usdaSugar=Math.round((raw.sugar||0)*scale*10)/10;
     const usdaFiber=Math.round((raw.fiber||0)*scale*10)/10;
-    return{calories,protein,carbs,sugar:usdaSugar,fiber:usdaFiber,source:'usda',
+    return{calories,protein,carbs,sugar:usdaSugar,fiber:usdaFiber,fat:fat||0,sodium:sodium||0,source:'usda',
       name:best.description,brand:best.brandOwner||null,
       servingSize:detail.servingSize,servingSizeUnit:detail.servingSizeUnit};
   }catch(e){
@@ -2362,7 +2389,7 @@ async function generatePlan(){
   window._profile=profile;
   // Run nutrition goals + workout plan in parallel — both independent
   const nutritionPromise=callAI(
-    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs, Biological sex: '+(profile.biologicalSex||'Not specified')+(profile.hrt==='Yes'?', Hormone therapy: Yes'+(profile.hrtDetail?' ('+profile.hrtDetail+')':''):'')+'\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30}\nProtein in grams, water in oz, net carbs in grams, calories in kcal, sugar in grams (daily limit), fiber in grams (daily target — typically 25-38g, higher for diabetics). Calculate calorie goal using TDEE. Be specific to this person.',
+    'Set personalized daily nutrition goals for:\nName: '+profile.name+', Age: '+(profile.dob?computeAge(profile.dob):profile.age)+', Weight: '+profile.currentWeight+'lbs, Goal weight: '+profile.goalWeight+'lbs, Biological sex: '+(profile.biologicalSex||'Not specified')+(profile.hrt==='Yes'?', Hormone therapy: Yes'+(profile.hrtDetail?' ('+profile.hrtDetail+')':''):'')+'\nConditions: '+(profile.conditions.join(', ')||'None')+'\nDiet preferences: '+(profile.dietPrefs?profile.dietPrefs.join(', '):'None')+'\nFitness goals: '+profile.fitnessGoals.join(', ')+'\nActivity level: '+profile.activityLevel+'\nCurrent calorie intake (self-reported): '+(profile.currentCalories?profile.currentCalories+' kcal/day':'not provided')+'\nReturn ONLY valid JSON, nothing else: {"proteinGoal":150,"waterGoal":96,"carbGoal":80,"calorieGoal":2200,"sugarGoal":50,"fiberGoal":30,"fatGoal":65,"sodiumGoal":2300}\nProtein in grams, water in oz, net carbs in grams, calories in kcal, sugar in grams (daily limit), fiber in grams (daily target), fat in grams (daily limit), sodium in mg (daily limit — AHA recommends under 2300mg, adjust for conditions). Calculate calorie and fat goals using TDEE and biological sex. Be specific to this person.',
     'You are a registered dietitian. Return ONLY valid JSON, nothing else.'
   ).catch(()=>null);
 
@@ -2387,6 +2414,8 @@ async function generatePlan(){
         if(ng.calorieGoal&&ng.calorieGoal>0)window._profile.calorieGoal=Math.round(ng.calorieGoal);
         if(ng.sugarGoal&&ng.sugarGoal>0)window._profile.sugarGoal=Math.round(ng.sugarGoal);
         if(ng.fiberGoal&&ng.fiberGoal>0)window._profile.fiberGoal=Math.round(ng.fiberGoal);
+        if(ng.fatGoal&&ng.fatGoal>0)window._profile.fatGoal=Math.round(ng.fatGoal);
+        if(ng.sodiumGoal&&ng.sodiumGoal>0)window._profile.sodiumGoal=Math.round(ng.sodiumGoal);
       }
     }
   }catch(e){}
@@ -2433,7 +2462,7 @@ async function generatePlan(){
 }
 
 function buildProfileFromObData(){
-  return{name:obData.ob_name||'Friend',dob:obData.ob_dob||null,genderIdentity:obData.ob_gender_identity||'',biologicalSex:obData.ob_biological_sex||'',hrt:obData.ob_hrt||'No',hrtDetail:obData.ob_hrt_detail||'',age:computeAge(obData.ob_dob)||parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,calorieGoal:2000,currentCalories:parseInt(obData.ob_current_calories)||null,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
+  return{name:obData.ob_name||'Friend',dob:obData.ob_dob||null,genderIdentity:obData.ob_gender_identity||'',biologicalSex:obData.ob_biological_sex||'',hrt:obData.ob_hrt||'No',hrtDetail:obData.ob_hrt_detail||'',age:computeAge(obData.ob_dob)||parseInt(obData.ob_age)||30,currentWeight:parseFloat(obData.ob_weight)||150,goalWeight:parseFloat(obData.ob_goal_weight)||130,height:obData.ob_height||'',conditions:obData.health_multi||[],medsAll:(obData.ob_meds_all||'').split('\n').map(m=>m.trim()).filter(Boolean),favFoods:obData.ob_fav_foods||'',avoidFoods:obData.ob_avoid_foods||'',dietPrefs:obData.nutrition_multi||[],activityLevel:obData.fitness_single||'Lightly active',fitnessGoals:obData.fitness_multi||['Lose weight'],equipment:obData.ob_equipment||'Basic gym equipment',injuries:obData.ob_injuries||'None',sessionTime:obData.lifestyle_single||'30-45 minutes',job:obData.ob_job||'',notes:obData.ob_notes||'',proteinGoal:120,waterGoal:80,carbGoal:100,calorieGoal:2000,fatGoal:65,sodiumGoal:2300,currentCalories:parseInt(obData.ob_current_calories)||null,trackBP:(obData.vitals_multi||[]).includes('Blood pressure'),trackBS:(obData.vitals_multi||[]).includes('Blood sugar'),trackMeds:obData.medications_single==='Yes, I take medications I want to track'};
 }
 
 function getDefaultWorkoutPlan(){
@@ -2743,6 +2772,17 @@ function refreshDashboard(){
   const _sl2=document.getElementById('stat-sugar-label');if(_sl2)_sl2.textContent=goalsDate===TODAY?'Sugar Today':'Sugar '+goalsDate.slice(5);
   document.getElementById('dash-fiber').textContent=Math.round(tf_)+'g';
   const _fl=document.getElementById('stat-fiber-label');if(_fl)_fl.textContent=goalsDate===TODAY?'Fiber Today':'Fiber '+goalsDate.slice(5);
+  const _tFat=entries.reduce((a,e)=>a+(e.fat||0),0);
+  const _tSodium=entries.reduce((a,e)=>a+(e.sodium||0),0);
+  const _fatGoal=p.fatGoal||65,_sodiumGoal=p.sodiumGoal||2300;
+  const _dashFat=document.getElementById('dash-fat');if(_dashFat)_dashFat.textContent=Math.round(_tFat)+'g';
+  const _dashSodium=document.getElementById('dash-sodium');if(_dashSodium)_dashSodium.textContent=Math.round(_tSodium)+'mg';
+  const _fatLbl=document.getElementById('stat-fat-label');if(_fatLbl)_fatLbl.textContent=goalsDate===TODAY?'Fat Today':'Fat '+goalsDate.slice(5);
+  const _sodiumLbl=document.getElementById('stat-sodium-label');if(_sodiumLbl)_sodiumLbl.textContent=goalsDate===TODAY?'Sodium Today':'Sodium '+goalsDate.slice(5);
+  const _pfa=document.getElementById('prog-fat');if(_pfa){_pfa.style.width=Math.min(100,(_tFat/_fatGoal)*100)+'%';_pfa.style.background=_tFat>_fatGoal?'var(--red)':'var(--amber)';}
+  const _pfal=document.getElementById('prog-fat-label');if(_pfal)_pfal.textContent=Math.round(_tFat)+' / '+_fatGoal+'g'+(_tFat>_fatGoal?' ⚠':'');
+  const _pso=document.getElementById('prog-sodium');if(_pso){_pso.style.width=Math.min(100,(_tSodium/_sodiumGoal)*100)+'%';_pso.style.background=_tSodium>_sodiumGoal?'var(--red)':'var(--blue)';}
+  const _psol=document.getElementById('prog-sodium-label');if(_psol)_psol.textContent=Math.round(_tSodium)+' / '+_sodiumGoal+'mg'+(_tSodium>_sodiumGoal?' ⚠':'');
   // Sugar progress bar (dashboard)
   const _sugarBar=document.getElementById('prog-sugar');
   if(_sugarBar){_sugarBar.style.width=Math.min(100,(ts_/sg)*100)+'%';_sugarBar.style.background=ts_>sg?'var(--red)':'rgba(192,57,43,0.6)';}
@@ -2810,7 +2850,7 @@ function refreshDashboard(){
     wh.innerHTML='<div style="margin-bottom:4px">Recent: '+rec+'</div>';
     if(cache.weights.length>1){const diff=+(cache.weights[cache.weights.length-1].val-cache.weights[cache.weights.length-2].val).toFixed(1);wh.innerHTML+='<div style="font-size:12px;color:'+(diff<0?'var(--green)':diff>0?'var(--red)':'var(--muted)')+'">vs last: '+(diff>0?'+':'')+diff+' lbs</div>';}
   }
-  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();renderFiberChart();
+  renderWeightChart();renderProteinChart();renderWaterChart();renderCarbsChart();renderCalChart();renderSugarChart();renderFiberChart();renderFatChart();renderSodiumChart();
   renderDashboardVitals();
   applyMedsVisibility();
 }
@@ -3029,7 +3069,22 @@ function renderSugarChart(){
 let fiberChart=null;
 function renderFiberChart(){
   const days=getDashDays(),goal=(window._profile||{}).fiberGoal||28;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.fiber||0),0)));
+  const data=days.map(d=>{
+    const foodFiber=(cache.food[d]||[]).reduce((a,e)=>a+(e.fiber||0),0);
+    let medFiber=0;
+    if(cache.trackMeds!==false){
+      const ms=cache.meds[d]||{};
+      Object.values(cache.medsList||{}).forEach(med=>{
+        if(!med.fiberGrams)return;
+        const times=med.times||['am'];
+        if(times.includes('wk')||times.includes('prn'))return;
+        times.filter(t=>['am','af','pm'].includes(t)).forEach(t=>{
+          if(ms[t+'-'+(med.id||med.name)])medFiber+=med.fiberGrams*(med.qty||1);
+        });
+      });
+    }
+    return Math.round(foodFiber+medFiber);
+  });
   const ctx=document.getElementById('fiber-chart')?.getContext('2d');if(!ctx)return;
   if(fiberChart)fiberChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
@@ -3047,6 +3102,52 @@ function renderFiberChart(){
     scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
       y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},
         suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+5)}}}});
+}
+
+let fatChart=null,sodiumChart=null;
+
+function renderFatChart(){
+  const days=getDashDays(),goal=(window._profile||{}).fatGoal||65;
+  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.fat||0),0)*10)/10);
+  const ctx=document.getElementById('fat-chart')?.getContext('2d');if(!ctx)return;
+  if(fatChart)fatChart.destroy();
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
+  const goalLine=days.map(()=>goal);
+  fatChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[
+    {label:'Fat',data,
+      backgroundColor:data.map(v=>v>goal?'rgba(138,106,26,0.7)':'rgba(138,106,26,0.35)'),
+      borderColor:data.map(v=>v>goal?'rgba(138,106,26,0.9)':'rgba(138,106,26,0.6)'),
+      borderWidth:1,borderRadius:4,order:2},
+    {label:'Limit',data:goalLine,type:'line',borderColor:'rgba(138,106,26,0.5)',
+      borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false,order:1}
+  ]},
+  options:{responsive:true,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='Limit'?'Limit: '+ctx.raw+'g':'Fat: '+ctx.raw+'g'+(ctx.raw>goal?' ⚠':'')}}},
+    scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
+      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},
+        suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+5)}}}});
+}
+
+function renderSodiumChart(){
+  const days=getDashDays(),goal=(window._profile||{}).sodiumGoal||2300;
+  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.sodium||0),0)));
+  const ctx=document.getElementById('sodium-chart')?.getContext('2d');if(!ctx)return;
+  if(sodiumChart)sodiumChart.destroy();
+  const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
+  const goalLine=days.map(()=>goal);
+  sodiumChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[
+    {label:'Sodium',data,
+      backgroundColor:data.map(v=>v>goal?'rgba(42,90,138,0.7)':'rgba(42,90,138,0.35)'),
+      borderColor:data.map(v=>v>goal?'rgba(42,90,138,0.9)':'rgba(42,90,138,0.6)'),
+      borderWidth:1,borderRadius:4,order:2},
+    {label:'Limit',data:goalLine,type:'line',borderColor:'rgba(42,90,138,0.5)',
+      borderWidth:1.5,borderDash:[4,4],pointRadius:0,fill:false,order:1}
+  ]},
+  options:{responsive:true,plugins:{legend:{display:false},
+    tooltip:{callbacks:{label:ctx=>ctx.dataset.label==='Limit'?'Limit: '+ctx.raw+'mg':'Sodium: '+ctx.raw+'mg'+(ctx.raw>goal?' ⚠':'')}}},
+    scales:{x:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}}},
+      y:{grid:{color:'rgba(85,107,47,0.08)'},ticks:{color:'#7a6f5e',font:{family:'DM Sans'}},
+        suggestedMax:Math.max(goal*1.2,Math.max(...data,goal)+100)}}}});
 }
 
 function renderCarbsChart(){
@@ -3069,7 +3170,7 @@ function renderCarbsChart(){
 
 function buildUserContext(){
   const p=window._profile||{};
-  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs'+(p.genderIdentity?', Identifies as: '+p.genderIdentity:'')+(p.biologicalSex?', Biological sex: '+p.biologicalSex:'')+(p.hrt&&p.hrt==='Yes'?', Hormone therapy: Yes'+(p.hrtDetail?' ('+p.hrtDetail+')':''):', Hormone therapy: No')+'\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit, '+(p.fiberGoal||28)+'g fiber target';
+  return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs'+(p.genderIdentity?', Identifies as: '+p.genderIdentity:'')+(p.biologicalSex?', Biological sex: '+p.biologicalSex:'')+(p.hrt&&p.hrt==='Yes'?', Hormone therapy: Yes'+(p.hrtDetail?' ('+p.hrtDetail+')':''):', Hormone therapy: No')+'\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit, '+(p.fiberGoal||28)+'g fiber target, '+(p.fatGoal||65)+'g fat limit, '+(p.sodiumGoal||2300)+'mg sodium limit';
 }
 
 // ── FOOD DIARY ──────────────────────────────────────────────
@@ -3090,8 +3191,8 @@ async function logFood(){
     if(window._barcodePreFill&&items.length===1){
       const pf=window._barcodePreFill;
       cache.food[viewDate].push({time:mt,text:rawText,
-        protein:pf.protein,carbs:pf.carbs,calories:pf.calories,sugar:pf.sugar||0,fiber:pf.fiber||0,
-        baseProtein:pf.protein,baseCarbs:pf.carbs,baseCalories:pf.calories,baseSugar:pf.sugar||0,baseFiber:pf.fiber||0,
+        protein:pf.protein,carbs:pf.carbs,calories:pf.calories,sugar:pf.sugar||0,fiber:pf.fiber||0,fat:pf.fat||0,sodium:pf.sodium||0,
+        baseProtein:pf.protein,baseCarbs:pf.carbs,baseCalories:pf.calories,baseSugar:pf.sugar||0,baseFiber:pf.fiber||0,baseFat:pf.fat||0,baseSodium:pf.sodium||0,
         servings:1,water:0,ts:Date.now(),source:pf.source});
       window._barcodePreFill=null;
       await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
@@ -3128,7 +3229,7 @@ async function logFood(){
       }
       if(correction){
         console.log('[Corrections] Using correction for "'+item+'"');
-        return{...correction,source:'edited'};
+        return{...correction,fat:correction.fat||0,sodium:correction.sodium||0,source:'edited'};
       }
       // No user correction found — try databases
       const off=await lookupOpenFoodFacts(item);
@@ -3149,7 +3250,7 @@ async function logFood(){
       const _dayCtxAI=Object.keys(_othAI).length?' | Other meals today: '+Object.entries(_othAI).map(([t,its])=>t+': '+its.join(', ')).join(' | '):'';
       const res=await callAI(
         'Meal: '+mt+_mealCtxAI+_dayCtxAI+'\nItems needing nutrition estimates:\n'+itemsNeedingAI.map((it,i)=>(i+1)+'. '+it).join('\n'),
-        'You are a nutrition coach. '+buildUserContext()+'\n\nReturn a JSON array with EXACTLY '+itemsNeedingAI.length+' objects, one per item in order listed. Then a blank line. Then 2-3 sentences of feedback considering the full meal context.\n\nFormat:\n[\n{"item":"name","protein":26,"carbs":0,"calories":140,"sugar":0,"fiber":0}\n]\n\nFeedback text here.\n\nRules: realistic individual estimates, integers, same order as listed, do not combine items.'
+        'You are a nutrition coach. '+buildUserContext()+'\n\nReturn a JSON array with EXACTLY '+itemsNeedingAI.length+' objects, one per item in order listed. Then a blank line. Then 2-3 sentences of feedback considering the full meal context.\n\nFormat:\n[\n{"item":"name","protein":26,"carbs":0,"calories":140,"sugar":0,"fiber":0,"fat":5,"sodium":320}\n]\n\nFeedback text here.\n\nRules: realistic individual estimates, integers, fat in grams, sodium in mg, same order as listed, do not combine items.'
       );
       try{
         const start=res.indexOf('[');
@@ -3187,10 +3288,10 @@ async function logFood(){
       const usda=dbResults[i];
       let macros;
       if(usda){
-        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs,sugar:usda.sugar||0,fiber:usda.fiber||0};
+        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs,sugar:usda.sugar||0,fiber:usda.fiber||0,fat:usda.fat||0,sodium:usda.sodium||0};
       } else {
         const ai=aiParsed[aiIdx]||{protein:0,carbs:0,calories:0};
-        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10,sugar:Math.round((ai.sugar||0)*10)/10,fiber:Math.round((ai.fiber||0)*10)/10};
+        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10,sugar:Math.round((ai.sugar||0)*10)/10,fiber:Math.round((ai.fiber||0)*10)/10,fat:Math.round((ai.fat||0)*10)/10,sodium:Math.round(ai.sodium||0)};
         aiIdx++;
       }
       cache.food[viewDate].push({
@@ -3201,11 +3302,15 @@ async function logFood(){
         calories:macros.calories,
         sugar:macros.sugar||0,
         fiber:macros.fiber||0,
+        fat:macros.fat||0,
+        sodium:macros.sodium||0,
         baseProtein:macros.protein,
         baseCarbs:macros.carbs,
         baseCalories:macros.calories,
         baseSugar:macros.sugar||0,
         baseFiber:macros.fiber||0,
+        baseFat:macros.fat||0,
+        baseSodium:macros.sodium||0,
         servings:1,
         water:0,
         ts:Date.now()+i,
@@ -3388,6 +3493,8 @@ function renderFoodEntries(){
   const entries=cache.food[viewDate]||[];
   const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),tsugar=entries.reduce((a,e)=>a+(e.sugar||0),0);
   let tfiber=entries.reduce((a,e)=>a+(e.fiber||0),0);
+  let tfat=entries.reduce((a,e)=>a+(e.fat||0),0);
+  let tsodium=entries.reduce((a,e)=>a+(e.sodium||0),0);
   const p=window._profile||{};
   const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100, sg2=p.sugarGoal||50, fg2=p.fiberGoal||28;
   // Update log title
@@ -3418,6 +3525,11 @@ function renderFoodEntries(){
   }
   tfiber+=_medFiberFood;
   const fft=document.getElementById('food-fiber-total');if(fft)fft.textContent=Math.round(tfiber)+'g';
+  const ffat=document.getElementById('food-fat-total');if(ffat)ffat.textContent=Math.round(tfat)+'g';
+  const fsodt=document.getElementById('food-sodium-total');if(fsodt)fsodt.textContent=Math.round(tsodium)+'mg';
+  const fatGoal2=window._profile?.fatGoal||65,sodiumGoal2=window._profile?.sodiumGoal||2300;
+  const ffatp=document.getElementById('food-prog-fat');if(ffatp){ffatp.style.width=Math.min(100,(tfat/fatGoal2)*100)+'%';ffatp.style.background=tfat>fatGoal2?'var(--red)':'var(--amber)';}
+  const fsodp=document.getElementById('food-prog-sodium');if(fsodp){fsodp.style.width=Math.min(100,(tsodium/sodiumGoal2)*100)+'%';fsodp.style.background=tsodium>sodiumGoal2?'var(--red)':'var(--blue)';}
   const ffgl=document.getElementById('food-fiber-goal-label');if(ffgl)ffgl.textContent='/ '+fg2+'g goal';
   const ffp=document.getElementById('food-prog-fiber');if(ffp){ffp.style.width=Math.min(100,(tfiber/fg2)*100)+'%';ffp.style.background=tfiber>=fg2?'var(--accent)':'rgba(85,107,47,0.4)';};
   document.getElementById('food-cal-total').textContent=Math.round(tcal)+' kcal';
@@ -3499,6 +3611,8 @@ function renderFoodEntries(){
           +(e.carbs!=null?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>':'')
           +(e.sugar!=null&&e.sugar>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.sugar)+'g sugar</span>':'')
           +(e.fiber!=null&&e.fiber>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.fiber)+'g fiber</span>':'')
+          +(e.fat!=null&&e.fat>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.fat)+'g fat</span>':'')
+          +(e.sodium!=null&&e.sodium>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.sodium)+'mg sodium</span>':'')
           +'<span style="font-size:11px;color:var(--muted);font-style:italic">'+servingLabel+'</span>'
           +(e.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; Verified</span>':e.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#10003; USDA</span>':e.source==='edited'?'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(42,90,138,0.2)">&#9998; Edited</span>':'')
           +'</div></div>'
@@ -3603,21 +3717,27 @@ async function _lookupBarcode_OFF(barcode){
   const n=data.nutriments;
   const sq=parseFloat(data.serving_quantity)||100;
   // Prefer _serving fields
-  let calories,protein,carbs,sugar;
+  let calories,protein,carbs,sugar,fat=0,sodium=0,fiber=0;
   if(n['energy-kcal_serving']){
     calories=Math.round(n['energy-kcal_serving']||0);
     protein=Math.round((n['proteins_serving']||0)*10)/10;
     carbs=Math.round((n['carbohydrates_serving']||0)*10)/10;
     sugar=Math.round((n['sugars_serving']||0)*10)/10;
+    fat=Math.round((n['fat_serving']||0)*10)/10;
+    sodium=Math.round((n['sodium_serving']||0)*1000);
+    fiber=Math.round((n['fiber_serving']||n['fibers_serving']||0)*10)/10;
   } else {
     const scale=sq/100;
     calories=Math.round((n['energy-kcal_100g']||0)*scale);
     protein=Math.round((n['proteins_100g']||0)*scale*10)/10;
     carbs=Math.round((n['carbohydrates_100g']||0)*scale*10)/10;
     sugar=Math.round((n['sugars_100g']||0)*scale*10)/10;
+    fat=Math.round((n['fat_100g']||0)*scale*10)/10;
+    sodium=Math.round((n['sodium_100g']||0)*scale*1000);
+    fiber=Math.round((n['fiber_100g']||n['fibers_100g']||0)*scale*10)/10;
   }
   if(!calories&&!protein)return null;
-  return{name:data.product_name,brand:data.brands,calories,protein,carbs,sugar,source:'off',barcode};
+  return{name:data.product_name,brand:data.brands,calories,protein,carbs,sugar,fat,sodium,fiber,source:'off',barcode};
 }
 
 async function _lookupBarcode_USDA(barcode){
@@ -3656,14 +3776,15 @@ function _prefillFromBarcode(result){
   window._barcodePreFill={
     text:result.name+(result.brand?' ('+result.brand+')':''),
     calories:result.calories,protein:result.protein,
-    carbs:result.carbs,sugar:result.sugar||0,
+    carbs:result.carbs,sugar:result.sugar||0,fiber:result.fiber||0,
+    fat:result.fat||0,sodium:result.sodium||0,
     source:result.source
   };
   // Show confirmation banner
   const fb=document.getElementById('food-feedback');
   if(fb)fb.innerHTML='<div style="padding:10px 12px;background:rgba(85,107,47,0.1);border:1px solid rgba(85,107,47,0.25);border-radius:8px;font-size:13px;color:var(--text);margin-top:8px">'
     +'<div style="font-weight:600;margin-bottom:4px">&#10003; '+(result.source==='off'?'Verified':'USDA')+' match: '+escHtml(result.name)+'</div>'
-    +'<div style="font-size:12px;color:var(--muted)">'+result.calories+' kcal &middot; '+result.protein+'g pro &middot; '+result.carbs+'g carbs &middot; '+result.sugar+'g sugar</div>'
+    +'<div style="font-size:12px;color:var(--muted)">'+result.calories+' kcal &middot; '+result.protein+'g pro &middot; '+result.carbs+'g carbs &middot; '+result.sugar+'g sugar'+(result.fat?(' &middot; '+result.fat+'g fat'):'')+(result.sodium?(' &middot; '+result.sodium+'mg sodium'):'')+'</div>'
     +'<div style="font-size:12px;color:var(--muted);margin-top:4px">Select meal type and tap Log &amp; Analyze to confirm.</div>'
     +'</div>';
 }
@@ -3684,7 +3805,7 @@ function openEditEntry(ts){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
   const servings=entry.servings||1;
-  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0};
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0,fat:entry.baseFat||entry.fat||0,sodium:entry.baseSodium||entry.sodium||0};
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
   modal.innerHTML='<div class="date-picker-card" style="max-width:500px">'
@@ -3704,9 +3825,13 @@ function openEditEntry(ts){
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Protein (g)</div><input type="number" id="edit-pro" value="'+Math.round(entry.protein)+'" min="0" style="width:100%;font-size:15px"/></div>'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Carbs (g)</div><input type="number" id="edit-carbs" value="'+Math.round(entry.carbs)+'" min="0" style="width:100%;font-size:15px"/></div>'
     +'</div>'
-    +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">'
+    +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px">'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sugar (g)</div><input type="number" id="edit-sugar" value="'+Math.round(entry.sugar||0)+'" min="0" style="width:100%;font-size:15px"/></div>'
     +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Fiber (g)</div><input type="number" id="edit-fiber" value="'+Math.round(entry.fiber||0)+'" min="0" style="width:100%;font-size:15px"/></div>'
+    +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px">'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Fat (g)</div><input type="number" id="edit-fat" value="'+Math.round(entry.fat||0)+'" min="0" style="width:100%;font-size:15px"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:4px">Sodium (mg)</div><input type="number" id="edit-sodium" value="'+Math.round(entry.sodium||0)+'" min="0" style="width:100%;font-size:15px"/></div>'
     +'</div></div>'
     +'<div style="display:flex;gap:8px">'
     +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="document.querySelectorAll(&#39;.date-picker-modal&#39;)[document.querySelectorAll(&#39;.date-picker-modal&#39;).length-1].remove()">Cancel</button>'
@@ -3721,7 +3846,7 @@ function openEditEntry(ts){
 function adjustServings(ts,delta){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
-  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0};
+  const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0,fat:entry.baseFat||entry.fat||0,sodium:entry.baseSodium||entry.sodium||0};
   const current=entry.servings||1;
   const next=Math.max(0.25,Math.round((current+delta)*4)/4);
   entry.servings=next;
@@ -3737,6 +3862,8 @@ function adjustServings(ts,delta){
   if(carbsEl)carbsEl.value=Math.round(base.carbs*next*10)/10;
   const sugarEl=document.getElementById('edit-sugar');if(sugarEl)sugarEl.value=Math.round(base.sugar*next*10)/10;
   const fiberEl=document.getElementById('edit-fiber');if(fiberEl)fiberEl.value=Math.round(base.fiber*next*10)/10;
+  const fatEl=document.getElementById('edit-fat');if(fatEl)fatEl.value=Math.round(base.fat*next*10)/10;
+  const sodiumEl=document.getElementById('edit-sodium');if(sodiumEl)sodiumEl.value=Math.round(base.sodium*next);
 }
 
 async function saveEditEntry(ts){
@@ -3747,6 +3874,8 @@ async function saveEditEntry(ts){
   const carbs=parseFloat(document.getElementById('edit-carbs').value)||0;
   const sugar2=parseFloat(document.getElementById('edit-sugar')?.value)||0;
   const fiber2=parseFloat(document.getElementById('edit-fiber')?.value)||0;
+  const fat2=parseFloat(document.getElementById('edit-fat')?.value)||0;
+  const sodium2=parseFloat(document.getElementById('edit-sodium')?.value)||0;
   const servings=entry.servings||1;
   // Store base values (per single serving) derived from new manual values
   entry.calories=Math.round(cal);
@@ -3754,13 +3883,16 @@ async function saveEditEntry(ts){
   entry.carbs=Math.round(carbs*10)/10;
   entry.sugar=Math.round(sugar2*10)/10;
   entry.fiber=Math.round(fiber2*10)/10;
+  entry.fat=Math.round(fat2*10)/10;
+  entry.sodium=Math.round(sodium2);
   entry.servings=servings;
-  // Update base macros to match manual edit (so future serving adjustments work correctly)
   entry.baseCalories=Math.round(cal/servings);
   entry.baseProtein=Math.round((pro/servings)*10)/10;
   entry.baseCarbs=Math.round((carbs/servings)*10)/10;
   entry.baseSugar=Math.round((sugar2/servings)*10)/10;
   entry.baseFiber=Math.round((fiber2/servings)*10)/10;
+  entry.baseFat=Math.round((fat2/servings)*10)/10;
+  entry.baseSodium=Math.round(sodium2/servings);
   entry.source='edited';
   // Save correction to personal cache so future logs use corrected values
   const corrKey=entry.text.toLowerCase().trim();
@@ -3770,6 +3902,8 @@ async function saveEditEntry(ts){
     carbs:entry.baseCarbs,
     sugar:entry.baseSugar||0,
     fiber:entry.baseFiber||0,
+    fat:entry.baseFat||0,
+    sodium:entry.baseSodium||0,
     name:entry.text,
     savedAt:Date.now()
   };
@@ -6105,6 +6239,8 @@ function renderProfile(){
       const tcal=document.getElementById('plan-tile-cal');if(tcal)tcal.textContent=(p.calorieGoal||'—')+' kcal';
       const tsugar=document.getElementById('plan-tile-sugar');if(tsugar)tsugar.textContent=(p.sugarGoal||'—')+'g';
       const tfiber=document.getElementById('plan-tile-fiber');if(tfiber)tfiber.textContent=(p.fiberGoal||'—')+'g';
+      const tfatTile=document.getElementById('plan-tile-fat');if(tfatTile)tfatTile.textContent=(p.fatGoal||'—')+'g';
+      const tsodiumTile=document.getElementById('plan-tile-sodium');if(tsodiumTile)tsodiumTile.textContent=(p.sodiumGoal||'—')+'mg';
     }
   }else{
     if(planCard){planCard.style.display='block';planCard.classList.add('collapsed');}
@@ -6303,13 +6439,15 @@ async function triggerGenderGoalUpdate(type){
       const _explanation=_afterJson.replace(/^\n+/,'').trim();
       // Capture old values BEFORE assignment
       const oldProtein=p.proteinGoal||120,oldWater=p.waterGoal||80,oldCarbs=p.carbGoal||100;
-      const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28;
+      const oldCal=p.calorieGoal||2000,oldSugar=p.sugarGoal||50,oldFiber=p.fiberGoal||28,oldFat=p.fatGoal||65,oldSodium=p.sodiumGoal||2300;
       if(ng.proteinGoal)p.proteinGoal=Math.round(ng.proteinGoal);
       if(ng.waterGoal)p.waterGoal=Math.round(ng.waterGoal);
       if(ng.carbGoal)p.carbGoal=Math.round(ng.carbGoal);
       if(ng.calorieGoal)p.calorieGoal=Math.round(ng.calorieGoal);
       if(ng.sugarGoal)p.sugarGoal=Math.round(ng.sugarGoal);
       if(ng.fiberGoal)p.fiberGoal=Math.round(ng.fiberGoal);
+      if(ng.fatGoal)p.fatGoal=Math.round(ng.fatGoal);
+      if(ng.sodiumGoal)p.sodiumGoal=Math.round(ng.sodiumGoal);
       await fbSet('profile','survey',p);
       refreshDashboard();
       // Build change summary for chat
@@ -6320,6 +6458,8 @@ async function triggerGenderGoalUpdate(type){
       if(p.calorieGoal!==oldCal)changes.push('<strong>Calories:</strong> '+oldCal+' → '+p.calorieGoal+' kcal');
       if(p.sugarGoal!==oldSugar)changes.push('<strong>Sugar limit:</strong> '+oldSugar+'g → '+p.sugarGoal+'g');
       if(p.fiberGoal!==oldFiber)changes.push('<strong>Fiber goal:</strong> '+oldFiber+'g → '+p.fiberGoal+'g');
+      if(p.fatGoal!==(oldFat||65))changes.push('<strong>Fat limit:</strong> '+(oldFat||65)+'g → '+p.fatGoal+'g');
+      if(p.sodiumGoal!==(oldSodium||2300))changes.push('<strong>Sodium limit:</strong> '+(oldSodium||2300)+'mg → '+p.sodiumGoal+'mg');
       const msg=changes.length
         ?'Your nutrition goals have been updated:<br><br>'+changes.join('<br>')
           +(_explanation?'<br><br><em style="opacity:0.85">'+_explanation+'</em>':'')
@@ -7018,7 +7158,7 @@ async function sendChat(){
   ca.innerHTML+='<div class="msg ai" id="'+tid+'"><div class="msg-avatar">&#127807;</div><div class="msg-bubble"><div class="spinner"></div></div></div>';
   ca.scrollTop=ca.scrollHeight;
   try{
-    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. \'+( (_getAllCategories&&_getAllCategories().length)?(\'Existing categories to reuse if they match: \'+_getAllCategories().join(\', \')+\'. Only create new ones if none fit.\'):(\'Categories: Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert.\'))+\'  Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS,"fiberGoal":FIBER_GRAMS}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nIf the user wants to update their gender identity, biological sex, or hormone therapy information, respond warmly and end with:\nGENDER_UPDATE_PROMPT:true\nThis will open a form for them to fill in. Do not ask them to type the values — just emit the tag.\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
+    const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. \'+( (_getAllCategories&&_getAllCategories().length)?(\'Existing categories to reuse if they match: \'+_getAllCategories().join(\', \')+\'. Only create new ones if none fit.\'):(\'Categories: Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert.\'))+\'  Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS,"fiberGoal":FIBER_GRAMS,"fatGoal":FAT_GRAMS,"sodiumGoal":SODIUM_MG}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nIf the user wants to update their gender identity, biological sex, or hormone therapy information, respond warmly and end with:\nGENDER_UPDATE_PROMPT:true\nThis will open a form for them to fill in. Do not ask them to type the values — just emit the tag.\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
     const d=await res.json(),reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
@@ -7148,6 +7288,8 @@ async function applyGoalSuggestion(encoded){
   if(goals.calorieGoal)p.calorieGoal=Math.round(goals.calorieGoal);
   if(goals.sugarGoal)p.sugarGoal=Math.round(goals.sugarGoal);
   if(goals.fiberGoal)p.fiberGoal=Math.round(goals.fiberGoal);
+  if(goals.fatGoal)p.fatGoal=Math.round(goals.fatGoal);
+  if(goals.sodiumGoal)p.sodiumGoal=Math.round(goals.sodiumGoal);
   await fbSet('profile','survey',p);
   // Build change summary with before/after
   const changes=[];
