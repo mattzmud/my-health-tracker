@@ -991,10 +991,9 @@ window.openNotifForm=async function(editId){
   document.body.appendChild(modal);
 };
 
-function nfUpdateType(type){
+window.nfUpdateType=function(type){
   const section=document.getElementById('nf-action-section');
   if(section)section.style.display=type==='action'?'block':'none';
-  // Update radio label borders
   document.querySelectorAll('[name="nf-type"]').forEach(r=>{
     const lbl=r.closest('label');
     if(lbl){
@@ -1003,12 +1002,12 @@ function nfUpdateType(type){
       lbl.style.background=isSelected?(r.value==='action'?'rgba(85,107,47,0.06)':'rgba(42,90,138,0.06)'):'var(--surface)';
     }
   });
-}
+};
 
-function nfUpdateActionType(type){
+window.nfUpdateActionType=function(type){
   document.getElementById('nf-payload-section').style.display=type==='coach_prefill'?'block':'none';
   document.getElementById('nf-section-section').style.display=type==='open_section'?'block':'none';
-}
+};
 
 window.saveNotif=async function(editId){
   const title=(document.getElementById('nf-title')?.value||'').trim();
