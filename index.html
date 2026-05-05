@@ -1375,21 +1375,23 @@ window.doRegister = async () => {
 window.doForgotPassword = async () => {
   const email=document.getElementById('login-email').value.trim();
   if(!email){showMsg('login-msg','Enter your email above first.','info');return;}
+  const btn=document.querySelector('[onclick="doForgotPassword()"]');
+  if(btn){btn.disabled=true;btn.textContent='Sending...';}
   try{
-    // Use custom action URL so reset lands on branded mywellpath.app/reset.html page
-    const {ActionCodeSettings}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js');
-    const actionSettings={url:'https://mywellpath.app/reset.html',handleCodeInApp:false};
-    await sendPasswordResetEmail(auth,email,actionSettings);
-    // Also send our branded email via Resend
-    // We can't get the reset URL directly — Firebase sends its own with our custom page as redirect
+    // Worker generates the reset link via Firebase Admin API (returnOobLink:true)
+    // and sends our branded Resend email — Firebase never sends its own email
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'send_password_reset',email})});
+    const data=await res.json();
+    if(data.error)throw new Error(data.error);
     showMsg('login-msg','✓ Reset email sent! Check your inbox.','success');
   }
   catch(e){
-    let m='Could not send reset email.';
-    if(e.code==='auth/user-not-found')m='No account found with that email.';
-    if(e.code==='auth/invalid-email')m='Please enter a valid email address.';
+    let m='Could not send reset email. Please try again.';
+    if(e.message?.includes('INVALID_EMAIL'))m='Please enter a valid email address.';
     showMsg('login-msg',m,'error');
   }
+  if(btn){btn.disabled=false;btn.textContent='Send reset link';}
 };
 
 window.setSyncStatus = s => {
