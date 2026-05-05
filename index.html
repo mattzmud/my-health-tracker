@@ -1142,11 +1142,8 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         </div>
         <div id="meds-asneeded"><div style="font-size:13px;color:var(--muted)">No as-needed medications added.</div></div>
       </div>
-      <div class="card">
-        <div class="card-title">&#10133; Add medication</div>
-        <div style="margin-bottom:8px;font-size:13px;color:var(--muted)">Enter naturally, e.g. "Metformin 1000mg, twice daily" or "Vitamin D 2000IU, once in morning"</div>
-        <textarea id="med-name-input" placeholder="Medication name, dose, and when you take it..." style="min-height:70px;margin-bottom:10px"></textarea>
-        <button class="btn btn-primary btn-sm" onclick="addMedicationAI()" id="add-med-btn">Add</button>
+      <div class="card" style="text-align:center;padding:20px">
+        <button class="btn btn-primary" onclick="openAddMedModal()">&#10133; Add medication</button>
       </div>
     </section>
 
@@ -4068,6 +4065,81 @@ async function addMedicationAI(){
     renderMeds();
   }
   btn.disabled=false;btn.innerHTML='Add';
+}
+
+function openAddMedModal(){
+  const timeChecks=['am','af','pm','wk','prn'].map(t=>{
+    const labels={am:'Morning',af:'Afternoon',pm:'Evening',wk:'Weekly',prn:'As needed'};
+    return'<label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text);cursor:pointer">'
+      +'<input type="checkbox" id="med-new-time-'+t+'" style="accent-color:var(--accent)"/> '+labels[t]+'</label>';
+  }).join('');
+
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:380px">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:14px">Add medication</div>'
+    // Name
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Medication name</div>'
+    +'<input type="text" id="med-new-name" placeholder="e.g. Metformin" style="width:100%"/>'
+    +'</div>'
+    // Dose + Qty
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">'
+    +'<div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Dose</div>'
+    +'<input type="text" id="med-new-dose" placeholder="e.g. 10mg" style="width:100%"/>'
+    +'</div>'
+    +'<div>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Qty per dose</div>'
+    +'<input type="number" id="med-new-qty" value="1" min="1" style="width:100%"/>'
+    +'</div>'
+    +'</div>'
+    // Schedule
+    +'<div style="margin-bottom:12px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Schedule</div>'
+    +'<div style="display:flex;gap:12px;flex-wrap:wrap">'+timeChecks+'</div>'
+    +'</div>'
+    // Fiber
+    +'<div style="margin-bottom:16px">'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">&#127807; Fiber per dose (optional)</div>'
+    +'<div style="font-size:12px;color:var(--muted);margin-bottom:6px">If this is a fiber supplement, enter grams of fiber per dose.</div>'
+    +'<div style="display:flex;align-items:center;gap:8px">'
+    +'<input type="number" id="med-new-fiber" value="0" min="0" max="50" step="0.5" style="max-width:80px"/>'
+    +'<span style="font-size:13px;color:var(--muted)">grams per dose</span>'
+    +'</div>'
+    +'</div>'
+    // Buttons
+    +'<div style="display:flex;gap:8px">'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-primary btn-sm" style="flex:2" onclick="saveNewMed()">Add medication</button>'
+    +'</div></div>';
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('med-new-name')?.focus(),100);
+  document.getElementById('med-new-name')?.addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('med-new-dose')?.focus();});
+}
+
+async function saveNewMed(){
+  const name=(document.getElementById('med-new-name')?.value||'').trim();
+  if(!name){showToast('Please enter a medication name.','error');return;}
+  const dose=(document.getElementById('med-new-dose')?.value||'').trim();
+  const qty=parseInt(document.getElementById('med-new-qty')?.value)||1;
+  const fiberGrams=parseFloat(document.getElementById('med-new-fiber')?.value)||0;
+  const times=['am','af','pm','wk','prn'].filter(t=>document.getElementById('med-new-time-'+t)?.checked);
+  if(!times.length){showToast('Please select at least one schedule.','error');return;}
+
+  // Build ID from name + timestamp to ensure uniqueness
+  const id=name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')+'-'+Date.now();
+  if(!cache.medsList)cache.medsList={};
+  cache.medsList[id]={
+    id,name,dose,qty,times,
+    fiberGrams:fiberGrams>0?fiberGrams:undefined,
+    addedDate:viewDate
+  };
+  await fbSetFull('medications','list',{meds:cache.medsList});
+  document.querySelector('.date-picker-modal')?.remove();
+  renderMeds();
+  showToast('&#128137; '+name+' added!');
 }
 
 function openEditMed(id){
