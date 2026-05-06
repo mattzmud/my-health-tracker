@@ -1,0 +1,1034 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>MyWellpath Recipes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --bg:#f7f3ed;
+  --surface:#fdfaf6;
+  --surface2:#f0ebe2;
+  --border:rgba(120,90,50,0.15);
+  --border2:rgba(120,90,50,0.25);
+  --text:#2c1f0e;
+  --muted:#8a7560;
+  --accent:#5c7a3e;
+  --accent2:#3d5229;
+  --amber:#a0782a;
+  --red:#b94040;
+  --blue:#3a6b8a;
+  --font-display:'Playfair Display',Georgia,serif;
+  --font-body:'DM Sans',system-ui,sans-serif;
+  --radius:14px;
+  --radius-sm:8px;
+  --shadow:0 2px 16px rgba(44,31,14,0.08);
+  --shadow-lg:0 8px 40px rgba(44,31,14,0.14);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:var(--font-body);background:var(--bg);color:var(--text);min-height:100vh;}
+input,select,textarea,button{font-family:var(--font-body);}
+
+/* ── TOPBAR ── */
+.topbar{position:sticky;top:0;z-index:100;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:58px;display:flex;align-items:center;justify-content:space-between;box-shadow:0 1px 8px rgba(44,31,14,0.06);}
+.topbar-logo{font-family:var(--font-display);font-size:20px;font-weight:700;color:var(--accent);letter-spacing:-0.3px;}
+.topbar-logo span{color:var(--muted);font-weight:400;font-size:14px;margin-left:6px;}
+.signout-btn{background:none;border:1px solid var(--border2);color:var(--muted);padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;transition:all 0.15s;}
+.signout-btn:hover{border-color:var(--accent);color:var(--accent);}
+
+/* ── SCREENS ── */
+.screen{display:none;min-height:calc(100vh - 58px);}
+.screen.active{display:block;}
+
+/* ── LOGIN ── */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:radial-gradient(ellipse at 30% 20%,rgba(92,122,62,0.12) 0%,transparent 60%),var(--bg);}
+.login-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:44px 40px;width:100%;max-width:400px;box-shadow:var(--shadow-lg);}
+.login-logo{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--accent);margin-bottom:4px;}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:30px;}
+.login-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px;display:block;}
+.login-input{width:100%;padding:11px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;background:var(--bg);color:var(--text);margin-bottom:14px;transition:border-color 0.15s;}
+.login-input:focus{outline:none;border-color:var(--accent);}
+.login-btn{width:100%;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;transition:background 0.15s;margin-top:4px;}
+.login-btn:hover{background:var(--accent2);}
+.login-msg{font-size:13px;margin-top:10px;text-align:center;min-height:18px;}
+.login-toggle{font-size:13px;color:var(--muted);text-align:center;margin-top:16px;}
+.login-toggle a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600;}
+.login-divider{border:none;border-top:1px solid var(--border);margin:20px 0;}
+
+/* ── MAIN APP ── */
+#app-screen{padding:0;}
+.app-inner{max-width:1100px;margin:0 auto;padding:28px 24px;}
+
+/* ── TABS ── */
+.tab-bar{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.tab-btn{padding:10px 20px;background:none;border:none;border-bottom:3px solid transparent;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer;transition:all 0.15s;white-space:nowrap;}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-btn:hover{color:var(--text);}
+
+/* ── SEARCH & CONTROLS ── */
+.search-bar{display:flex;gap:10px;margin-bottom:20px;align-items:center;flex-wrap:wrap;}
+.search-input{flex:1;min-width:200px;padding:13px 16px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;background:var(--surface);color:var(--text);transition:border-color 0.15s;}
+.search-input:focus{outline:none;border-color:var(--accent);}
+.cat-filter{padding:13px 14px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;background:var(--surface);color:var(--text);cursor:pointer;}
+.add-btn{padding:12px 20px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px;white-space:nowrap;transition:background 0.15s;}
+.add-btn:hover{background:var(--accent2);}
+
+/* ── RECIPE GRID ── */
+.recipe-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:18px;}
+.recipe-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow);transition:box-shadow 0.2s,transform 0.2s;cursor:pointer;}
+.recipe-card:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);}
+.recipe-card-img{width:100%;height:160px;object-fit:cover;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:48px;}
+.recipe-card-body{padding:16px;}
+.recipe-card-title{font-family:var(--font-display);font-size:17px;font-weight:600;color:var(--text);margin-bottom:4px;line-height:1.3;}
+.recipe-card-meta{font-size:12px;color:var(--muted);margin-bottom:10px;}
+.recipe-card-cats{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px;}
+.cat-pill{font-size:11px;padding:2px 8px;border-radius:10px;background:rgba(92,122,62,0.1);color:var(--accent);border:1px solid rgba(92,122,62,0.2);}
+.recipe-card-actions{display:flex;gap:6px;justify-content:flex-end;border-top:1px solid var(--border);padding-top:10px;margin-top:6px;}
+.card-action-btn{background:none;border:1px solid var(--border2);color:var(--muted);padding:5px 10px;border-radius:6px;font-size:11px;cursor:pointer;transition:all 0.15s;}
+.card-action-btn:hover{border-color:var(--accent);color:var(--accent);}
+.card-action-btn.public-btn.on{background:rgba(92,122,62,0.1);border-color:var(--accent);color:var(--accent);}
+
+/* ── EMPTY STATE ── */
+.empty-state{text-align:center;padding:60px 24px;color:var(--muted);}
+.empty-state .icon{font-size:48px;margin-bottom:16px;}
+.empty-state h3{font-family:var(--font-display);font-size:20px;color:var(--text);margin-bottom:8px;}
+.empty-state p{font-size:14px;line-height:1.6;}
+
+/* ── MODAL ── */
+.modal-overlay{position:fixed;inset:0;background:rgba(44,31,14,0.5);z-index:500;display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto;}
+.modal-card{background:var(--surface);border-radius:var(--radius);width:100%;max-width:600px;box-shadow:var(--shadow-lg);margin:auto;}
+.modal-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;z-index:1;}
+.modal-title{font-family:var(--font-display);font-size:20px;color:var(--text);}
+.modal-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;}
+.modal-body{padding:24px;}
+
+/* ── UPLOADER TABS ── */
+.upload-tabs{display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;}
+.upload-tab{padding:8px 14px;border:1px solid var(--border2);border-radius:20px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;background:var(--bg);transition:all 0.15s;}
+.upload-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* ── FORM ELEMENTS ── */
+.form-label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:5px;}
+.form-input{width:100%;padding:10px 13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:14px;background:var(--bg);color:var(--text);transition:border-color 0.15s;margin-bottom:14px;}
+.form-input:focus{outline:none;border-color:var(--accent);}
+textarea.form-input{min-height:100px;resize:vertical;}
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius-sm);padding:36px 24px;text-align:center;cursor:pointer;transition:all 0.15s;margin-bottom:14px;background:var(--bg);}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(92,122,62,0.04);}
+.drop-zone-icon{font-size:36px;margin-bottom:8px;}
+.drop-zone p{font-size:13px;color:var(--muted);}
+.drop-zone strong{color:var(--accent);}
+
+/* ── BUTTONS ── */
+.btn{padding:10px 18px;border-radius:var(--radius-sm);font-size:14px;font-weight:600;cursor:pointer;border:none;transition:all 0.15s;}
+.btn-primary{background:var(--accent);color:#fff;}
+.btn-primary:hover{background:var(--accent2);}
+.btn-ghost{background:none;border:1px solid var(--border2);color:var(--muted);}
+.btn-ghost:hover{border-color:var(--accent);color:var(--accent);}
+.btn-sm{padding:7px 14px;font-size:13px;}
+.btn:disabled{opacity:0.5;cursor:not-allowed;}
+
+/* ── RECIPE VIEW ── */
+.recipe-view{max-width:700px;margin:0 auto;}
+.recipe-view-header{margin-bottom:24px;}
+.recipe-view-title{font-family:var(--font-display);font-size:28px;font-weight:700;color:var(--text);margin-bottom:8px;line-height:1.2;}
+.recipe-view-meta{font-size:13px;color:var(--muted);margin-bottom:12px;}
+.recipe-view-cats{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.recipe-section-title{font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid var(--border);}
+.ingredient-list{list-style:none;margin-bottom:24px;}
+.ingredient-list li{padding:7px 0;border-bottom:1px solid var(--border);font-size:14px;display:flex;align-items:center;gap:8px;}
+.ingredient-list li::before{content:'•';color:var(--accent);font-size:18px;flex-shrink:0;}
+.instruction-list{counter-reset:steps;list-style:none;margin-bottom:24px;}
+.instruction-list li{counter-increment:steps;padding:10px 0 10px 40px;border-bottom:1px solid var(--border);font-size:14px;line-height:1.7;position:relative;}
+.instruction-list li::before{content:counter(steps);position:absolute;left:0;top:10px;width:26px;height:26px;background:var(--accent);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+.macros-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px;margin-bottom:24px;}
+.macro-tile{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;text-align:center;}
+.macro-val{font-family:var(--font-display);font-size:20px;color:var(--accent);font-weight:600;}
+.macro-lbl{font-size:11px;color:var(--muted);margin-top:2px;}
+
+/* ── SPINNER ── */
+.spinner{width:20px;height:20px;border:2px solid rgba(92,122,62,0.2);border-top-color:var(--accent);border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--text);color:#fff;padding:10px 20px;border-radius:20px;font-size:13px;z-index:999;animation:fadeUp 0.2s ease;pointer-events:none;}
+@keyframes fadeUp{from{opacity:0;transform:translateX(-50%) translateY(8px);}to{opacity:1;transform:translateX(-50%) translateY(0);}}
+
+/* ── PUBLIC BADGE ── */
+.public-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(92,122,62,0.12);color:var(--accent);border:1px solid rgba(92,122,62,0.25);text-transform:uppercase;letter-spacing:0.05em;}
+.shared-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:10px;background:rgba(58,107,138,0.12);color:var(--blue);border:1px solid rgba(58,107,138,0.25);text-transform:uppercase;letter-spacing:0.05em;}
+
+/* ── BACK BTN ── */
+.back-btn{display:flex;align-items:center;gap:6px;background:none;border:none;color:var(--muted);font-size:13px;font-weight:600;cursor:pointer;padding:0;margin-bottom:20px;}
+.back-btn:hover{color:var(--accent);}
+
+@media(max-width:600px){
+  .login-card{padding:32px 24px;}
+  .app-inner{padding:20px 16px;}
+  .recipe-grid{grid-template-columns:1fr;}
+  .modal-overlay{padding:0;}
+  .modal-card{border-radius:0;min-height:100vh;}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="topbar-logo">MyWellpath <span>Recipes</span></div>
+  <button class="signout-btn" id="signout-btn" style="display:none" onclick="doSignOut()">Sign out</button>
+</div>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">MyWellpath</div>
+    <div class="login-sub">Recipe Repository</div>
+    <div id="login-form">
+      <label class="login-label">Email</label>
+      <input type="email" class="login-input" id="login-email" placeholder="you@example.com"/>
+      <label class="login-label">Password</label>
+      <input type="password" class="login-input" id="login-password" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"/>
+      <button class="login-btn" onclick="doLogin()">Sign in</button>
+      <div class="login-msg" id="login-msg"></div>
+      <div class="login-divider"></div>
+      <div class="login-toggle">Don't have an account? <a onclick="showSignup()">Sign up</a></div>
+      <div class="login-toggle" style="margin-top:8px"><a onclick="showForgot()" style="font-weight:400;font-size:12px">Forgot password?</a></div>
+    </div>
+    <div id="signup-form" style="display:none">
+      <label class="login-label">Name</label>
+      <input type="text" class="login-input" id="signup-name" placeholder="Your name"/>
+      <label class="login-label">Email</label>
+      <input type="email" class="login-input" id="signup-email" placeholder="you@example.com"/>
+      <label class="login-label">Password</label>
+      <input type="password" class="login-input" id="signup-password" placeholder="At least 6 characters"/>
+      <label class="login-label">Invite code</label>
+      <input type="text" class="login-input" id="signup-code" placeholder="Enter your invite code" onkeydown="if(event.key==='Enter')doSignup()"/>
+      <button class="login-btn" onclick="doSignup()">Create account</button>
+      <div class="login-msg" id="signup-msg"></div>
+      <div class="login-divider"></div>
+      <div class="login-toggle">Already have an account? <a onclick="showLogin()">Sign in</a></div>
+    </div>
+    <div id="forgot-form" style="display:none">
+      <label class="login-label">Email</label>
+      <input type="email" class="login-input" id="forgot-email" placeholder="you@example.com" onkeydown="if(event.key==='Enter')doForgot()"/>
+      <button class="login-btn" onclick="doForgot()">Send reset link</button>
+      <div class="login-msg" id="forgot-msg"></div>
+      <div class="login-divider"></div>
+      <div class="login-toggle"><a onclick="showLogin()">Back to sign in</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- APP SCREEN -->
+<div id="app-screen" class="screen">
+  <div class="app-inner">
+
+    <!-- Tab bar -->
+    <div class="tab-bar">
+      <button class="tab-btn active" id="tab-mine" onclick="switchTab('mine')">My Recipes</button>
+      <button class="tab-btn" id="tab-shared" onclick="switchTab('shared')">Shared Recipes</button>
+    </div>
+
+    <!-- My Recipes tab -->
+    <div id="panel-mine">
+      <div class="search-bar">
+        <input type="text" class="search-input" id="search-mine" placeholder="🔍  Search my recipes…" oninput="renderMyRecipes()"/>
+        <select class="cat-filter" id="cat-mine" onchange="renderMyRecipes()">
+          <option value="">All categories</option>
+        </select>
+        <button class="add-btn" onclick="openUploader()">&#65291; Recipe</button>
+      </div>
+      <div class="recipe-grid" id="grid-mine">
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="icon">🍽️</div>
+          <h3>No recipes yet</h3>
+          <p>Click <strong>+ Recipe</strong> to add your first one.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Shared Recipes tab -->
+    <div id="panel-shared" style="display:none">
+      <div class="search-bar">
+        <input type="text" class="search-input" id="search-shared" placeholder="🔍  Search shared recipes…" oninput="renderSharedRecipes()"/>
+        <select class="cat-filter" id="cat-shared" onchange="renderSharedRecipes()">
+          <option value="">All categories</option>
+        </select>
+      </div>
+      <div class="recipe-grid" id="grid-shared">
+        <div class="empty-state" style="grid-column:1/-1">
+          <div class="icon">🌿</div>
+          <h3>No shared recipes yet</h3>
+          <p>Recipes that members make public will appear here.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recipe view (replaces grid) -->
+    <div id="panel-view" style="display:none">
+      <button class="back-btn" onclick="closeRecipeView()">&#8592; Back</button>
+      <div id="recipe-view-content"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── MODALS ── -->
+
+<!-- Uploader modal -->
+<div id="uploader-modal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeUploader()">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">Add a recipe</div>
+      <button class="modal-close" onclick="closeUploader()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div class="upload-tabs">
+        <button class="upload-tab active" onclick="setUploadTab('text',this)">&#9997; Type / paste</button>
+        <button class="upload-tab" onclick="setUploadTab('link',this)">&#128279; Link / Google Doc</button>
+        <button class="upload-tab" onclick="setUploadTab('image',this)">&#128247; Photo</button>
+        <button class="upload-tab" onclick="setUploadTab('pdf',this)">&#128196; PDF</button>
+      </div>
+
+      <!-- Text tab -->
+      <div id="upload-text">
+        <label class="form-label">Paste or type your recipe</label>
+        <textarea class="form-input" id="input-text" placeholder="Paste the full recipe here — ingredients, instructions, any notes…" style="min-height:160px"></textarea>
+        <label class="form-label">Recipe name (optional — AI will detect it)</label>
+        <input type="text" class="form-input" id="input-title-text" placeholder="e.g. Grandma's Chicken Soup"/>
+      </div>
+
+      <!-- Link tab -->
+      <div id="upload-link" style="display:none">
+        <label class="form-label">Recipe URL or Google Doc link</label>
+        <input type="url" class="form-input" id="input-link" placeholder="https://…"/>
+        <div style="font-size:12px;color:var(--muted);margin-top:-10px;margin-bottom:14px">Google Docs must be set to "Anyone with the link can view."</div>
+      </div>
+
+      <!-- Image tab -->
+      <div id="upload-image" style="display:none">
+        <div class="drop-zone" id="drop-image" onclick="document.getElementById('file-image').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleImageDrop(event)">
+          <div class="drop-zone-icon">📸</div>
+          <p><strong>Click to upload</strong> or drag & drop</p>
+          <p style="margin-top:4px">JPG, PNG, HEIC supported</p>
+        </div>
+        <input type="file" id="file-image" accept="image/*" style="display:none" onchange="handleImageFile(this)"/>
+        <div id="image-preview" style="display:none;margin-bottom:14px">
+          <img id="image-preview-img" style="max-width:100%;border-radius:8px;max-height:200px;object-fit:cover"/>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px" id="image-preview-name"></div>
+        </div>
+      </div>
+
+      <!-- PDF tab -->
+      <div id="upload-pdf" style="display:none">
+        <div class="drop-zone" id="drop-pdf" onclick="document.getElementById('file-pdf').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handlePdfDrop(event)">
+          <div class="drop-zone-icon">📄</div>
+          <p><strong>Click to upload</strong> or drag & drop</p>
+          <p style="margin-top:4px">PDF files only</p>
+        </div>
+        <input type="file" id="file-pdf" accept="application/pdf" style="display:none" onchange="handlePdfFile(this)"/>
+        <div id="pdf-preview" style="display:none;padding:10px 14px;background:var(--surface2);border-radius:8px;font-size:13px;color:var(--text);margin-bottom:14px"></div>
+      </div>
+
+      <div id="upload-status" style="min-height:20px;font-size:13px;color:var(--muted);margin-bottom:14px"></div>
+
+      <div style="display:flex;gap:10px">
+        <button class="btn btn-ghost" style="flex:1" onclick="closeUploader()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" id="analyze-btn" onclick="analyzeRecipe()">&#10024; Analyze & save</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Share link modal -->
+<div id="share-modal" style="display:none" class="modal-overlay" onclick="if(event.target===this)closeShareModal()">
+  <div class="modal-card" style="max-width:440px">
+    <div class="modal-header">
+      <div class="modal-title">Share recipe</div>
+      <button class="modal-close" onclick="closeShareModal()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Anyone with this link can view the recipe — no login required.</div>
+      <div style="display:flex;gap:8px">
+        <input type="text" id="share-link-input" readonly style="flex:1;padding:10px 13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;background:var(--bg);color:var(--text)"/>
+        <button class="btn btn-primary btn-sm" onclick="copyShareLink()">Copy</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import{getFirestore,doc,getDoc,setDoc,collection,getDocs,deleteDoc,query,orderBy}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+// ── CONFIG ──────────────────────────────────────────────────
+const FB_CONFIG={
+  apiKey:"AIzaSyCtF07EW4j93mdLhPgEPKWC5npOnXRUb3Y",
+  authDomain:"my-health-tracker-d8d0d.firebaseapp.com",
+  projectId:"my-health-tracker-d8d0d",
+  storageBucket:"my-health-tracker-d8d0d.appspot.com",
+  messagingSenderId:"229649573059",
+  appId:"1:229649573059:web:placeholder"
+};
+const API='https://health-tracker-api.matt-zmud.workers.dev';
+const FS_ROOT=`https://firestore.googleapis.com/v1/projects/my-health-tracker-d8d0d/databases/(default)/documents`;
+
+const app=initializeApp(FB_CONFIG);
+const auth=getAuth(app);
+const db=getFirestore(app);
+
+// ── STATE ────────────────────────────────────────────────────
+let _uid=null, _myRecipes=[], _sharedRecipes=[], _currentTab='mine';
+let _uploadTab='text', _imageData=null, _pdfData=null, _viewingRecipe=null;
+
+// ── FIRESTORE HELPERS ────────────────────────────────────────
+async function fbGet(uid,recipeId){
+  const snap=await getDoc(doc(db,`recipe_users/${uid}/recipes`,recipeId));
+  return snap.exists()?snap.data():null;
+}
+async function fbSet(uid,recipeId,data){
+  await setDoc(doc(db,`recipe_users/${uid}/recipes`,recipeId),data,{merge:true});
+}
+async function fbDel(uid,recipeId){
+  await deleteDoc(doc(db,`recipe_users/${uid}/recipes`,recipeId));
+}
+async function fbGetAll(uid){
+  const snap=await getDocs(collection(db,`recipe_users/${uid}/recipes`));
+  return snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+async function fbGetShared(){
+  const snap=await getDocs(collection(db,'public_recipes'));
+  return snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+async function fbSetShared(id,data){
+  await setDoc(doc(db,'public_recipes',id),data,{merge:true});
+}
+async function fbDelShared(id){
+  await deleteDoc(doc(db,'public_recipes',id));
+}
+
+// ── AUTH ─────────────────────────────────────────────────────
+onAuthStateChanged(auth,async user=>{
+  if(user){
+    _uid=user.uid;
+    document.getElementById('login-screen').style.display='none';
+    document.getElementById('app-screen').classList.add('active');
+    document.getElementById('signout-btn').style.display='block';
+    await loadAllRecipes();
+    // Check for public share view
+    const urlParams=new URLSearchParams(window.location.search);
+    const shareId=urlParams.get('r');
+    if(shareId)openSharedView(shareId);
+  } else {
+    _uid=null;
+    document.getElementById('login-screen').style.display='flex';
+    document.getElementById('app-screen').classList.remove('active');
+    document.getElementById('signout-btn').style.display='none';
+    // Still allow public view without login
+    const urlParams=new URLSearchParams(window.location.search);
+    const shareId=urlParams.get('r');
+    if(shareId)openPublicShareView(shareId);
+  }
+});
+
+window.doLogin=async function(){
+  const email=document.getElementById('login-email').value.trim();
+  const pw=document.getElementById('login-password').value;
+  const msg=document.getElementById('login-msg');
+  msg.textContent='';
+  try{
+    await signInWithEmailAndPassword(auth,email,pw);
+  }catch(e){
+    let m='Login failed.';
+    if(e.code==='auth/user-not-found'||e.code==='auth/wrong-password'||e.code==='auth/invalid-credential')m='Invalid email or password.';
+    if(e.code==='auth/invalid-email')m='Please enter a valid email.';
+    msg.style.color='var(--red)';msg.textContent=m;
+  }
+};
+
+window.doSignup=async function(){
+  const name=document.getElementById('signup-name').value.trim();
+  const email=document.getElementById('signup-email').value.trim();
+  const pw=document.getElementById('signup-password').value;
+  const code=document.getElementById('signup-code').value.trim();
+  const msg=document.getElementById('signup-msg');
+  msg.textContent='';
+  if(!name||!email||!pw||!code){msg.style.color='var(--red)';msg.textContent='Please fill in all fields.';return;}
+  // Validate invite code
+  try{
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'validate_recipe_code',code})});
+    const d=await res.json();
+    if(!d.valid){msg.style.color='var(--red)';msg.textContent='Invalid invite code.';return;}
+  }catch(e){msg.style.color='var(--red)';msg.textContent='Could not verify invite code.';return;}
+  try{
+    const cred=await createUserWithEmailAndPassword(auth,email,pw);
+    // Save profile in recipe_users collection
+    await setDoc(doc(db,'recipe_users',cred.user.uid),{name,email,createdAt:new Date().toISOString()});
+  }catch(e){
+    let m='Signup failed.';
+    if(e.code==='auth/email-already-in-use')m='An account with this email already exists.';
+    if(e.code==='auth/weak-password')m='Password must be at least 6 characters.';
+    if(e.code==='auth/invalid-email')m='Please enter a valid email.';
+    msg.style.color='var(--red)';msg.textContent=m;
+  }
+};
+
+window.doSignOut=async function(){
+  await signOut(auth);
+};
+
+window.doForgot=async function(){
+  const email=document.getElementById('forgot-email').value.trim();
+  const msg=document.getElementById('forgot-msg');
+  if(!email){msg.style.color='var(--red)';msg.textContent='Please enter your email.';return;}
+  try{
+    await sendPasswordResetEmail(auth,email);
+    msg.style.color='var(--accent)';msg.textContent='Reset email sent! Check your inbox.';
+  }catch(e){msg.style.color='var(--red)';msg.textContent='Could not send reset email.';}
+};
+
+window.showSignup=()=>{document.getElementById('login-form').style.display='none';document.getElementById('signup-form').style.display='block';document.getElementById('forgot-form').style.display='none';};
+window.showLogin=()=>{document.getElementById('login-form').style.display='block';document.getElementById('signup-form').style.display='none';document.getElementById('forgot-form').style.display='none';};
+window.showForgot=()=>{document.getElementById('login-form').style.display='none';document.getElementById('signup-form').style.display='none';document.getElementById('forgot-form').style.display='block';};
+
+// ── LOAD DATA ────────────────────────────────────────────────
+async function loadAllRecipes(){
+  try{
+    _myRecipes=await fbGetAll(_uid);
+    _myRecipes.sort((a,b)=>(b.savedAt||'').localeCompare(a.savedAt||''));
+  }catch(e){_myRecipes=[];}
+  try{
+    _sharedRecipes=await fbGetShared();
+    _sharedRecipes.sort((a,b)=>(b.sharedAt||'').localeCompare(a.sharedAt||''));
+  }catch(e){_sharedRecipes=[];}
+  renderMyRecipes();
+  renderSharedRecipes();
+  populateCategoryFilters();
+}
+
+// ── TABS ─────────────────────────────────────────────────────
+window.switchTab=function(tab){
+  _currentTab=tab;
+  document.getElementById('tab-mine').classList.toggle('active',tab==='mine');
+  document.getElementById('tab-shared').classList.toggle('active',tab==='shared');
+  document.getElementById('panel-mine').style.display=tab==='mine'?'block':'none';
+  document.getElementById('panel-shared').style.display=tab==='shared'?'block':'none';
+  document.getElementById('panel-view').style.display='none';
+};
+
+// ── CATEGORY FILTERS ─────────────────────────────────────────
+function populateCategoryFilters(){
+  const allCats=new Set();
+  _myRecipes.forEach(r=>(r.categories||[]).forEach(c=>allCats.add(c)));
+  const selMine=document.getElementById('cat-mine');
+  const cur=selMine.value;
+  selMine.innerHTML='<option value="">All categories</option>'+[...allCats].sort().map(c=>`<option value="${c}"${c===cur?' selected':''}>${c}</option>`).join('');
+
+  const sharedCats=new Set();
+  _sharedRecipes.forEach(r=>(r.categories||[]).forEach(c=>sharedCats.add(c)));
+  const selShared=document.getElementById('cat-shared');
+  const curS=selShared.value;
+  selShared.innerHTML='<option value="">All categories</option>'+[...sharedCats].sort().map(c=>`<option value="${c}"${c===curS?' selected':''}>${c}</option>`).join('');
+}
+
+// ── RENDER MY RECIPES ────────────────────────────────────────
+window.renderMyRecipes=function(){
+  const q=(document.getElementById('search-mine').value||'').toLowerCase();
+  const cat=document.getElementById('cat-mine').value;
+  let list=_myRecipes.filter(r=>{
+    const matchQ=!q||r.title?.toLowerCase().includes(q)||(r.categories||[]).some(c=>c.toLowerCase().includes(q));
+    const matchC=!cat||(r.categories||[]).includes(cat);
+    return matchQ&&matchC;
+  });
+  const grid=document.getElementById('grid-mine');
+  if(!list.length){
+    grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">🍽️</div><h3>'+(q||cat?'No matches found':'No recipes yet')+'</h3><p>'+(q||cat?'Try a different search or category.':'Click <strong>+ Recipe</strong> to add your first one.')+'</p></div>';
+    return;
+  }
+  grid.innerHTML=list.map(r=>recipeCardHTML(r,false)).join('');
+};
+
+window.renderSharedRecipes=function(){
+  const q=(document.getElementById('search-shared').value||'').toLowerCase();
+  const cat=document.getElementById('cat-shared').value;
+  let list=_sharedRecipes.filter(r=>{
+    const matchQ=!q||r.title?.toLowerCase().includes(q)||(r.categories||[]).some(c=>c.toLowerCase().includes(q))||(r.authorName||'').toLowerCase().includes(q);
+    const matchC=!cat||(r.categories||[]).includes(cat);
+    return matchQ&&matchC;
+  });
+  const grid=document.getElementById('grid-shared');
+  if(!list.length){
+    grid.innerHTML='<div class="empty-state" style="grid-column:1/-1"><div class="icon">🌿</div><h3>No shared recipes yet</h3><p>Recipes that members make public will appear here.</p></div>';
+    return;
+  }
+  grid.innerHTML=list.map(r=>recipeCardHTML(r,true)).join('');
+};
+
+function recipeCardHTML(r,isShared){
+  const cats=(r.categories||[]).map(c=>`<span class="cat-pill">${esc(c)}</span>`).join('');
+  const macros=[
+    r.calories?r.calories+' cal':'',
+    r.protein?r.protein+'g protein':'',
+    r.carbs?r.carbs+'g carbs':''
+  ].filter(Boolean).join(' · ');
+  const isPublic=_myRecipes.find(m=>m.id===r.id)?.isPublic;
+  const actions=isShared
+    ?`<button class="card-action-btn" onclick="event.stopPropagation();addToMyRecipes('${r.id}')">&#10133; Add to mine</button>
+       <button class="card-action-btn" onclick="event.stopPropagation();openShareModal('${r.shareId||r.id}')">&#128279; Share</button>
+       <button class="card-action-btn" onclick="event.stopPropagation();printRecipe('${r.id}',true)">&#128424; Print</button>`
+    :`<button class="card-action-btn ${isPublic?'public-btn on':''}" onclick="event.stopPropagation();togglePublic('${r.id}')" title="${isPublic?'Make private':'Make public'}">${isPublic?'&#127758; Public':'&#127758; Share'}</button>
+       <button class="card-action-btn" onclick="event.stopPropagation();openShareModal('${r.id}')">&#128279; Link</button>
+       <button class="card-action-btn" onclick="event.stopPropagation();downloadPDF('${r.id}')">&#128196; PDF</button>
+       <button class="card-action-btn" onclick="event.stopPropagation();printRecipe('${r.id}',false)">&#128424; Print</button>
+       <button class="card-action-btn" style="color:var(--red)" onclick="event.stopPropagation();deleteRecipe('${r.id}')">&#10005;</button>`;
+  return`<div class="recipe-card" onclick="${isShared?`openSharedRecipeView('${r.id}')`:`openMyRecipeView('${r.id}')`}">
+    <div class="recipe-card-img">${r.emoji||'🍽️'}</div>
+    <div class="recipe-card-body">
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+        <div class="recipe-card-title">${esc(r.title||'Untitled')}</div>
+        ${isShared?`<span class="shared-badge">Shared</span>`:isPublic?`<span class="public-badge">Public</span>`:''}
+      </div>
+      ${r.authorName&&isShared?`<div style="font-size:11px;color:var(--muted);margin-bottom:4px">by ${esc(r.authorName)}</div>`:''}
+      <div class="recipe-card-meta">${macros}${r.servings?' · '+r.servings+' servings':''}</div>
+      <div class="recipe-card-cats">${cats}</div>
+      <div class="recipe-card-actions">${actions}</div>
+    </div>
+  </div>`;
+}
+
+// ── RECIPE VIEW ──────────────────────────────────────────────
+window.openMyRecipeView=function(id){
+  const r=_myRecipes.find(m=>m.id===id);if(!r)return;
+  _viewingRecipe=r;
+  document.getElementById('panel-mine').style.display='none';
+  document.getElementById('panel-shared').style.display='none';
+  document.getElementById('panel-view').style.display='block';
+  document.getElementById('recipe-view-content').innerHTML=recipeViewHTML(r,false);
+};
+
+window.openSharedRecipeView=function(id){
+  const r=_sharedRecipes.find(m=>m.id===id);if(!r)return;
+  _viewingRecipe=r;
+  document.getElementById('panel-mine').style.display='none';
+  document.getElementById('panel-shared').style.display='none';
+  document.getElementById('panel-view').style.display='block';
+  document.getElementById('recipe-view-content').innerHTML=recipeViewHTML(r,true);
+};
+
+async function openSharedView(shareId){
+  // Find recipe by shareId in public_recipes
+  const snap=await getDocs(collection(db,'public_recipes'));
+  const doc2=snap.docs.find(d=>d.id===shareId||d.data().shareId===shareId);
+  if(!doc2)return;
+  const r={id:doc2.id,...doc2.data()};
+  document.getElementById('panel-mine').style.display='none';
+  document.getElementById('panel-shared').style.display='none';
+  document.getElementById('panel-view').style.display='block';
+  document.getElementById('recipe-view-content').innerHTML=recipeViewHTML(r,true);
+}
+
+async function openPublicShareView(shareId){
+  // Shown without login — show login screen but also show recipe below
+  try{
+    const snap=await getDocs(collection(db,'public_recipes'));
+    const doc2=snap.docs.find(d=>d.id===shareId);
+    if(doc2){
+      const r={id:doc2.id,...doc2.data()};
+      // Show minimal public view on login screen
+      const loginScreen=document.getElementById('login-screen');
+      const pubDiv=document.createElement('div');
+      pubDiv.style.cssText='max-width:700px;margin:24px auto;background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);';
+      pubDiv.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:16px">&#128279; Shared recipe</div>'+recipeViewHTML(r,true);
+      loginScreen.appendChild(pubDiv);
+    }
+  }catch(e){}
+}
+
+window.closeRecipeView=function(){
+  document.getElementById('panel-view').style.display='none';
+  if(_currentTab==='mine'){document.getElementById('panel-mine').style.display='block';}
+  else{document.getElementById('panel-shared').style.display='block';}
+  _viewingRecipe=null;
+};
+
+function recipeViewHTML(r,isShared){
+  const cats=(r.categories||[]).map(c=>`<span class="cat-pill">${esc(c)}</span>`).join('');
+  const ingredients=(r.ingredients||[]).map(i=>`<li>${esc(i)}</li>`).join('');
+  const steps=(r.instructions||'').split('\n').filter(s=>s.trim()).map(s=>`<li>${esc(s.replace(/^\d+[\.\)]\s*/,''))}</li>`).join('');
+  const macroTiles=[
+    {v:r.calories,l:'Calories',u:'kcal'},
+    {v:r.protein,l:'Protein',u:'g'},
+    {v:r.carbs,l:'Carbs',u:'g'},
+    {v:r.fat,l:'Fat',u:'g'},
+    {v:r.fiber,l:'Fiber',u:'g'},
+    {v:r.sodium,l:'Sodium',u:'mg'},
+  ].filter(m=>m.v).map(m=>`<div class="macro-tile"><div class="macro-val">${m.v}${m.u}</div><div class="macro-lbl">${m.l}</div></div>`).join('');
+  const actions=isShared
+    ?`<button class="btn btn-ghost btn-sm" onclick="addToMyRecipes('${r.id}')">&#10133; Add to my recipes</button>
+       <button class="btn btn-ghost btn-sm" onclick="openShareModal('${r.id}')">&#128279; Share</button>
+       <button class="btn btn-ghost btn-sm" onclick="printRecipeObj(${JSON.stringify(r).replace(/"/g,'&quot;')})">&#128424; Print</button>`
+    :`<button class="btn btn-ghost btn-sm" onclick="downloadPDF('${r.id}')">&#128196; PDF</button>
+       <button class="btn btn-ghost btn-sm" onclick="printRecipe('${r.id}',false)">&#128424; Print</button>
+       <button class="btn btn-ghost btn-sm" onclick="openShareModal('${r.id}')">&#128279; Share</button>`;
+  return`<div class="recipe-view">
+    <div class="recipe-view-header">
+      <div style="font-size:40px;margin-bottom:10px">${r.emoji||'🍽️'}</div>
+      <div class="recipe-view-title">${esc(r.title||'Untitled')}</div>
+      ${r.authorName&&isShared?`<div style="font-size:13px;color:var(--muted);margin-bottom:6px">Shared by ${esc(r.authorName)}</div>`:''}
+      <div class="recipe-view-meta">${r.servings?r.servings+' servings · ':''} ${r.calories?r.calories+' cal/serving':''}</div>
+      <div class="recipe-view-cats">${cats}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">${actions}</div>
+    </div>
+    ${macroTiles?`<div style="margin-bottom:24px"><div class="recipe-section-title">Nutrition per serving</div><div class="macros-grid">${macroTiles}</div></div>`:''}
+    ${ingredients?`<div><div class="recipe-section-title">Ingredients</div><ul class="ingredient-list">${ingredients}</ul></div>`:''}
+    ${steps?`<div><div class="recipe-section-title">Instructions</div><ol class="instruction-list">${steps}</ol></div>`:''}
+    ${r.notes?`<div style="background:var(--surface2);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;color:var(--muted);line-height:1.6"><strong>Notes:</strong> ${esc(r.notes)}</div>`:''}
+  </div>`;
+}
+
+// ── UPLOADER ────────────────────────────────────────────────
+window.openUploader=function(){
+  document.getElementById('uploader-modal').style.display='flex';
+  document.getElementById('input-text').value='';
+  document.getElementById('input-title-text').value='';
+  document.getElementById('input-link').value='';
+  document.getElementById('upload-status').textContent='';
+  _imageData=null;_pdfData=null;
+  document.getElementById('image-preview').style.display='none';
+  document.getElementById('pdf-preview').style.display='none';
+};
+window.closeUploader=function(){document.getElementById('uploader-modal').style.display='none';};
+
+window.setUploadTab=function(tab,btn){
+  _uploadTab=tab;
+  document.querySelectorAll('.upload-tab').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  ['text','link','image','pdf'].forEach(t=>document.getElementById('upload-'+t).style.display=t===tab?'block':'none');
+};
+
+// Image handling
+window.handleImageFile=function(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    _imageData={base64:e.target.result.split(',')[1],mediaType:file.type,name:file.name};
+    document.getElementById('image-preview-img').src=e.target.result;
+    document.getElementById('image-preview-name').textContent=file.name;
+    document.getElementById('image-preview').style.display='block';
+    document.getElementById('drop-image').style.display='none';
+  };
+  reader.readAsDataURL(file);
+};
+window.handleImageDrop=function(e){
+  e.preventDefault();document.getElementById('drop-image').classList.remove('drag-over');
+  const file=e.dataTransfer.files[0];if(!file)return;
+  document.getElementById('file-image').files=e.dataTransfer.files;
+  handleImageFile(document.getElementById('file-image'));
+};
+
+// PDF handling
+window.handlePdfFile=function(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    _pdfData={base64:e.target.result.split(',')[1],name:file.name};
+    document.getElementById('pdf-preview').textContent='📄 '+file.name;
+    document.getElementById('pdf-preview').style.display='block';
+    document.getElementById('drop-pdf').style.display='none';
+  };
+  reader.readAsDataURL(file);
+};
+window.handlePdfDrop=function(e){
+  e.preventDefault();document.getElementById('drop-pdf').classList.remove('drag-over');
+  const file=e.dataTransfer.files[0];if(!file)return;
+  document.getElementById('file-pdf').files=e.dataTransfer.files;
+  handlePdfFile(document.getElementById('file-pdf'));
+};
+
+// ── ANALYZE RECIPE ───────────────────────────────────────────
+window.analyzeRecipe=async function(){
+  const btn=document.getElementById('analyze-btn');
+  const status=document.getElementById('upload-status');
+  btn.disabled=true;btn.innerHTML='<div class="spinner" style="vertical-align:middle"></div> Analyzing…';
+  status.textContent='';
+  try{
+    let prompt='',messages=[];
+    if(_uploadTab==='text'){
+      const text=document.getElementById('input-text').value.trim();
+      const titleHint=document.getElementById('input-title-text').value.trim();
+      if(!text){status.style.color='var(--red)';status.textContent='Please paste a recipe.';btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';return;}
+      prompt=(titleHint?'Recipe title hint: '+titleHint+'\n\n':'')+'Extract the recipe from this text:\n\n'+text;
+      messages=[{role:'user',content:prompt}];
+    } else if(_uploadTab==='link'){
+      const url=document.getElementById('input-link').value.trim();
+      if(!url){status.style.color='var(--red)';status.textContent='Please enter a URL.';btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';return;}
+      status.textContent='Fetching content…';
+      // Detect Google Docs
+      let fetchUrl=url;
+      if(url.includes('docs.google.com/document')){
+        fetchUrl=url.replace(/\/edit.*$/,'/export?format=txt');
+      }
+      try{
+        const resp=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(fetchUrl));
+        const d=await resp.json();
+        prompt='Extract the recipe from this web page content:\n\n'+(d.contents||'').slice(0,8000);
+      }catch(e){prompt='Extract the recipe from this URL: '+url;}
+      messages=[{role:'user',content:prompt}];
+    } else if(_uploadTab==='image'){
+      if(!_imageData){status.style.color='var(--red)';status.textContent='Please upload a photo.';btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';return;}
+      messages=[{role:'user',content:[
+        {type:'image',source:{type:'base64',media_type:_imageData.mediaType,data:_imageData.base64}},
+        {type:'text',text:'Extract the complete recipe from this image.'}
+      ]}];
+    } else if(_uploadTab==='pdf'){
+      if(!_pdfData){status.style.color='var(--red)';status.textContent='Please upload a PDF.';btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';return;}
+      messages=[{role:'user',content:[
+        {type:'document',source:{type:'base64',media_type:'application/pdf',data:_pdfData.base64}},
+        {type:'text',text:'Extract the complete recipe from this PDF.'}
+      ]}];
+    }
+
+    status.style.color='var(--muted)';status.textContent='Analyzing with AI…';
+    const systemPrompt=`You are a recipe extraction assistant. Extract the recipe and return ONLY valid JSON, no other text:
+{
+  "title": "Recipe name",
+  "emoji": "🍽️",
+  "servings": 4,
+  "calories": 320,
+  "protein": 28,
+  "carbs": 12,
+  "sugar": 3,
+  "fiber": 4,
+  "fat": 8,
+  "sodium": 420,
+  "ingredients": ["1 cup flour", "2 eggs"],
+  "instructions": "Step 1: ...\nStep 2: ...",
+  "notes": "Optional tips or notes",
+  "categories": ["Dinner", "Chicken"]
+}
+Choose an appropriate single emoji for the dish. Categories should be 1-3 of: Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Pork, Seafood, Vegetarian, Vegan, Dessert, Snack, Drink, Side Dish, Baking.
+All numeric fields are per serving. Return ONLY the JSON object.`;
+
+    const aiRes=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:systemPrompt,messages})});
+    const aiData=await aiRes.json();
+    const text=aiData.content?.[0]?.text||'';
+    let recipe;
+    try{
+      const start=text.indexOf('{'),end=text.lastIndexOf('}');
+      recipe=JSON.parse(text.slice(start,end+1));
+    }catch(e){throw new Error('Could not parse recipe from response.');}
+
+    recipe.id='r'+Date.now();
+    recipe.savedAt=new Date().toISOString();
+    recipe.isPublic=false;
+    recipe.ownerId=_uid;
+
+    // Get user name for potential sharing
+    const uSnap=await getDoc(doc(db,'recipe_users',_uid));
+    recipe.authorName=uSnap.exists()?uSnap.data().name:'';
+
+    await fbSet(_uid,recipe.id,recipe);
+    _myRecipes.unshift(recipe);
+    closeUploader();
+    renderMyRecipes();
+    populateCategoryFilters();
+    showToast('✓ Recipe saved!');
+    openMyRecipeView(recipe.id);
+  }catch(e){
+    console.error('[analyzeRecipe]',e);
+    status.style.color='var(--red)';status.textContent='Error: '+e.message;
+  }finally{
+    btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';
+  }
+};
+
+// ── PUBLIC / SHARE ───────────────────────────────────────────
+window.togglePublic=async function(id){
+  const r=_myRecipes.find(m=>m.id===id);if(!r)return;
+  r.isPublic=!r.isPublic;
+  await fbSet(_uid,id,{isPublic:r.isPublic});
+  if(r.isPublic){
+    // Copy to public_recipes
+    await fbSetShared(id,{...r,shareId:id,sharedAt:new Date().toISOString()});
+    _sharedRecipes=_sharedRecipes.filter(s=>s.id!==id);
+    _sharedRecipes.unshift({...r,shareId:id,sharedAt:new Date().toISOString()});
+    showToast('✓ Recipe is now public!');
+  } else {
+    await fbDelShared(id);
+    _sharedRecipes=_sharedRecipes.filter(s=>s.id!==id);
+    showToast('Recipe is now private.');
+  }
+  renderMyRecipes();renderSharedRecipes();populateCategoryFilters();
+};
+
+window.openShareModal=function(id){
+  const shareUrl=window.location.origin+window.location.pathname+'?r='+id;
+  document.getElementById('share-link-input').value=shareUrl;
+  document.getElementById('share-modal').style.display='flex';
+};
+window.closeShareModal=function(){document.getElementById('share-modal').style.display='none';};
+window.copyShareLink=function(){
+  const input=document.getElementById('share-link-input');
+  input.select();navigator.clipboard.writeText(input.value).catch(()=>document.execCommand('copy'));
+  showToast('Link copied!');
+};
+
+window.addToMyRecipes=async function(id){
+  const r=_sharedRecipes.find(s=>s.id===id);if(!r)return;
+  if(_myRecipes.find(m=>m.id===id)){showToast('Already in your recipes!');return;}
+  const copy={...r,id:'r'+Date.now(),savedAt:new Date().toISOString(),isPublic:false,ownerId:_uid,copiedFrom:id};
+  await fbSet(_uid,copy.id,copy);
+  _myRecipes.unshift(copy);
+  renderMyRecipes();populateCategoryFilters();
+  showToast('✓ Added to your recipes!');
+};
+
+window.deleteRecipe=async function(id){
+  if(!confirm('Delete this recipe? This cannot be undone.'))return;
+  const r=_myRecipes.find(m=>m.id===id);
+  if(r?.isPublic)await fbDelShared(id).catch(()=>{});
+  await fbDel(_uid,id);
+  _myRecipes=_myRecipes.filter(m=>m.id!==id);
+  _sharedRecipes=_sharedRecipes.filter(s=>s.id!==id);
+  closeRecipeView();renderMyRecipes();renderSharedRecipes();populateCategoryFilters();
+  showToast('Recipe deleted.');
+};
+
+// ── PDF / PRINT ──────────────────────────────────────────────
+window.downloadPDF=function(id){
+  const r=_myRecipes.find(m=>m.id===id)||_sharedRecipes.find(m=>m.id===id);
+  if(!r)return;generateRecipePDF(r,true);
+};
+
+window.printRecipe=function(id,isShared){
+  const r=isShared?_sharedRecipes.find(m=>m.id===id):_myRecipes.find(m=>m.id===id);
+  if(!r)return;generateRecipePDF(r,false);
+};
+
+window.printRecipeObj=function(r){generateRecipePDF(r,false);};
+
+function generateRecipePDF(r,download){
+  const{jsPDF}=window.jspdf;
+  const doc2=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,margin=20,lineW=W-margin*2;
+  let y=margin;
+
+  // Header bar
+  doc2.setFillColor(92,122,62);doc2.rect(0,0,W,28,'F');
+  doc2.setTextColor(255,255,255);doc2.setFont('helvetica','bold');doc2.setFontSize(9);
+  doc2.text('MYWELLPATH RECIPES',margin,12);
+  doc2.setFont('helvetica','bold');doc2.setFontSize(18);
+  doc2.text((r.emoji||'')+'  '+(r.title||'Recipe'),margin,22);
+  y=38;
+
+  // Meta line
+  doc2.setTextColor(120,90,50);doc2.setFont('helvetica','normal');doc2.setFontSize(9);
+  const meta=[r.servings?r.servings+' servings':'',r.calories?r.calories+' cal/serving':''].filter(Boolean).join('  ·  ');
+  if(meta)doc2.text(meta,margin,y);y+=6;
+
+  // Categories
+  if(r.categories?.length){
+    doc2.setFont('helvetica','italic');doc2.setFontSize(8);doc2.setTextColor(92,122,62);
+    doc2.text(r.categories.join('  ·  '),margin,y);y+=8;
+  }
+
+  // Divider
+  doc2.setDrawColor(92,122,62);doc2.setLineWidth(0.3);doc2.line(margin,y,W-margin,y);y+=6;
+
+  // Macros
+  if(r.calories||r.protein||r.carbs){
+    const macs=[{l:'Calories',v:r.calories,u:'kcal'},{l:'Protein',v:r.protein,u:'g'},{l:'Carbs',v:r.carbs,u:'g'},{l:'Fat',v:r.fat,u:'g'},{l:'Fiber',v:r.fiber,u:'g'},{l:'Sodium',v:r.sodium,u:'mg'}].filter(m=>m.v);
+    const tw=lineW/macs.length;
+    macs.forEach((m,i)=>{
+      const x=margin+i*tw+tw/2;
+      doc2.setFont('helvetica','bold');doc2.setFontSize(12);doc2.setTextColor(92,122,62);
+      doc2.text(m.v+m.u,x,y+6,{align:'center'});
+      doc2.setFont('helvetica','normal');doc2.setFontSize(7);doc2.setTextColor(120,90,50);
+      doc2.text(m.l,x,y+10,{align:'center'});
+    });
+    y+=16;doc2.line(margin,y,W-margin,y);y+=6;
+  }
+
+  const checkPage=(needed=10)=>{if(y+needed>285){doc2.addPage();y=margin;}};
+
+  // Ingredients
+  if(r.ingredients?.length){
+    checkPage(14);
+    doc2.setFont('helvetica','bold');doc2.setFontSize(11);doc2.setTextColor(44,31,14);
+    doc2.text('Ingredients',margin,y);y+=6;
+    r.ingredients.forEach(ing=>{
+      checkPage(7);
+      doc2.setFont('helvetica','normal');doc2.setFontSize(9);doc2.setTextColor(44,31,14);
+      const lines=doc2.splitTextToSize('• '+ing,lineW-4);
+      doc2.text(lines,margin+2,y);
+      y+=lines.length*4.5+1;
+    });
+    y+=4;
+  }
+
+  // Instructions
+  if(r.instructions){
+    checkPage(14);
+    doc2.setFont('helvetica','bold');doc2.setFontSize(11);doc2.setTextColor(44,31,14);
+    doc2.text('Instructions',margin,y);y+=6;
+    const steps=r.instructions.split('\n').filter(s=>s.trim());
+    steps.forEach((step,i)=>{
+      checkPage(10);
+      // Step number circle
+      doc2.setFillColor(92,122,62);doc2.circle(margin+3,y-1,3,'F');
+      doc2.setFont('helvetica','bold');doc2.setFontSize(7);doc2.setTextColor(255,255,255);
+      doc2.text(String(i+1),margin+3,y+0.5,{align:'center'});
+      // Step text
+      doc2.setFont('helvetica','normal');doc2.setFontSize(9);doc2.setTextColor(44,31,14);
+      const clean=step.replace(/^\d+[\.\)]\s*/,'');
+      const lines=doc2.splitTextToSize(clean,lineW-10);
+      doc2.text(lines,margin+8,y);
+      y+=lines.length*4.5+3;
+    });
+    y+=4;
+  }
+
+  // Notes
+  if(r.notes){
+    checkPage(14);
+    doc2.setFillColor(240,235,226);doc2.rect(margin,y-2,lineW,18,'F');
+    doc2.setFont('helvetica','bold');doc2.setFontSize(9);doc2.setTextColor(92,122,62);
+    doc2.text('Notes',margin+3,y+3);
+    doc2.setFont('helvetica','normal');doc2.setTextColor(44,31,14);
+    const noteLines=doc2.splitTextToSize(r.notes,lineW-6);
+    doc2.text(noteLines,margin+3,y+8);
+    y+=noteLines.length*4.5+10;
+  }
+
+  // Footer
+  const pages=doc2.getNumberOfPages();
+  for(let p=1;p<=pages;p++){
+    doc2.setPage(p);
+    doc2.setFillColor(240,235,226);doc2.rect(0,287,W,10,'F');
+    doc2.setFont('helvetica','normal');doc2.setFontSize(7);doc2.setTextColor(120,90,50);
+    doc2.text('MyWellpath Recipes  ·  recipes.mywellpath.app',margin,293);
+    doc2.text('Page '+p+' of '+pages,W-margin,293,{align:'right'});
+  }
+
+  if(download){
+    doc2.save((r.title||'recipe').replace(/[^a-z0-9]/gi,'_').toLowerCase()+'.pdf');
+  } else {
+    const blob=doc2.output('blob');
+    window.open(URL.createObjectURL(blob));
+  }
+}
+
+// ── HELPERS ──────────────────────────────────────────────────
+function esc(str){return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+function showToast(msg){
+  const t=document.createElement('div');t.className='toast';t.textContent=msg;
+  document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
+}
+</script>
+</body>
+</html>
