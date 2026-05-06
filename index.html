@@ -2765,7 +2765,8 @@ function refreshDashboard(){
   if(goalTitle)goalTitle.textContent=goalsDate===TODAY?"Today's goals":formatDate(goalsDate)+" goals";
   const rawEntries=cache.food[goalsDate]||[];
   const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),ts_=entries.reduce((a,e)=>a+(e.sugar||0),0);
+  const _ce=entries.filter(e=>!e._childOf);
+  const tp=_ce.reduce((a,e)=>a+(e.protein||0),0),tw=_ce.reduce((a,e)=>a+(e.water||0),0),tc=_ce.reduce((a,e)=>a+(e.carbs||0),0),tcal=_ce.reduce((a,e)=>a+(e.calories||0),0),ts_=_ce.reduce((a,e)=>a+(e.sugar||0),0);
   let tf_=entries.reduce((a,e)=>a+(e.fiber||0),0);
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
@@ -2773,7 +2774,7 @@ function refreshDashboard(){
   document.getElementById('dash-lbs-lost').textContent=lost>0?'-'+lost+' lbs':'0 lbs';
   document.getElementById('dash-protein').textContent=Math.round(tp)+'g';
   document.getElementById('dash-water').textContent=Math.round(tw)+' oz';
-  document.getElementById('dash-carbs').textContent=Math.round(tc)+'g';
+  document.getElementById('dash-carbs').textContent=Math.round(_tcNet)+'g';
   document.getElementById('dash-sugar').textContent=Math.round(ts_)+'g';
   const _sl=document.getElementById('stat-protein-label');if(_sl)_sl.textContent=goalsDate===TODAY?'Protein Today':'Protein '+goalsDate.slice(5);
   const _wl=document.getElementById('stat-water-label');if(_wl)_wl.textContent=goalsDate===TODAY?'Water Today':'Water '+goalsDate.slice(5);
@@ -2802,12 +2803,13 @@ function refreshDashboard(){
   const _pp=document.getElementById('prog-protein');if(_pp)_pp.style.width=Math.min(100,(tp/pg)*100)+'%';
   const _pw=document.getElementById('prog-water');if(_pw)_pw.style.width=Math.min(100,(tw/wg)*100)+'%';
   // Carbs bar — turns red when over limit
-  const _carbPct=Math.min(110,(tc/cg)*100);
+  const _tcNet=Math.max(0,tc-tf_);
+  const _carbPct=Math.min(110,(_tcNet/cg)*100);
   const _carbOver=tc>cg;
   const _pc=document.getElementById('prog-carbs');if(_pc){_pc.style.width=Math.min(100,_carbPct)+'%';_pc.style.background=_carbOver?'var(--red)':'var(--amber)';}
   const _ppl=document.getElementById('prog-protein-label');if(_ppl)_ppl.textContent=Math.round(tp)+' / '+pg+'g';
   const _pwl=document.getElementById('prog-water-label');if(_pwl)_pwl.textContent=Math.round(tw)+' / '+wg+' oz';
-  const _pcl=document.getElementById('prog-carbs-label');if(_pcl)_pcl.textContent=Math.round(tc)+' / '+cg+'g'+(tc>cg?' ⚠':'');
+  const _pcl=document.getElementById('prog-carbs-label');if(_pcl)_pcl.textContent=Math.round(_tcNet)+' / '+cg+'g'+(_tcNet>cg?' ⚠':'');
   // Get today's adjusted calorie goal (may be modified by extra workouts)
   const _todayCalGoal=(cache.food[goalsDate]&&cache.food[goalsDate]._adjustedCalGoal)||calg;
   const _calOver=tcal>_todayCalGoal;
@@ -3177,6 +3179,27 @@ function renderCarbsChart(){
       label:{content:'Goal: '+goal+'g',display:true,position:'end',font:{size:10},color:'rgba(138,106,26,0.8)'}}}}}});
 }
 
+function parseServingPrefix(raw){
+  // Matches "2 chicken breast", "1.5 cups oatmeal", "2x apple" etc
+  const m=raw.trim().match(/^(\d+(?:\.\d+)?)[x\s]+(.+)$/i);
+  if(m&&parseFloat(m[1])>0&&parseFloat(m[1])<=50){
+    return{qty:parseFloat(m[1]),text:m[2].trim()};
+  }
+  return{qty:1,text:raw.trim()};
+}
+
+function parseGroupedEntry(raw){
+  // Detect "Title (item1, item2, item3)" pattern
+  const m=raw.match(/^([^(]+)\(([^)]+)\)\s*$/);
+  if(!m)return null;
+  const title=m[1].trim();
+  // Children: split on comma but NOT within nested parens
+  const childStr=m[2].trim();
+  const children=childStr.split(',').map(s=>s.trim()).filter(Boolean);
+  if(!children.length)return null;
+  return{title,children};
+}
+
 function buildUserContext(){
   const p=window._profile||{};
   return'User profile:\nName: '+p.name+', Age: '+(p.dob?computeAge(p.dob):p.age)+', Current weight: '+p.currentWeight+'lbs, Goal weight: '+p.goalWeight+'lbs'+(p.genderIdentity?', Identifies as: '+p.genderIdentity:'')+(p.biologicalSex?', Biological sex: '+p.biologicalSex:'')+(p.hrt&&p.hrt==='Yes'?', Hormone therapy: Yes'+(p.hrtDetail?' ('+p.hrtDetail+')':''):', Hormone therapy: No')+'\nHealth conditions: '+((p.conditions||[]).join(', ')||'None')+'\nMedications AM: '+((p.medsAm||[]).join(', ')||'None')+'\nMedications PM: '+((p.medsPm||[]).join(', ')||'None')+'\nFavorite foods: '+(p.favFoods||'Not specified')+'\nFoods to avoid: '+(p.avoidFoods||'None')+'\nDiet preferences: '+((p.dietPrefs||[]).join(', ')||'No restrictions')+'\nFitness goals: '+((p.fitnessGoals||[]).join(', '))+'\nActivity level: '+(p.activityLevel||'')+'\nEquipment: '+(p.equipment||'')+'\nSession time: '+(p.sessionTime||'')+'\nNotes: '+(p.notes||'None')+'\nDaily goals: '+(p.proteinGoal||120)+'g protein, '+(p.waterGoal||80)+' oz water, '+(p.carbGoal||100)+'g net carbs, '+(p.calorieGoal||2000)+' kcal, '+(p.sugarGoal||50)+'g sugar limit, '+(p.fiberGoal||28)+'g fiber target, '+(p.fatGoal||65)+'g fat limit, '+(p.sodiumGoal||2300)+'mg sodium limit';
@@ -3188,10 +3211,23 @@ async function logFood(){
   const woz=0;// water now logged separately
   const mt=document.getElementById('meal-time').value;
   if(!rawText){alert('Please describe what you ate.');return;}
+
+  // ── Parse grouped entry: "Title (item1, item2, ...)" ──
+  const grouped=parseGroupedEntry(rawText);
+  if(grouped){
+    await _logGroupedEntry(grouped.title,grouped.children,mt);
+    return;
+  }
+
   // Split on comma OR newline, whichever produces more items
+  // Strip grouped parens from simple items before splitting
   const byComma=rawText.split(',').map(s=>s.trim()).filter(Boolean);
   const byLine=rawText.split('\n').map(s=>s.trim()).filter(Boolean);
-  const items=byLine.length>byComma.length?byLine:byComma;
+  const rawItems=byLine.length>byComma.length?byLine:byComma;
+  // Parse serving prefixes from each item
+  const parsedItems=rawItems.map(parseServingPrefix);
+  const items=parsedItems.map(p=>p.text);
+  const itemServings=parsedItems.map(p=>p.qty);
   const btn=document.getElementById('log-food-btn');btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing...';
   document.getElementById('food-feedback').innerHTML='';
   if(!cache.food[viewDate])cache.food[viewDate]=[];
@@ -3258,7 +3294,7 @@ async function logFood(){
       const _mealCtxAI=_exAI.length?' (also in this meal: '+_exAI.join(', ')+')':'';
       const _dayCtxAI=Object.keys(_othAI).length?' | Other meals today: '+Object.entries(_othAI).map(([t,its])=>t+': '+its.join(', ')).join(' | '):'';
       const res=await callAI(
-        'Meal: '+mt+_mealCtxAI+_dayCtxAI+'\nItems needing nutrition estimates:\n'+itemsNeedingAI.map((it,i)=>(i+1)+'. '+it).join('\n'),
+        'Meal: '+mt+_mealCtxAI+_dayCtxAI+'\nItems needing nutrition estimates (estimates should be for 1 serving; servings will be applied separately):\n'+itemsNeedingAI.map((it,i)=>(i+1)+'. '+it+(itemServings[items.indexOf(it)]>1?' [user will have '+itemServings[items.indexOf(it)]+' servings]':'')).join('\n'),
         'You are a nutrition coach. '+buildUserContext()+'\n\nReturn a JSON array with EXACTLY '+itemsNeedingAI.length+' objects, one per item in order listed. Then a blank line. Then 2-3 sentences of feedback considering the full meal context.\n\nFormat:\n[\n{"item":"name","protein":26,"carbs":0,"calories":140,"sugar":0,"fiber":0,"fat":5,"sodium":320}\n]\n\nFeedback text here.\n\nRules: realistic individual estimates, integers, fat in grams, sodium in mg, same order as listed, do not combine items.'
       );
       try{
@@ -3282,7 +3318,12 @@ async function logFood(){
             const _others=(cache.food[viewDate]||[]).filter(e=>e.time!==mt).reduce((acc,e)=>{if(!acc[e.time])acc[e.time]=[];acc[e.time].push(e.text);return acc;},{});
             const _mealCtx=_existing.length?' (already in this meal: '+_existing.join(', ')+')':'';
             const _dayCtx=Object.keys(_others).length?' | Other meals today: '+Object.entries(_others).map(([t,its])=>t+': '+its.join(', ')).join(' | '):'';
-            return 'I just logged for '+mt+': '+items.join(', ')+_mealCtx+_dayCtx;
+            // Build context including grouped entry details
+            const itemsCtx=items.map((item,ii)=>{
+              if(itemServings[ii]>1)return itemServings[ii]+'x '+item;
+              return item;
+            }).join(', ');
+            return 'I just logged for '+mt+': '+itemsCtx+_mealCtx+_dayCtx;
           })(),
           'You are a nutrition coach. '+buildUserContext()+' Give 2-3 sentences of warm personalized feedback on this meal in context of the full day. No nutrition estimates needed — just coaching feedback.'
         );
@@ -3303,16 +3344,19 @@ async function logFood(){
         macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10,sugar:Math.round((ai.sugar||0)*10)/10,fiber:Math.round((ai.fiber||0)*10)/10,fat:Math.round((ai.fat||0)*10)/10,sodium:Math.round(ai.sodium||0)};
         aiIdx++;
       }
+      const _srv=itemServings[i]||1;
+      const _scale=v=>Math.round((v||0)*_srv*10)/10;
+      const _scalei=v=>Math.round((v||0)*_srv);
       cache.food[viewDate].push({
         time:mt,
         text:item,
-        protein:macros.protein,
-        carbs:macros.carbs,
-        calories:macros.calories,
-        sugar:macros.sugar||0,
-        fiber:macros.fiber||0,
-        fat:macros.fat||0,
-        sodium:macros.sodium||0,
+        protein:_scale(macros.protein),
+        carbs:_scale(macros.carbs),
+        calories:_scalei(macros.calories),
+        sugar:_scale(macros.sugar||0),
+        fiber:_scale(macros.fiber||0),
+        fat:_scale(macros.fat||0),
+        sodium:_scalei(macros.sodium||0),
         baseProtein:macros.protein,
         baseCarbs:macros.carbs,
         baseCalories:macros.calories,
@@ -3320,7 +3364,7 @@ async function logFood(){
         baseFiber:macros.fiber||0,
         baseFat:macros.fat||0,
         baseSodium:macros.sodium||0,
-        servings:1,
+        servings:_srv,
         water:0,
         ts:Date.now()+i,
         source:usda?(usda.source||'usda'):'ai',
@@ -3367,41 +3411,140 @@ async function saveFavorite(ts,date){
     const btn=event.target.closest('button')||event.target;
     btn.textContent='Already saved!';return;
   }
-  // Save without time — favorites are meal-agnostic
-  cache.favorites.push({text:entry.text,protein:entry.protein,carbs:entry.carbs,calories:entry.calories,id:Date.now()});
+  // Normalize to 1 serving
+  const srv=entry.servings||1;
+  const norm=v=>srv>1?Math.round((v||0)/srv*10)/10:(v||0);
+  cache.favorites.push({
+    text:entry.text,
+    protein:entry.baseProtein||norm(entry.protein),
+    carbs:entry.baseCarbs||norm(entry.carbs),
+    calories:entry.baseCalories||Math.round(norm(entry.calories)),
+    sugar:entry.baseSugar||norm(entry.sugar)||0,
+    fiber:entry.baseFiber||norm(entry.fiber)||0,
+    fat:entry.baseFat||norm(entry.fat)||0,
+    sodium:entry.baseSodium||Math.round(norm(entry.sodium))||0,
+    id:Date.now()
+  });
   await fbSet('favorites','list',{items:cache.favorites});
   renderFavorites();
   const btn=event.target.closest('button')||event.target;
   btn.textContent='&#10003; Saved!';btn.disabled=true;
 }
 
+async function saveGroupedFavorite(ts,btnOrDate){
+  const d=(typeof btnOrDate==='string'?btnOrDate:viewDate)||viewDate;
+  const entry=(cache.food[d]||[]).find(e=>e.ts===ts);if(!entry)return;
+  const children=(cache.food[d]||[]).filter(c=>c._childOf===ts);
+  if(cache.favorites.find(f=>f.text.toLowerCase()===entry.text.toLowerCase())){
+    showToast('Already in favorites!');return;
+  }
+  cache.favorites.push({
+    text:entry.text,
+    grouped:true,
+    protein:entry.baseProtein||0,carbs:entry.baseCarbs||0,
+    calories:entry.baseCalories||0,sugar:entry.baseSugar||0,
+    fiber:entry.baseFiber||0,fat:entry.baseFat||0,sodium:entry.baseSodium||0,
+    // Store children at 1 serving each
+    childDefs:children.map(c=>({
+      text:c.text,
+      baseCalories:c.baseCalories||c.calories||0,
+      baseProtein:c.baseProtein||c.protein||0,
+      baseCarbs:c.baseCarbs||c.carbs||0,
+      baseSugar:c.baseSugar||c.sugar||0,
+      baseFiber:c.baseFiber||c.fiber||0,
+      baseFat:c.baseFat||c.fat||0,
+      baseSodium:c.baseSodium||c.sodium||0,
+      servings:c.servings||1,source:c.source
+    })),
+    id:Date.now()
+  });
+  await fbSet('favorites','list',{items:cache.favorites});
+  renderFavorites();
+  showToast('&#11088; Saved to favorites!');
+}
+
 function addFavoriteToLog(idx){
   const fav=cache.favorites[idx];if(!fav)return;
-  // Show meal time picker inline
   const times=['Breakfast','Mid-morning','Lunch','Afternoon','Dinner','Late night'];
   const opts=times.map(t=>`<option value="${t}">${t}</option>`).join('');
   const modal=document.createElement('div');
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:999;display:flex;align-items:center;justify-content:center;padding:24px;';
   modal.innerHTML=`<div style="background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:28px;max-width:360px;width:100%;animation:fadeUp 0.2s ease">
     <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:6px">Add to food log</div>
-    <div style="font-size:14px;color:var(--muted);margin-bottom:18px">${escHtml(fav.text)}</div>
-    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:6px">Which meal is this for?</label>
-    <select id="fav-time-pick" style="width:100%;margin-bottom:18px">${opts}</select>
+    <div style="font-size:14px;color:var(--muted);margin-bottom:16px">${escHtml(fav.text)}</div>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:5px">Which meal?</label>
+    <select id="fav-time-pick" style="width:100%;margin-bottom:14px">${opts}</select>
+    <label style="font-size:13px;color:var(--muted);display:block;margin-bottom:5px">Servings</label>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:18px">
+      <button onclick="const i=document.getElementById('fav-srv-inp');i.value=Math.max(0.5,parseFloat(i.value||1)-0.5)" style="width:32px;height:32px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;font-size:18px;color:var(--text);display:flex;align-items:center;justify-content:center">−</button>
+      <input type="number" id="fav-srv-inp" value="1" min="0.5" step="0.5" style="width:60px;text-align:center;font-size:16px;font-weight:600"/>
+      <button onclick="const i=document.getElementById('fav-srv-inp');i.value=parseFloat(i.value||1)+0.5" style="width:32px;height:32px;border:1px solid var(--border2);border-radius:6px;background:var(--surface2);cursor:pointer;font-size:18px;color:var(--text);display:flex;align-items:center;justify-content:center">+</button>
+    </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('[style*=fixed]').remove()">Cancel</button>
-      <button class="btn btn-primary" style="flex:2" onclick="confirmFavAdd(${idx},document.getElementById('fav-time-pick').value);this.closest('[style*=fixed]').remove()">Add to log</button>
+      <button class="btn btn-primary" style="flex:2" onclick="confirmFavAdd(${idx},document.getElementById('fav-time-pick').value,parseFloat(document.getElementById('fav-srv-inp').value)||1);this.closest('[style*=fixed]').remove()">Add to log</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
 }
 
-function confirmFavAdd(idx,time){
+async function confirmFavAdd(idx,time,servings){
   const fav=cache.favorites[idx];if(!fav)return;
-  document.getElementById('meal-time').value=time;
-  document.getElementById('food-input').value=fav.text;
-  showSection('food');
-  window.scrollTo(0,0);
+  const srv=servings||1;
+  if(!cache.food[viewDate])cache.food[viewDate]=[];
+  const ts=Date.now();
+
+  if(fav.grouped&&fav.childDefs?.length){
+    // Rebuild grouped entry from childDefs
+    const children=fav.childDefs.map((cd,i)=>{
+      const cSrv=cd.servings||1;
+      const scale=v=>Math.round((v||0)*cSrv*srv*10)/10;
+      const scalei=v=>Math.round((v||0)*cSrv*srv);
+      return{
+        time,text:cd.text,
+        calories:scalei(cd.baseCalories),protein:scale(cd.baseProtein),
+        carbs:scale(cd.baseCarbs),sugar:scale(cd.baseSugar||0),
+        fiber:scale(cd.baseFiber||0),fat:scale(cd.baseFat||0),sodium:scalei(cd.baseSodium||0),
+        baseCalories:cd.baseCalories,baseProtein:cd.baseProtein,baseCarbs:cd.baseCarbs,
+        baseSugar:cd.baseSugar||0,baseFiber:cd.baseFiber||0,baseFat:cd.baseFat||0,baseSodium:cd.baseSodium||0,
+        servings:cSrv,water:0,ts:ts+i+1,source:cd.source||'ai',_childOf:ts
+      };
+    });
+    const scale=v=>Math.round((v||0)*srv*10)/10;
+    const scalei=v=>Math.round((v||0)*srv);
+    const parent={
+      time,text:fav.text,grouped:true,servings:srv,
+      calories:scalei(fav.calories||fav.baseCalories||0),
+      protein:scale(fav.protein||fav.baseProtein||0),
+      carbs:scale(fav.carbs||fav.baseCarbs||0),
+      sugar:scale(fav.sugar||0),fiber:scale(fav.fiber||0),
+      fat:scale(fav.fat||0),sodium:scalei(fav.sodium||0),
+      baseCalories:fav.calories||fav.baseCalories||0,
+      baseProtein:fav.protein||fav.baseProtein||0,
+      baseCarbs:fav.carbs||fav.baseCarbs||0,
+      baseSugar:fav.sugar||0,baseFiber:fav.fiber||0,
+      baseFat:fav.fat||0,baseSodium:fav.sodium||0,
+      water:0,ts,source:'grouped',childDefs:fav.childDefs
+    };
+    cache.food[viewDate].push(parent,...children);
+  } else {
+    // Standard favorite
+    const scale=v=>Math.round((v||0)*srv*10)/10;
+    const scalei=v=>Math.round((v||0)*srv);
+    cache.food[viewDate].push({
+      time,text:fav.text,
+      calories:scalei(fav.calories||0),protein:scale(fav.protein||0),
+      carbs:scale(fav.carbs||0),sugar:scale(fav.sugar||0),
+      fiber:scale(fav.fiber||0),fat:scale(fav.fat||0),sodium:scalei(fav.sodium||0),
+      baseCalories:fav.calories||0,baseProtein:fav.protein||0,
+      baseCarbs:fav.carbs||0,baseSugar:fav.sugar||0,
+      baseFiber:fav.fiber||0,baseFat:fav.fat||0,baseSodium:fav.sodium||0,
+      servings:srv,water:0,ts,source:'ai'
+    });
+  }
+  await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+  showSection('food');renderFoodEntries();refreshDashboard();
 }
 
 async function deleteFavorite(idx){
@@ -3416,7 +3559,23 @@ function renderFavorites(){
   if(!filtered.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">No favorites yet. Log food and tap "Save to favorites"!</div>';return;}
   el.innerHTML=filtered.map(f=>{
     const ri=cache.favorites.indexOf(f);
-    return'<div class="fav-item"><div style="flex:1"><div class="fav-name">'+escHtml(f.text)+'</div><div class="fav-meta">~'+Math.round(f.protein||0)+'g protein &middot; ~'+Math.round(f.calories||0)+' cal</div></div><div class="fav-add" onclick="addFavoriteToLog('+ri+')" title="Add to log">&#65291;</div><div class="fav-del" onclick="deleteFavorite('+ri+')" title="Remove">&#10005;</div></div>';
+    const kids=f.grouped&&f.childDefs?.length?
+      '<div id="'+favKidId+'" style="display:none;padding:4px 0 4px 12px;margin-top:4px;border-top:1px solid var(--border)">'
+      +f.childDefs.map(c=>'<div style="font-size:11px;color:var(--muted);padding:1px 0">'+escHtml(c.text)+'</div>').join('')
+      +'</div>':'';
+    const favKidId='fav-kids-'+ri;
+    const expandBtn=f.grouped&&f.childDefs?.length?
+      '<button onclick="var _fk=document.getElementById(\''+favKidId+'\');if(_fk)_fk.style.display=_fk.style.display===\'none\'?\'block\':\'none\'" style="background:none;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0 3px" title="Show ingredients">&#9660;</button>':'';
+    return'<div class="fav-item" style="flex-direction:column;align-items:stretch">'
+      +'<div style="display:flex;align-items:center">'
+      +'<div style="flex:1"><div class="fav-name">'+escHtml(f.text)+(f.grouped?' <span style="font-size:10px;background:rgba(85,107,47,0.1);color:var(--accent);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#128101; Meal</span>':'')+'</div>'
+      +'<div class="fav-meta">~'+Math.round(f.protein||0)+'g protein &middot; ~'+Math.round(f.calories||0)+' cal'+(f.grouped&&f.childDefs?.length?' &middot; '+f.childDefs.length+' items':'')+'</div></div>'
+      +expandBtn
+      +'<div class="fav-add" onclick="addFavoriteToLog('+ri+')" title="Add to log">&#65291;</div>'
+      +'<div class="fav-del" onclick="deleteFavorite('+ri+')" title="Remove">&#10005;</div>'
+      +'</div>'
+      +kids
+      +'</div>';
   }).join('');
 }
 
@@ -3500,10 +3659,12 @@ function renderFoodEntries(){
   // Clear per-entry AI feedback — ephemeral, resets on date change or tab switch
   // food-feedback is managed by logFood — don't clear it here
   const entries=cache.food[viewDate]||[];
-  const tp=entries.reduce((a,e)=>a+(e.protein||0),0),tc=entries.reduce((a,e)=>a+(e.carbs||0),0),tw=entries.reduce((a,e)=>a+(e.water||0),0),tcal=entries.reduce((a,e)=>a+(e.calories||0),0),tsugar=entries.reduce((a,e)=>a+(e.sugar||0),0);
-  let tfiber=entries.reduce((a,e)=>a+(e.fiber||0),0);
-  let tfat=entries.reduce((a,e)=>a+(e.fat||0),0);
-  let tsodium=entries.reduce((a,e)=>a+(e.sodium||0),0);
+  // Exclude child entries from daily totals — parent already holds summed macros
+  const countableEntries=entries.filter(e=>!e._childOf);
+  const tp=countableEntries.reduce((a,e)=>a+(e.protein||0),0),tc=countableEntries.reduce((a,e)=>a+(e.carbs||0),0),tw=countableEntries.reduce((a,e)=>a+(e.water||0),0),tcal=countableEntries.reduce((a,e)=>a+(e.calories||0),0),tsugar=countableEntries.reduce((a,e)=>a+(e.sugar||0),0);
+  let tfiber=countableEntries.reduce((a,e)=>a+(e.fiber||0),0);
+  let tfat=countableEntries.reduce((a,e)=>a+(e.fat||0),0);
+  let tsodium=countableEntries.reduce((a,e)=>a+(e.sodium||0),0);
   const p=window._profile||{};
   const pg=p.proteinGoal||120, wg=p.waterGoal||80, cg=p.carbGoal||100, sg2=p.sugarGoal||50, fg2=p.fiberGoal||28;
   // Update log title
@@ -3515,7 +3676,8 @@ function renderFoodEntries(){
   const calg2=(cache.food[viewDate]&&cache.food[viewDate]._adjustedCalGoal)||p.calorieGoal||2000;
   document.getElementById('food-protein-total').textContent=Math.round(tp)+'g';
   document.getElementById('food-water-total').textContent=Math.round(tw)+' oz';
-  document.getElementById('food-carb-total').textContent=Math.round(tc)+'g';
+  const tcNet=Math.max(0,tc-tfiber);
+  document.getElementById('food-carb-total').textContent=Math.round(tcNet)+'g';
   const fst=document.getElementById('food-sugar-total');if(fst)fst.textContent=Math.round(tsugar)+'g';
   const fsgl=document.getElementById('food-sugar-goal-label');if(fsgl)fsgl.textContent='/ '+sg2+'g limit';
   const fsp=document.getElementById('food-prog-sugar');if(fsp){fsp.style.width=Math.min(100,(tsugar/sg2)*100)+'%';fsp.style.background=tsugar>sg2?'var(--red)':'rgba(192,57,43,0.6)';}
@@ -3545,12 +3707,13 @@ function renderFoodEntries(){
   document.getElementById('food-protein-goal-label').textContent='/ '+pg+'g goal';
   document.getElementById('food-water-goal-label').textContent='/ '+wg+' oz goal';
   document.getElementById('food-carb-goal-label').textContent='/ '+cg+'g limit';
+  const _fcgt=document.getElementById('food-carb-total');if(_fcgt)_fcgt.title='Net carbs (total carbs − fiber)';
   document.getElementById('food-cal-goal-label').textContent='/ '+calg2+' kcal limit';
   document.getElementById('food-prog-protein').style.width=Math.min(100,(tp/pg)*100)+'%';
   document.getElementById('food-prog-water').style.width=Math.min(100,(tw/wg)*100)+'%';
   const carbBar=document.getElementById('food-prog-carb');
-  carbBar.style.width=Math.min(100,(tc/cg)*100)+'%';
-  carbBar.style.background=tc>cg?'var(--red)':'var(--amber)';
+  carbBar.style.width=Math.min(100,(tcNet/cg)*100)+'%';
+  carbBar.style.background=tcNet>cg?'var(--red)':'var(--amber)';
   const calBar=document.getElementById('food-prog-cal');
   if(calBar){calBar.style.width=Math.min(100,(tcal/calg2)*100)+'%';calBar.style.background=tcal>calg2?'var(--red)':'rgba(192,57,43,0.6)';}
   // Calorie adjustment note
@@ -3603,12 +3766,64 @@ function renderFoodEntries(){
       +'<span style="font-size:12px;color:var(--muted);transition:transform 0.2s" class="meal-chevron">&#9660;</span>'
       +'</div></div>'
       +'<div class="meal-items">';
-    // Individual items
-    group.forEach(e=>{
-      // Each entry is its own item with its own macros
-      const delBtn=isPast?'':'<button data-ts="'+e.ts+'" onclick="deleteEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px" title="Remove">&#215;</button>';
-      const favBtn='<button data-ts="'+e.ts+'" data-date="'+viewDate+'" onclick="saveFavorite(parseInt(this.dataset.ts),this.dataset.date);event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px" title="Save to favorites">&#11088;</button>';
-      {
+    // Render entries — skip children (they render nested under parent)
+    const topLevel=group.filter(e=>!e._childOf);
+    topLevel.forEach(e=>{
+      if(e.grouped){
+        // ── Grouped entry ──
+        const groupId='grp-'+e.ts;
+        const children=entries.filter(c=>c._childOf===e.ts);
+        const servings=e.servings||1;
+        const servingLabel=servings!==1?(servings%1===0?servings+' servings':servings+' servings'):'';
+        const delBtn=isPast?'':'<button data-ts="'+e.ts+'" onclick="deleteGroupedEntry('+e.ts+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px" title="Remove">&#215;</button>';
+        const favBtn='<button data-ts="'+e.ts+'" onclick="saveGroupedFavorite('+e.ts+',this)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px" title="Save to favorites">&#11088;</button>';
+        html+='<div style="border:1px solid var(--border);border-radius:8px;margin-bottom:6px;overflow:hidden">'
+          // Parent row
+          +'<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;background:var(--surface2)">'
+          +'<div style="flex:1;min-width:0">'
+          +'<div style="display:flex;align-items:center;gap:6px">'
+          +'<div style="font-size:13.5px;font-weight:600;color:var(--text)">'+escHtml(e.text)+'</div>'
+          +(servingLabel?'<span style="font-size:11px;color:var(--muted);font-style:italic">'+servingLabel+'</span>':'')
+          +'</div>'
+          +'<div style="display:flex;gap:8px;margin-top:3px;flex-wrap:wrap">'
+          +'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.calories)+' kcal</span>'
+          +'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.protein)+'g pro</span>'
+          +'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.carbs)+'g carbs</span>'
+          +(e.fat>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.fat)+'g fat</span>':'')
+          +(e.sodium>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(e.sodium)+'mg sodium</span>':'')
+          +'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#128101; '+children.length+' items</span>'
+          +'</div></div>'
+          +'<button data-gid="'+groupId+'" id="chev-'+groupId+'" onclick="toggleGroupedEntry(this)" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px;transition:transform 0.2s">&#9660;</button>'
+          +favBtn
+          +(!isPast?delBtn:'')
+          +'</div>'
+          // Children container
+          +'<div id="'+groupId+'" style="display:block">';
+        children.forEach((c,ci)=>{
+          const isLast=ci===children.length-1;
+          const cDelBtn=isPast?'':'<button data-ts="'+c.ts+'" onclick="deleteChildEntry('+c.ts+','+e.ts+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 2px" title="Remove">&#215;</button>';
+          const cServings=c.servings||1;
+          html+='<div style="display:flex;align-items:center;gap:6px;padding:6px 10px 6px 20px;border-top:1px solid var(--border)'+(isLast?'':'')+'">'
+            +'<div style="width:12px;flex-shrink:0;font-size:11px;color:var(--muted)">'+(isLast?'└':'├')+'</div>'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:13px;color:var(--text)">'+escHtml(c.text)+'</div>'
+            +'<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap">'
+            +'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.calories)+' kcal</span>'
+            +'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.protein)+'g pro</span>'
+            +(c.fat>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.fat)+'g fat</span>':'')
+            +(c.sodium>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.sodium)+'mg sodium</span>':'')
+            +(cServings!==1?'<span style="font-size:11px;color:var(--muted);font-style:italic">'+cServings+' srv</span>':'')
+            +(c.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 4px;border-radius:3px">&#10003;</span>':c.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 4px;border-radius:3px">USDA</span>':c.source==='edited'?'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:1px 4px;border-radius:3px">&#9998;</span>':'')
+            +'</div></div>'
+            +(!isPast?'<button data-ts="'+c.ts+'" onclick="openEditEntry('+c.ts+',true)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px" title="Edit">&#9998;</button>':'')
+            +(!isPast?cDelBtn:'')
+            +'</div>';
+        });
+        html+='</div></div>';
+      } else {
+        // ── Standard entry ──
+        const delBtn=isPast?'':'<button data-ts="'+e.ts+'" onclick="deleteEntry(parseInt(this.dataset.ts))" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px;padding:0 3px" title="Remove">&#215;</button>';
+        const favBtn='<button data-ts="'+e.ts+'" data-date="'+viewDate+'" onclick="saveFavorite(parseInt(this.dataset.ts),this.dataset.date);event.stopPropagation();" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:14px;padding:0 3px" title="Save to favorites">&#11088;</button>';
         const servings=e.servings||1;
         const servingLabel=servings===1?'1 serving':(servings%1===0?servings+' servings':servings+' servings');
         html+='<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">'
@@ -3636,6 +3851,89 @@ function renderFoodEntries(){
   el.innerHTML=html||'<div style="font-size:14px;color:var(--muted);text-align:center;padding:20px 0">Nothing logged yet.</div>';
   renderDailyAnalysis();
 }
+function toggleGroupedEntry(btnOrId){
+  let groupId,chev;
+  if(typeof btnOrId==='string'){
+    groupId=btnOrId;chev=document.getElementById('chev-'+groupId);
+  } else {
+    chev=btnOrId;
+    // groupId is chev id minus "chev-" prefix
+    groupId=chev.id.replace('chev-','');
+  }
+  const el=document.getElementById(groupId);
+  if(!el)return;
+  const collapsed=el.style.display==='none';
+  el.style.display=collapsed?'block':'none';
+  if(chev)chev.style.transform=collapsed?'rotate(0deg)':'rotate(-90deg)';
+}
+
+async function deleteGroupedEntry(parentTs){
+  if(!cache.food[viewDate])return;
+  // Remove parent and all children
+  cache.food[viewDate]=cache.food[viewDate].filter(e=>e.ts!==parentTs&&e._childOf!==parentTs);
+  await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+  renderFoodEntries();refreshDashboard();
+}
+
+async function deleteChildEntry(childTs,parentTs){
+  if(!cache.food[viewDate])return;
+  // Remove child
+  cache.food[viewDate]=cache.food[viewDate].filter(e=>e.ts!==childTs);
+  // Recalculate parent macros from remaining children
+  const parent=cache.food[viewDate].find(e=>e.ts===parentTs);
+  const children=cache.food[viewDate].filter(e=>e._childOf===parentTs);
+  if(parent&&children.length){
+    const srv=parent.servings||1;
+    parent.baseCalories=Math.round(children.reduce((a,c)=>a+(c.baseCalories||c.calories||0),0));
+    parent.baseProtein=Math.round(children.reduce((a,c)=>a+(c.baseProtein||c.protein||0),0)*10)/10;
+    parent.baseCarbs=Math.round(children.reduce((a,c)=>a+(c.baseCarbs||c.carbs||0),0)*10)/10;
+    parent.baseSugar=Math.round(children.reduce((a,c)=>a+(c.baseSugar||c.sugar||0),0)*10)/10;
+    parent.baseFiber=Math.round(children.reduce((a,c)=>a+(c.baseFiber||c.fiber||0),0)*10)/10;
+    parent.baseFat=Math.round(children.reduce((a,c)=>a+(c.baseFat||c.fat||0),0)*10)/10;
+    parent.baseSodium=Math.round(children.reduce((a,c)=>a+(c.baseSodium||c.sodium||0),0));
+    parent.calories=Math.round(parent.baseCalories*srv);
+    parent.protein=Math.round(parent.baseProtein*srv*10)/10;
+    parent.carbs=Math.round(parent.baseCarbs*srv*10)/10;
+    parent.sugar=Math.round(parent.baseSugar*srv*10)/10;
+    parent.fiber=Math.round(parent.baseFiber*srv*10)/10;
+    parent.fat=Math.round(parent.baseFat*srv*10)/10;
+    parent.sodium=Math.round(parent.baseSodium*srv);
+    parent.childDefs=children.map(c=>({
+      text:c.text,baseCalories:c.baseCalories,baseProtein:c.baseProtein,baseCarbs:c.baseCarbs,
+      baseSugar:c.baseSugar,baseFiber:c.baseFiber,baseFat:c.baseFat,baseSodium:c.baseSodium,
+      servings:c.servings,source:c.source
+    }));
+  } else if(parent&&!children.length){
+    // All children removed — remove parent too
+    cache.food[viewDate]=cache.food[viewDate].filter(e=>e.ts!==parentTs);
+  }
+  await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+  renderFoodEntries();refreshDashboard();
+}
+
+// When a child is edited, recalculate parent macros
+async function _recalcGroupParent(parentTs){
+  const parent=cache.food[viewDate]?.find(e=>e.ts===parentTs);
+  const children=cache.food[viewDate]?.filter(e=>e._childOf===parentTs)||[];
+  if(!parent||!children.length)return;
+  const srv=parent.servings||1;
+  parent.baseCalories=Math.round(children.reduce((a,c)=>a+(c.baseCalories||c.calories||0),0));
+  parent.baseProtein=Math.round(children.reduce((a,c)=>a+(c.baseProtein||c.protein||0),0)*10)/10;
+  parent.baseCarbs=Math.round(children.reduce((a,c)=>a+(c.baseCarbs||c.carbs||0),0)*10)/10;
+  parent.baseSugar=Math.round(children.reduce((a,c)=>a+(c.baseSugar||c.sugar||0),0)*10)/10;
+  parent.baseFiber=Math.round(children.reduce((a,c)=>a+(c.baseFiber||c.fiber||0),0)*10)/10;
+  parent.baseFat=Math.round(children.reduce((a,c)=>a+(c.baseFat||c.fat||0),0)*10)/10;
+  parent.baseSodium=Math.round(children.reduce((a,c)=>a+(c.baseSodium||c.sodium||0),0));
+  parent.calories=Math.round(parent.baseCalories*srv);
+  parent.protein=Math.round(parent.baseProtein*srv*10)/10;
+  parent.carbs=Math.round(parent.baseCarbs*srv*10)/10;
+  parent.sugar=Math.round(parent.baseSugar*srv*10)/10;
+  parent.fiber=Math.round(parent.baseFiber*srv*10)/10;
+  parent.fat=Math.round(parent.baseFat*srv*10)/10;
+  parent.sodium=Math.round(parent.baseSodium*srv);
+  await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+}
+
 function toggleMealGroup(header){
   const items=header.nextElementSibling;
   const chevron=header.querySelector('.meal-chevron');
@@ -3645,6 +3943,197 @@ function toggleMealGroup(header){
   if(chevron)chevron.style.transform=collapsed?'rotate(0deg)':'rotate(-90deg)';
 }
 
+
+// ── GROUPED FOOD ENTRY ───────────────────────────────────────
+async function _logGroupedEntry(title, childTexts, mt){
+  const btn=document.getElementById('log-food-btn');
+  btn.disabled=true;btn.innerHTML='<div class="spinner"></div> Analyzing...';
+  document.getElementById('food-feedback').innerHTML='';
+  if(!cache.food[viewDate])cache.food[viewDate]=[];
+  try{
+    // Parse serving prefix from the title (e.g. "2 Turkey Wrap (...)")
+    const titleParsed=parseServingPrefix(title);
+    const groupServings=titleParsed.qty;
+    const groupTitle=titleParsed.text;
+
+    // Parse serving prefix from each child
+    const parsedChildren=childTexts.map(parseServingPrefix);
+    const cleanChildren=parsedChildren.map(p=>p.text);
+    const childServings=parsedChildren.map(p=>p.qty);
+
+    // Look up each child in DB then AI
+    const dbResults=await Promise.all(cleanChildren.map(async item=>{
+      const corrKey=item.toLowerCase().trim();
+      let correction=cache.nutritionCorrections[corrKey];
+      if(!correction){
+        const keys=Object.keys(cache.nutritionCorrections);
+        let bestKey=null,bestDist=3;
+        for(const k of keys){const dist=editDistance(corrKey,k);if(dist<bestDist){bestDist=dist;bestKey=k;}}
+        if(bestKey)correction=cache.nutritionCorrections[bestKey];
+      }
+      if(correction)return{...correction,fat:correction.fat||0,sodium:correction.sodium||0,source:'edited'};
+      const off=await lookupOpenFoodFacts(item);if(off)return off;
+      return await lookupUSDA(item);
+    }));
+
+    // AI estimates for children not found in DB
+    const childrenNeedingAI=cleanChildren.filter((_,i)=>!dbResults[i]);
+    let aiParsed=[];
+    let displayText='';
+    if(childrenNeedingAI.length>0){
+      const res=await callAI(
+        'Grouped meal "'+groupTitle+'" for '+mt+'\nIndividual ingredients needing estimates (1 serving each):\n'+childrenNeedingAI.map((it,i)=>(i+1)+'. '+it).join('\n'),
+        'You are a nutrition coach. '+buildUserContext()+'\n\nReturn a JSON array with EXACTLY '+childrenNeedingAI.length+' objects, one per ingredient. Then a blank line. Then 2-3 sentences of feedback on the full meal including ingredient-level observations (e.g. high sodium items, healthier swaps).\n\nFormat:\n[\n{"item":"name","protein":26,"carbs":0,"calories":140,"sugar":0,"fiber":0,"fat":5,"sodium":320}\n]\n\nFeedback here.\n\nRules: 1-serving estimates, integers, fat in grams, sodium in mg, same order as listed.'
+      );
+      try{
+        const start=res.indexOf('['),end=res.lastIndexOf(']');
+        if(start>=0&&end>start){aiParsed=JSON.parse(res.slice(start,end+1));displayText=res.slice(end+1).replace(/```json|```/g,'').trim();}
+      }catch(e){
+        const objMatches=[...res.matchAll(/\{[^{}]*"item"[^{}]*\}/g)];
+        if(objMatches.length){try{aiParsed=objMatches.map(m=>JSON.parse(m[0]));}catch(e2){}}
+        displayText=res.replace(/\[.*?\]/s,'').replace(/```json|```/g,'').trim();
+      }
+    } else {
+      // All children found in DB — get feedback with ingredient detail
+      try{
+        const ingredientDetail=cleanChildren.map((c,i)=>{
+          const r=dbResults[i];
+          return c+(r?' ('+Math.round(r.calories||0)+' kcal, '+Math.round(r.protein||0)+'g pro, '+Math.round(r.fat||0)+'g fat, '+Math.round(r.sodium||0)+'mg sodium)':'');
+        }).join('\n  - ');
+        const fb=await callAI(
+          'I logged "'+groupTitle+'" for '+mt+':\n  - '+ingredientDetail,
+          'You are a nutrition coach. '+buildUserContext()+' Give 2-3 sentences of warm personalized feedback. You can comment on specific ingredients if relevant (e.g. high sodium items, good protein sources). No need to re-estimate nutrition.'
+        );
+        displayText=fb.replace(/```/g,'').trim();
+      }catch(e){}
+    }
+
+    // Build child entries (at 1 serving each — group servings applied to parent)
+    const childEntries=[];
+    let aiIdx=0;
+    cleanChildren.forEach((item,i)=>{
+      const usda=dbResults[i];
+      let macros;
+      if(usda){
+        macros={calories:usda.calories,protein:usda.protein,carbs:usda.carbs,sugar:usda.sugar||0,fiber:usda.fiber||0,fat:usda.fat||0,sodium:usda.sodium||0};
+      } else {
+        const ai=aiParsed[aiIdx]||{protein:0,carbs:0,calories:0};
+        macros={calories:Math.round(ai.calories||0),protein:Math.round((ai.protein||0)*10)/10,carbs:Math.round((ai.carbs||0)*10)/10,sugar:Math.round((ai.sugar||0)*10)/10,fiber:Math.round((ai.fiber||0)*10)/10,fat:Math.round((ai.fat||0)*10)/10,sodium:Math.round(ai.sodium||0)};
+        aiIdx++;
+      }
+      // Apply child's own serving multiplier (e.g. "2 slices turkey")
+      const cSrv=childServings[i]||1;
+      const cs=v=>Math.round((v||0)*cSrv*10)/10;
+      const csi=v=>Math.round((v||0)*cSrv);
+      childEntries.push({
+        time:mt,
+        text:item,
+        protein:cs(macros.protein),carbs:cs(macros.carbs),calories:csi(macros.calories),
+        sugar:cs(macros.sugar),fiber:cs(macros.fiber),fat:cs(macros.fat),sodium:csi(macros.sodium),
+        baseProtein:macros.protein,baseCarbs:macros.carbs,baseCalories:macros.calories,
+        baseSugar:macros.sugar,baseFiber:macros.fiber,baseFat:macros.fat,baseSodium:macros.sodium,
+        servings:cSrv,water:0,
+        ts:Date.now()+i+1,
+        source:usda?(usda.source||'usda'):'ai',
+        _childOf:null, // will be set after parent ts is known
+      });
+    });
+
+    // Apply group servings to sum up parent macros
+    const sumMacro=(field)=>childEntries.reduce((a,c)=>a+(c[field]||0),0);
+    const gScale=v=>Math.round(v*groupServings*10)/10;
+    const gScalei=v=>Math.round(v*groupServings);
+    const parentTs=Date.now();
+    const parentEntry={
+      time:mt,
+      text:groupTitle,
+      grouped:true,
+      servings:groupServings,
+      // Parent macros = sum of children * group servings
+      calories:gScalei(sumMacro('calories')),
+      protein:gScale(sumMacro('protein')),
+      carbs:gScale(sumMacro('carbs')),
+      sugar:gScale(sumMacro('sugar')),
+      fiber:gScale(sumMacro('fiber')),
+      fat:gScale(sumMacro('fat')),
+      sodium:gScalei(sumMacro('sodium')),
+      // Store 1-serving base macros for serving adjustment
+      baseCalories:Math.round(sumMacro('calories')),
+      baseProtein:Math.round(sumMacro('protein')*10)/10,
+      baseCarbs:Math.round(sumMacro('carbs')*10)/10,
+      baseSugar:Math.round(sumMacro('sugar')*10)/10,
+      baseFiber:Math.round(sumMacro('fiber')*10)/10,
+      baseFat:Math.round(sumMacro('fat')*10)/10,
+      baseSodium:Math.round(sumMacro('sodium')),
+      water:0,ts:parentTs,source:'grouped',
+      // Store children inline for favorites
+      childDefs:childEntries.map(c=>({
+        text:c.text,
+        baseCalories:c.baseCalories,baseProtein:c.baseProtein,baseCarbs:c.baseCarbs,
+        baseSugar:c.baseSugar,baseFiber:c.baseFiber,baseFat:c.baseFat,baseSodium:c.baseSodium,
+        servings:c.servings,source:c.source
+      })),
+    };
+
+    // Tag children with parent ts, mark as child (excluded from daily totals)
+    childEntries.forEach((c,i)=>{
+      c._childOf=parentTs;
+      c.ts=parentTs+i+1;
+    });
+
+    // Push parent + children — children are flagged so daily totals skip them
+    cache.food[viewDate].push(parentEntry,...childEntries);
+    await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+    document.getElementById('food-input').value='';
+    if(displayText){const _fb=document.getElementById('food-feedback');if(_fb)_fb.innerHTML=aiFeedbackHTML('&#127807;','Coach feedback',escHtml(displayText));}
+    renderFoodEntries();
+  }catch(e){
+    console.error('[logGroupedEntry] Error:',e.message,e.stack);
+    showToast('Error logging meal: '+e.message,'error');
+  }finally{
+    btn.disabled=false;btn.innerHTML='<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> Log &amp; Analyze';
+  }
+}
+
+function _openGroupedParentEdit(entry){
+  const modal=document.createElement('div');
+  modal.className='date-picker-modal';
+  modal.style.zIndex='501';
+  modal.innerHTML=`<div class="date-picker-card" style="max-width:380px">
+    <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:14px">Edit meal name</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Macros are calculated from the ingredients below. Edit individual ingredients to change nutrition values.</div>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Meal name</div>
+    <input type="text" id="grouped-edit-name" value="${escHtml(entry.text)}" style="width:100%;margin-bottom:6px;font-size:15px"/>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Servings</div>
+    <input type="number" id="grouped-edit-srv" value="${entry.servings||1}" min="0.5" step="0.5" style="width:80px;margin-bottom:16px;font-size:15px"/>
+    <div style="display:flex;gap:10px">
+      <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.date-picker-modal').remove()">Cancel</button>
+      <button class="btn btn-primary btn-sm" style="flex:2" onclick="_saveGroupedParentEdit(${entry.ts})">Save</button>
+    </div>
+  </div>`;
+  modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
+  document.body.appendChild(modal);
+}
+
+async function _saveGroupedParentEdit(ts){
+  const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
+  if(!entry)return;
+  const newName=(document.getElementById('grouped-edit-name')?.value||'').trim();
+  const newSrv=parseFloat(document.getElementById('grouped-edit-srv')?.value)||1;
+  if(newName)entry.text=newName;
+  entry.servings=newSrv;
+  // Recalculate parent macros with new serving count
+  entry.calories=Math.round(entry.baseCalories*newSrv);
+  entry.protein=Math.round(entry.baseProtein*newSrv*10)/10;
+  entry.carbs=Math.round(entry.baseCarbs*newSrv*10)/10;
+  entry.sugar=Math.round(entry.baseSugar*newSrv*10)/10;
+  entry.fiber=Math.round(entry.baseFiber*newSrv*10)/10;
+  entry.fat=Math.round(entry.baseFat*newSrv*10)/10;
+  entry.sodium=Math.round(entry.baseSodium*newSrv);
+  await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
+  document.querySelector('.date-picker-modal[style*="z-index: 501"],.date-picker-modal[style*="z-index:501"]')?.remove();
+  renderFoodEntries();refreshDashboard();
+}
 
 // ── BARCODE SCANNER ───────────────────────────────────────────
 let _scannerActive=false;
@@ -3881,9 +4370,13 @@ function _showBarcodeNotFound(barcode){
 
 
 function editDistance(a,b){const m=a.length,n=b.length;const dp=Array.from({length:m+1},(_,i)=>Array.from({length:n+1},(_,j)=>i===0?j:j===0?i:0));for(let i=1;i<=m;i++)for(let j=1;j<=n;j++)dp[i][j]=a[i-1]===b[j-1]?dp[i-1][j-1]:1+Math.min(dp[i-1][j],dp[i][j-1],dp[i-1][j-1]);return dp[m][n];}
-function openEditEntry(ts){
+function openEditEntry(ts, isChild=false){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
+  // Grouped parents are not directly editable — redirect to name-only edit
+  if(entry.grouped&&!isChild){
+    _openGroupedParentEdit(entry);return;
+  }
   const servings=entry.servings||1;
   const base={cal:entry.baseCalories||entry.calories||0,pro:entry.baseProtein||entry.protein||0,carbs:entry.baseCarbs||entry.carbs||0,sugar:entry.baseSugar||entry.sugar||0,fiber:entry.baseFiber||entry.fiber||0,fat:entry.baseFat||entry.fat||0,sodium:entry.baseSodium||entry.sodium||0};
   const modal=document.createElement('div');
@@ -3991,6 +4484,8 @@ async function saveEditEntry(ts){
     fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate}),
     fbSet('food','corrections',cache.nutritionCorrections)
   ]);
+  // If this is a child entry, recalculate parent macros
+  if(entry._childOf)await _recalcGroupParent(entry._childOf);
   document.querySelectorAll('.date-picker-modal')[document.querySelectorAll('.date-picker-modal').length-1]?.remove();
   renderFoodEntries();
   refreshDashboard();
@@ -7230,7 +7725,12 @@ async function sendChat(){
   try{
     const sysPrompt='You are a warm, knowledgeable personal health coach. '+buildUserContext()+'\nYou can help with: recipes, exercise form, grocery guidance, meal planning, and workout plan updates.\nIf the user asks to UPDATE or CHANGE their workout plan, include at the end:\nWORKOUT_UPDATE:{"plan":[{"day":"Monday","focus":"...","rest":false,"exercises":[{"name":"...","detail":"...","yt":"youtube search query"}]}]}\nIf you provide a recipe, always list ingredients and end with BOTH tags:\nRECIPE_INGREDIENTS:["ingredient 1","ingredient 2"]\nRECIPE_SAVE:{"title":"Recipe Name","ingredients":["1 cup flour"],"instructions":"Step 1...\\nStep 2...","servings":4,"calories":320,"protein":28,"carbs":12,"sugar":3,"fiber":4,"categories":["Dinner","Chicken"]}\nEstimate macros per serving. All fields required. \'+( (_getAllCategories&&_getAllCategories().length)?(\'Existing categories to reuse if they match: \'+_getAllCategories().join(\', \')+\'. Only create new ones if none fit.\'):(\'Categories: Breakfast, Lunch, Dinner, Soup, Salad, Pasta, Chicken, Beef, Vegetarian, Snack, Dessert.\'))+\'  Include 1-3 relevant categories.\nIf the user asks about their recommended daily nutrition or calorie goal (protein, water, carbs, or calories), provide your recommendation and end with:\nGOALS_SUGGESTION:{"proteinGoal":PROTEIN_GRAMS,"waterGoal":WATER_OZ,"carbGoal":CARB_GRAMS,"calorieGoal":CALORIE_KCAL,"sugarGoal":SUGAR_GRAMS,"fiberGoal":FIBER_GRAMS,"fatGoal":FAT_GRAMS,"sodiumGoal":SODIUM_MG}\nIf the user wants to update or correct their date of birth, ask them to confirm their date of birth in YYYY-MM-DD format, then end with:\nDOB_UPDATE:{"dob":"1988-05-15"}\nIf the user wants to update their gender identity, biological sex, or hormone therapy information, respond warmly and end with:\nGENDER_UPDATE_PROMPT:true\nThis will open a form for them to fill in. Do not ask them to type the values — just emit the tag.\nOnly include these tags when relevant. Be warm, specific, reference their preferences. Under 300 words for recipes, under 200 words otherwise.';
     const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-5',max_tokens:1500,system:sysPrompt,messages:chatHistory.slice(-12)})});
-    const d=await res.json(),reply=d.content[0].text;
+    const d=await res.json();
+    if(!res.ok||d.error||!d.content?.[0]?.text){
+      console.error('[Chat] API error:',JSON.stringify(d));
+      throw new Error(d.error?.message||d.error||'API returned status '+res.status);
+    }
+    const reply=d.content[0].text;
     if(reply.includes('WORKOUT_UPDATE:')){
       try{const m=reply.match(/WORKOUT_UPDATE:(\{[\s\S]*?\})\s*(?=RECIPE|$)/);if(m){const p=JSON.parse(m[1]);if(p.plan){window._profile.workoutPlan=p.plan;await fbSet('profile','survey',window._profile);renderFitness();generateWellnessPlan(false,'Workout plan updated');}}}catch(e){}
     }
@@ -7269,7 +7769,11 @@ async function sendChat(){
     document.getElementById(tid)?.remove();
     const cleanReply=reply.replace(/WORKOUT_UPDATE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/RECIPE_INGREDIENTS:\[[\s\S]*?\]/,'').replace(/RECIPE_SAVE:\{[\s\S]*?\}(?=\s|$)/,'').replace(/GOALS_SUGGESTION:\{[^}]+\}/,'').replace(/DOB_UPDATE:\{[^}]+\}/,'').replace(/GENDER_UPDATE_PROMPT:true/g,'').replace(/PLAN_REFRESH:true/g,'').trim();
     addChatMsgDOM('ai',cleanReply,ingredients,suggestedGoals,suggestedDOB);
-  }catch(e){document.getElementById(tid)?.remove();addChatMsgDOM('ai','Sorry, connection issue. Please try again!');}
+  }catch(e){
+    console.error('[Chat] Error:',e.message);
+    document.getElementById(tid)?.remove();
+    addChatMsgDOM('ai','Sorry, I ran into an issue: '+e.message+'. Please try again in a moment.');
+  }
   btn.disabled=false;btn.innerHTML='<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>';
 }
 
