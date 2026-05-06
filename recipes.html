@@ -362,7 +362,7 @@ textarea.form-input{min-height:100px;resize:vertical;}
 
 <script type="module">
 import{initializeApp}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
-import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut,sendPasswordResetEmail}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+import{getAuth,onAuthStateChanged,signInWithEmailAndPassword,createUserWithEmailAndPassword,signOut}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import{getFirestore,doc,getDoc,setDoc,collection,getDocs,deleteDoc,query,orderBy}from'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
 // ── CONFIG ──────────────────────────────────────────────────
@@ -466,8 +466,12 @@ window.doSignup=async function(){
   }catch(e){msg.style.color='var(--red)';msg.textContent='Could not verify invite code.';return;}
   try{
     const cred=await createUserWithEmailAndPassword(auth,email,pw);
-    // Save profile in recipe_users collection
-    await setDoc(doc(db,'recipe_users',cred.user.uid),{name,email,createdAt:new Date().toISOString()});
+    // Save profile and send welcome email before auth state transition
+    await Promise.all([
+      setDoc(doc(db,'recipe_users',cred.user.uid),{name,email,createdAt:new Date().toISOString()}),
+      fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({action:'send_recipe_welcome',name,email})}).catch(e=>console.warn('Welcome email failed:',e))
+    ]);
   }catch(e){
     let m='Signup failed.';
     if(e.code==='auth/email-already-in-use')m='An account with this email already exists.';
@@ -479,6 +483,13 @@ window.doSignup=async function(){
 
 window.doSignOut=async function(){
   await signOut(auth);
+  // Always return to login form, not signup
+  document.getElementById('login-form').style.display='block';
+  document.getElementById('signup-form').style.display='none';
+  document.getElementById('forgot-form').style.display='none';
+  document.getElementById('login-msg').textContent='';
+  document.getElementById('login-email').value='';
+  document.getElementById('login-password').value='';
 };
 
 window.doForgot=async function(){
@@ -486,7 +497,10 @@ window.doForgot=async function(){
   const msg=document.getElementById('forgot-msg');
   if(!email){msg.style.color='var(--red)';msg.textContent='Please enter your email.';return;}
   try{
-    await sendPasswordResetEmail(auth,email);
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({action:'send_recipe_password_reset',email})});
+    const d=await res.json();
+    if(d.error)throw new Error(d.error);
     msg.style.color='var(--accent)';msg.textContent='Reset email sent! Check your inbox.';
   }catch(e){msg.style.color='var(--red)';msg.textContent='Could not send reset email.';}
 };
@@ -767,16 +781,18 @@ window.analyzeRecipe=async function(){
       const url=document.getElementById('input-link').value.trim();
       if(!url){status.style.color='var(--red)';status.textContent='Please enter a URL.';btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';return;}
       status.textContent='Fetching content…';
-      // Detect Google Docs
-      let fetchUrl=url;
-      if(url.includes('docs.google.com/document')){
-        fetchUrl=url.replace(/\/edit.*$/,'/export?format=txt');
-      }
       try{
-        const resp=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(fetchUrl));
+        const resp=await fetch(API,{method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({action:'fetch_url',url})});
         const d=await resp.json();
-        prompt='Extract the recipe from this web page content:\n\n'+(d.contents||'').slice(0,8000);
-      }catch(e){prompt='Extract the recipe from this URL: '+url;}
+        if(d.error)throw new Error(d.error);
+        prompt='Extract the recipe from this web page content:\n\n'+(d.content||'').slice(0,8000);
+      }catch(e){
+        status.style.color='var(--red)';
+        status.textContent='Could not fetch that URL. Try pasting the recipe text directly.';
+        btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';
+        return;
+      }
       messages=[{role:'user',content:prompt}];
     } else if(_uploadTab==='image'){
       if(!_imageData){status.style.color='var(--red)';status.textContent='Please upload a photo.';btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';return;}
@@ -819,8 +835,12 @@ All numeric fields are per serving. Return ONLY the JSON object.`;
     let recipe;
     try{
       const start=text.indexOf('{'),end=text.lastIndexOf('}');
+      if(start<0||end<0)throw new Error('No JSON found');
       recipe=JSON.parse(text.slice(start,end+1));
-    }catch(e){throw new Error('Could not parse recipe from response.');}
+    }catch(e){
+      console.error('[analyzeRecipe] Parse error. Raw response:',text.slice(0,500));
+      throw new Error('Could not extract a recipe from that content. Try pasting the recipe text directly.');
+    }
 
     recipe.id='r'+Date.now();
     recipe.savedAt=new Date().toISOString();
