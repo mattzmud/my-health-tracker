@@ -2768,6 +2768,7 @@ function refreshDashboard(){
   const _ce=entries.filter(e=>!e._childOf);
   const tp=_ce.reduce((a,e)=>a+(e.protein||0),0),tw=_ce.reduce((a,e)=>a+(e.water||0),0),tc=_ce.reduce((a,e)=>a+(e.carbs||0),0),tcal=_ce.reduce((a,e)=>a+(e.calories||0),0),ts_=_ce.reduce((a,e)=>a+(e.sugar||0),0);
   let tf_=entries.reduce((a,e)=>a+(e.fiber||0),0);
+  const _tcNet=Math.max(0,tc-tf_); // net carbs = total carbs - fiber
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
   document.getElementById('dash-weight').textContent=cur+' lbs';
@@ -2803,7 +2804,6 @@ function refreshDashboard(){
   const _pp=document.getElementById('prog-protein');if(_pp)_pp.style.width=Math.min(100,(tp/pg)*100)+'%';
   const _pw=document.getElementById('prog-water');if(_pw)_pw.style.width=Math.min(100,(tw/wg)*100)+'%';
   // Carbs bar — turns red when over limit
-  const _tcNet=Math.max(0,tc-tf_);
   const _carbPct=Math.min(110,(_tcNet/cg)*100);
   const _carbOver=tc>cg;
   const _pc=document.getElementById('prog-carbs');if(_pc){_pc.style.width=Math.min(100,_carbPct)+'%';_pc.style.background=_carbOver?'var(--red)':'var(--amber)';}
