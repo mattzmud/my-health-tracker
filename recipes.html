@@ -646,15 +646,27 @@ window.openSharedRecipeView=function(id){
 };
 
 async function openSharedView(shareId){
-  // Find recipe by shareId in public_recipes
-  const snap=await getDocs(collection(db,'public_recipes'));
-  const doc2=snap.docs.find(d=>d.id===shareId||d.data().shareId===shareId);
-  if(!doc2)return;
-  const r={id:doc2.id,...doc2.data()};
-  document.getElementById('panel-mine').style.display='none';
-  document.getElementById('panel-shared').style.display='none';
-  document.getElementById('panel-view').style.display='block';
-  document.getElementById('recipe-view-content').innerHTML=recipeViewHTML(r,true);
+  try{
+    const urlParams=new URLSearchParams(window.location.search);
+    const ownerUid=urlParams.get('u')||'';
+    let r=null;
+    if(ownerUid){
+      try{
+        const rSnap=await getDoc(doc(db,'recipe_users',ownerUid,'recipes',shareId));
+        if(rSnap.exists())r={id:rSnap.id,...rSnap.data()};
+      }catch(e2){}
+    }
+    if(!r){
+      const snap=await getDocs(collection(db,'public_recipes'));
+      const doc2=snap.docs.find(d=>d.id===shareId||d.data().shareId===shareId);
+      if(doc2)r={id:doc2.id,...doc2.data()};
+    }
+    if(!r)return;
+    document.getElementById('panel-mine').style.display='none';
+    document.getElementById('panel-shared').style.display='none';
+    document.getElementById('panel-view').style.display='block';
+    document.getElementById('recipe-view-content').innerHTML=recipeViewHTML(r,true);
+  }catch(e){console.error('openSharedView:',e);}
 }
 
 async function openPublicShareView(shareId){
@@ -662,16 +674,27 @@ async function openPublicShareView(shareId){
   if(!el)return;
   el.innerHTML='<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
   try{
-    const snap=await getDocs(collection(db,'public_recipes'));
-    const doc2=snap.docs.find(d=>d.id===shareId);
-    if(doc2){
-      const r={id:doc2.id,...doc2.data()};
+    const urlParams=new URLSearchParams(window.location.search);
+    const ownerUid=urlParams.get('u')||'';
+    let r=null;
+    if(ownerUid){
+      try{
+        const rSnap=await getDoc(doc(db,'recipe_users',ownerUid,'recipes',shareId));
+        if(rSnap.exists())r={id:rSnap.id,...rSnap.data()};
+      }catch(e2){console.warn('Direct fetch failed:',e2.message);}
+    }
+    if(!r){
+      const snap=await getDocs(collection(db,'public_recipes'));
+      const doc2=snap.docs.find(d=>d.id===shareId);
+      if(doc2)r={id:doc2.id,...doc2.data()};
+    }
+    if(r){
       el.innerHTML=recipeViewHTML(r,true,'public');
     } else {
-      el.innerHTML='<div class="empty-state"><div class="icon">🔍</div><h3>Recipe not found</h3><p>This recipe may have been made private or removed.</p></div>';
+      el.innerHTML='<div class="empty-state"><div class="icon">&#x1F50D;</div><h3>Recipe not found</h3><p>This share link may be invalid or the recipe was removed.</p></div>';
     }
   }catch(e){
-    el.innerHTML='<div class="empty-state"><div class="icon">⚠️</div><h3>Could not load recipe</h3><p>'+e.message+'</p></div>';
+    el.innerHTML='<div class="empty-state"><div class="icon">&#x26A0;&#xFE0F;</div><h3>Could not load recipe</h3><p>'+e.message+'</p></div>';
   }
 }
 
@@ -908,7 +931,8 @@ window.togglePublic=async function(id){
 };
 
 window.openShareModal=function(id){
-  const shareUrl=window.location.origin+window.location.pathname+'?r='+id;
+  const uid=_uid||'';
+  const shareUrl=window.location.origin+window.location.pathname+'?r='+id+'&u='+uid;
   document.getElementById('share-link-input').value=shareUrl;
   document.getElementById('share-modal').style.display='flex';
 };
