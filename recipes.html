@@ -425,13 +425,19 @@ onAuthStateChanged(auth,async user=>{
     if(shareId)openSharedView(shareId);
   } else {
     _uid=null;
-    document.getElementById('login-screen').style.display='flex';
-    document.getElementById('app-screen').classList.remove('active');
     document.getElementById('signout-btn').style.display='none';
-    // Still allow public view without login
+    // Check for public share link first
     const urlParams=new URLSearchParams(window.location.search);
     const shareId=urlParams.get('r');
-    if(shareId)openPublicShareView(shareId);
+    if(shareId){
+      // Show public recipe view without requiring login
+      document.getElementById('login-screen').style.display='none';
+      document.getElementById('public-screen').style.display='block';
+      openPublicShareView(shareId);
+    } else {
+      document.getElementById('login-screen').style.display='flex';
+      document.getElementById('app-screen').classList.remove('active');
+    }
   }
 });
 
@@ -594,10 +600,16 @@ function recipeCardHTML(r,isShared){
     ?`<button class="card-action-btn" onclick="event.stopPropagation();addToMyRecipes('${r.id}')">&#10133; Add to mine</button>
        <button class="card-action-btn" onclick="event.stopPropagation();openShareModal('${r.shareId||r.id}')">&#128279; Share</button>
        <button class="card-action-btn" onclick="event.stopPropagation();printRecipe('${r.id}',true)">&#128424; Print</button>`
-    :`<button class="card-action-btn ${isPublic?'public-btn on':''}" onclick="event.stopPropagation();togglePublic('${r.id}')" title="${isPublic?'Make private':'Make public'}">${isPublic?'&#127758; Public':'&#127758; Share'}</button>
+    :`<div onclick="event.stopPropagation();togglePublic('${r.id}')" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:4px 8px;border:1px solid ${isPublic?'rgba(92,122,62,0.4)':'var(--border2)'};border-radius:6px;background:${isPublic?'rgba(92,122,62,0.1)':'transparent'};transition:all 0.15s" title="${isPublic?'Click to make private':'Click to make public'}">
+              <div style="width:28px;height:16px;border-radius:8px;background:${isPublic?'var(--accent)':'rgba(120,90,50,0.2)'};position:relative;transition:background 0.2s;flex-shrink:0">
+                <div style="position:absolute;top:2px;left:${isPublic?'14px':'2px'};width:12px;height:12px;border-radius:50%;background:#fff;transition:left 0.2s;box-shadow:0 1px 3px rgba(0,0,0,0.2)"></div>
+              </div>
+              <span style="font-size:11px;font-weight:600;color:${isPublic?'var(--accent)':'var(--muted)'}">${isPublic?'Public':'Private'}</span>
+            </div>
        <button class="card-action-btn" onclick="event.stopPropagation();openShareModal('${r.id}')">&#128279; Link</button>
        <button class="card-action-btn" onclick="event.stopPropagation();downloadPDF('${r.id}')">&#128196; PDF</button>
        <button class="card-action-btn" onclick="event.stopPropagation();printRecipe('${r.id}',false)">&#128424; Print</button>
+       <button class="card-action-btn" onclick="event.stopPropagation();openEditRecipe('${r.id}')">&#9998; Edit</button>
        <button class="card-action-btn" style="color:var(--red)" onclick="event.stopPropagation();deleteRecipe('${r.id}')">&#10005;</button>`;
   return`<div class="recipe-card" onclick="${isShared?`openSharedRecipeView('${r.id}')`:`openMyRecipeView('${r.id}')`}">
     <div class="recipe-card-img">${r.emoji||'🍽️'}</div>
@@ -646,20 +658,21 @@ async function openSharedView(shareId){
 }
 
 async function openPublicShareView(shareId){
-  // Shown without login — show login screen but also show recipe below
+  const el=document.getElementById('public-recipe-content');
+  if(!el)return;
+  el.innerHTML='<div style="text-align:center;padding:40px"><div class="spinner"></div></div>';
   try{
     const snap=await getDocs(collection(db,'public_recipes'));
     const doc2=snap.docs.find(d=>d.id===shareId);
     if(doc2){
       const r={id:doc2.id,...doc2.data()};
-      // Show minimal public view on login screen
-      const loginScreen=document.getElementById('login-screen');
-      const pubDiv=document.createElement('div');
-      pubDiv.style.cssText='max-width:700px;margin:24px auto;background:var(--surface);border-radius:var(--radius);padding:28px;box-shadow:var(--shadow);';
-      pubDiv.innerHTML='<div style="font-size:12px;color:var(--muted);margin-bottom:16px">&#128279; Shared recipe</div>'+recipeViewHTML(r,true);
-      loginScreen.appendChild(pubDiv);
+      el.innerHTML=recipeViewHTML(r,true,'public');
+    } else {
+      el.innerHTML='<div class="empty-state"><div class="icon">🔍</div><h3>Recipe not found</h3><p>This recipe may have been made private or removed.</p></div>';
     }
-  }catch(e){}
+  }catch(e){
+    el.innerHTML='<div class="empty-state"><div class="icon">⚠️</div><h3>Could not load recipe</h3><p>'+e.message+'</p></div>';
+  }
 }
 
 window.closeRecipeView=function(){
@@ -685,7 +698,8 @@ function recipeViewHTML(r,isShared){
     ?`<button class="btn btn-ghost btn-sm" onclick="addToMyRecipes('${r.id}')">&#10133; Add to my recipes</button>
        <button class="btn btn-ghost btn-sm" onclick="openShareModal('${r.id}')">&#128279; Share</button>
        <button class="btn btn-ghost btn-sm" onclick="printRecipeObj(${JSON.stringify(r).replace(/"/g,'&quot;')})">&#128424; Print</button>`
-    :`<button class="btn btn-ghost btn-sm" onclick="downloadPDF('${r.id}')">&#128196; PDF</button>
+    :`<button class="btn btn-ghost btn-sm" onclick="openEditRecipe('${r.id}')">&#9998; Edit</button>
+       <button class="btn btn-ghost btn-sm" onclick="downloadPDF('${r.id}')">&#128196; PDF</button>
        <button class="btn btn-ghost btn-sm" onclick="printRecipe('${r.id}',false)">&#128424; Print</button>
        <button class="btn btn-ghost btn-sm" onclick="openShareModal('${r.id}')">&#128279; Share</button>`;
   return`<div class="recipe-view">
@@ -700,7 +714,15 @@ function recipeViewHTML(r,isShared){
     ${macroTiles?`<div style="margin-bottom:24px"><div class="recipe-section-title">Nutrition per serving</div><div class="macros-grid">${macroTiles}</div></div>`:''}
     ${ingredients?`<div><div class="recipe-section-title">Ingredients</div><ul class="ingredient-list">${ingredients}</ul></div>`:''}
     ${steps?`<div><div class="recipe-section-title">Instructions</div><ol class="instruction-list">${steps}</ol></div>`:''}
-    ${r.notes?`<div style="background:var(--surface2);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;color:var(--muted);line-height:1.6"><strong>Notes:</strong> ${esc(r.notes)}</div>`:''}
+    ${r.notes?`<div style="background:var(--surface2);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px"><strong>Recipe notes:</strong> ${esc(r.notes)}</div>`:''}
+    ${(!isShared&&isShared!=='public')?`<div style="margin-top:20px;padding-top:20px;border-top:1px solid var(--border)">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <div style="font-size:14px;font-weight:600;color:var(--text)">&#128203; My personal notes</div>
+        <span style="font-size:11px;color:var(--muted);background:var(--surface2);padding:2px 8px;border-radius:10px;border:1px solid var(--border)">&#128274; Private — never shared</span>
+      </div>
+      <textarea id="personal-notes-${r.id}" placeholder="Add your own notes, tweaks, or reminders about this recipe…" style="width:100%;min-height:80px;padding:10px 13px;border:1px solid var(--border2);border-radius:var(--radius-sm);font-size:13px;font-family:var(--font-body);background:var(--bg);color:var(--text);resize:vertical;margin-bottom:8px">${esc(r.personalNotes||'')}</textarea>
+      <button class="btn btn-ghost btn-sm" onclick="savePersonalNotes('${r.id}')">Save notes</button>
+    </div>`:''}
   </div>`;
 }
 
@@ -907,6 +929,93 @@ window.addToMyRecipes=async function(id){
   showToast('✓ Added to your recipes!');
 };
 
+window.savePersonalNotes=async function(id){
+  const el=document.getElementById('personal-notes-'+id);
+  if(!el)return;
+  const notes=el.value.trim();
+  const r=_myRecipes.find(m=>m.id===id);
+  if(!r)return;
+  r.personalNotes=notes;
+  await fbSet(_uid,id,{personalNotes:notes});
+  showToast('✓ Notes saved!');
+};
+
+window.openEditRecipe=function(id){
+  const r=_myRecipes.find(m=>m.id===id);if(!r)return;
+  const modal=document.createElement('div');
+  modal.className='modal-overlay';
+  modal.onclick=e=>{if(e.target===modal)modal.remove();};
+  modal.innerHTML=`<div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-title">Edit recipe</div>
+      <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">&#10005;</button>
+    </div>
+    <div class="modal-body" style="max-height:80vh;overflow-y:auto">
+      <label class="form-label">Title</label>
+      <input type="text" id="edit-title" class="form-input" value="${esc(r.title||'')}"/>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+        <div><label class="form-label">Servings</label><input type="number" id="edit-servings" class="form-input" value="${r.servings||1}" min="1"/></div>
+        <div><label class="form-label">Emoji</label><input type="text" id="edit-emoji" class="form-input" value="${esc(r.emoji||'🍽️')}" maxlength="4"/></div>
+      </div>
+      <label class="form-label">Categories (comma-separated)</label>
+      <input type="text" id="edit-cats" class="form-input" value="${esc((r.categories||[]).join(', '))}"/>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+        <div><label class="form-label">Calories</label><input type="number" id="edit-cal" class="form-input" value="${r.calories||''}"/></div>
+        <div><label class="form-label">Protein (g)</label><input type="number" id="edit-pro" class="form-input" value="${r.protein||''}"/></div>
+        <div><label class="form-label">Carbs (g)</label><input type="number" id="edit-carbs" class="form-input" value="${r.carbs||''}"/></div>
+        <div><label class="form-label">Fat (g)</label><input type="number" id="edit-fat" class="form-input" value="${r.fat||''}"/></div>
+        <div><label class="form-label">Fiber (g)</label><input type="number" id="edit-fiber" class="form-input" value="${r.fiber||''}"/></div>
+        <div><label class="form-label">Sodium (mg)</label><input type="number" id="edit-sodium" class="form-input" value="${r.sodium||''}"/></div>
+      </div>
+      <label class="form-label">Ingredients (one per line)</label>
+      <textarea id="edit-ingredients" class="form-input" style="min-height:120px">${esc((r.ingredients||[]).join(String.fromCharCode(10)))}</textarea>
+      <label class="form-label">Instructions</label>
+      <textarea id="edit-instructions" class="form-input" style="min-height:160px">${esc(r.instructions||"")}</textarea>
+      <label class="form-label">Recipe notes <span style="font-size:11px;color:var(--muted);font-weight:400">(shown publicly when shared)</span></label>
+      <textarea id="edit-notes" class="form-input">${esc(r.notes||'')}</textarea>
+      <div style="display:flex;gap:10px;margin-top:6px">
+        <button class="btn btn-ghost" style="flex:1" onclick="this.closest('.modal-overlay').remove()">Cancel</button>
+        <button class="btn btn-primary" style="flex:2" data-id="${r.id}" onclick="saveEditRecipe(this.dataset.id)">Save changes</button>
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+};
+
+window.saveEditRecipe=async function(id){
+  const r=_myRecipes.find(m=>m.id===id);if(!r)return;
+  const title=document.getElementById('edit-title')?.value.trim()||r.title;
+  const servings=parseInt(document.getElementById('edit-servings')?.value)||r.servings;
+  const emoji=document.getElementById('edit-emoji')?.value.trim()||r.emoji;
+  const catsRaw=document.getElementById('edit-cats')?.value||'';
+  const categories=catsRaw.split(',').map(c=>c.trim()).filter(Boolean);
+  const calories=parseFloat(document.getElementById('edit-cal')?.value)||0;
+  const protein=parseFloat(document.getElementById('edit-pro')?.value)||0;
+  const carbs=parseFloat(document.getElementById('edit-carbs')?.value)||0;
+  const fat=parseFloat(document.getElementById('edit-fat')?.value)||0;
+  const fiber=parseFloat(document.getElementById('edit-fiber')?.value)||0;
+  const sodium=parseFloat(document.getElementById('edit-sodium')?.value)||0;
+  const ingredientsRaw=document.getElementById('edit-ingredients')?.value||'';
+  const ingredients=ingredientsRaw.split(String.fromCharCode(10)).map(i=>i.trim()).filter(Boolean);
+  const instructions=document.getElementById('edit-instructions')?.value.trim()||'';
+  const notes=document.getElementById('edit-notes')?.value.trim()||'';
+
+  const updated={...r,title,servings,emoji,categories,calories,protein,carbs,fat,fiber,sodium,ingredients,instructions,notes};
+  await fbSet(_uid,id,updated);
+
+  // If public, update public_recipes too
+  if(r.isPublic){
+    await fbSetShared(id,{...updated,shareId:id,sharedAt:r.sharedAt||new Date().toISOString()});
+    _sharedRecipes=_sharedRecipes.map(s=>s.id===id?{...updated,shareId:id}:s);
+  }
+
+  _myRecipes=_myRecipes.map(m=>m.id===id?updated:m);
+  document.querySelector('.modal-overlay')?.remove();
+  renderMyRecipes();renderSharedRecipes();populateCategoryFilters();
+  showToast('✓ Recipe updated!');
+  openMyRecipeView(id);
+};
+
 window.deleteRecipe=async function(id){
   if(!confirm('Delete this recipe? This cannot be undone.'))return;
   const r=_myRecipes.find(m=>m.id===id);
@@ -941,8 +1050,10 @@ function generateRecipePDF(r,download){
   doc2.setFillColor(92,122,62);doc2.rect(0,0,W,28,'F');
   doc2.setTextColor(255,255,255);doc2.setFont('helvetica','bold');doc2.setFontSize(9);
   doc2.text('MYWELLPATH RECIPES',margin,12);
+  // Strip emoji from title — jsPDF doesn't support emoji
+  const safeTitle=(r.title||'Recipe').replace(/[\u{1F300}-\u{1FFFF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/gu,'').trim();
   doc2.setFont('helvetica','bold');doc2.setFontSize(18);
-  doc2.text((r.emoji||'')+'  '+(r.title||'Recipe'),margin,22);
+  doc2.text(safeTitle,margin,22);
   y=38;
 
   // Meta line
@@ -1050,5 +1161,16 @@ function showToast(msg){
   document.body.appendChild(t);setTimeout(()=>t.remove(),3000);
 }
 </script>
+<!-- PUBLIC RECIPE VIEW (no login required) -->
+<div id="public-screen" style="display:none;min-height:100vh;background:var(--bg)">
+  <div style="max-width:740px;margin:0 auto;padding:28px 24px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px">
+      <div style="font-size:13px;color:var(--muted)">&#128279; Shared recipe from <strong style="color:var(--accent)">MyWellpath Recipes</strong></div>
+      <a href="https://recipes.mywellpath.app" style="font-size:13px;font-weight:600;color:var(--accent);text-decoration:none;border:1px solid rgba(92,122,62,0.3);padding:6px 14px;border-radius:20px">Create your own recipe box &rarr;</a>
+    </div>
+    <div id="public-recipe-content"></div>
+  </div>
+</div>
+
 </body>
 </html>
