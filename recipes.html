@@ -752,13 +752,32 @@ function recipeViewHTML(r,isShared){
 // ── UPLOADER ────────────────────────────────────────────────
 window.openUploader=function(){
   document.getElementById('uploader-modal').style.display='flex';
+  // Reset all inputs
   document.getElementById('input-text').value='';
   document.getElementById('input-title-text').value='';
   document.getElementById('input-link').value='';
   document.getElementById('upload-status').textContent='';
+  document.getElementById('upload-status').style.color='var(--muted)';
+  // Reset file state
   _imageData=null;_pdfData=null;
+  document.getElementById('file-image').value='';
+  document.getElementById('file-pdf').value='';
+  // Reset image/pdf UI — show drop zones, hide previews
   document.getElementById('image-preview').style.display='none';
   document.getElementById('pdf-preview').style.display='none';
+  document.getElementById('drop-image').style.display='block';
+  document.getElementById('drop-pdf').style.display='block';
+  // Reset analyze button
+  const btn=document.getElementById('analyze-btn');
+  if(btn){btn.disabled=false;btn.innerHTML='&#10024; Analyze & save';}
+  // Always reset to text tab
+  _uploadTab='text';
+  document.querySelectorAll('.upload-tab').forEach(b=>b.classList.remove('active'));
+  document.querySelector('.upload-tab')?.classList.add('active');
+  ['text','link','image','pdf'].forEach(t=>{
+    const el=document.getElementById('upload-'+t);
+    if(el)el.style.display=t==='text'?'block':'none';
+  });
 };
 window.closeUploader=function(){document.getElementById('uploader-modal').style.display='none';};
 
