@@ -3740,10 +3740,16 @@ function renderFoodEntries(){
   MEAL_ORDER.forEach(mealTime=>{
     const group=mealGroups[mealTime];
     if(!group||!group.length)return;
-    const mtp=group.reduce((a,e)=>a+(e.protein||0),0);
-    const mtc=group.reduce((a,e)=>a+(e.carbs||0),0);
-    const mtcal=group.reduce((a,e)=>a+(e.calories||0),0);
-    const mtw=group.reduce((a,e)=>a+(e.water||0),0);
+    // For meal totals, only count top-level entries (parents + standalones) — never children
+    const mealCountable=group.filter(e=>!e._childOf);
+    const mtp=mealCountable.reduce((a,e)=>a+(e.protein||0),0);
+    const mtc=mealCountable.reduce((a,e)=>a+(e.carbs||0),0);
+    const mtcal=mealCountable.reduce((a,e)=>a+(e.calories||0),0);
+    const mtw=mealCountable.reduce((a,e)=>a+(e.water||0),0);
+    const mtsugar=mealCountable.reduce((a,e)=>a+(e.sugar||0),0);
+    const mtfiber=mealCountable.reduce((a,e)=>a+(e.fiber||0),0);
+    const mtfat=mealCountable.reduce((a,e)=>a+(e.fat||0),0);
+    const mtsodium=mealCountable.reduce((a,e)=>a+(e.sodium||0),0);
     if(mealTime==='Water'){
       html+='<div style="padding:10px 0;border-bottom:1px solid var(--border);margin-bottom:4px">'
         +'<div style="display:flex;align-items:center;justify-content:space-between">'
@@ -3758,12 +3764,16 @@ function renderFoodEntries(){
       +'<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:2px solid var(--border2);margin-bottom:6px;cursor:pointer;user-select:none" onclick="toggleMealGroup(this)">'
       +'<div style="font-weight:600;font-size:13px;color:var(--accent)">'+mealTime+'</div>'
       +'<div style="display:flex;align-items:center;gap:10px">'
-      +'<div style="display:flex;gap:8px;font-size:11px;color:var(--muted)">'
+      +'<div style="display:flex;gap:6px;flex-wrap:wrap;font-size:11px;color:var(--muted);justify-content:flex-end">'
       +(mtcal?'<span>'+Math.round(mtcal)+' kcal</span>':'')
       +(mtp?'<span>'+Math.round(mtp)+'g pro</span>':'')
-      +(mtc?'<span>'+Math.round(mtc)+'g carbs</span>':'')
+      +(mtc?'<span>'+Math.round(Math.max(0,mtc-mtfiber))+'g carbs</span>':'')
+      +(mtsugar?'<span>'+Math.round(mtsugar)+'g sugar</span>':'')
+      +(mtfiber?'<span>'+Math.round(mtfiber)+'g fiber</span>':'')
+      +(mtfat?'<span>'+Math.round(mtfat)+'g fat</span>':'')
+      +(mtsodium?'<span>'+Math.round(mtsodium)+'mg sodium</span>':'')
       +'</div>'
-      +'<span style="font-size:12px;color:var(--muted);transition:transform 0.2s" class="meal-chevron">&#9660;</span>'
+      +'<span style="font-size:12px;color:var(--muted);transition:transform 0.2s;flex-shrink:0" class="meal-chevron">&#9660;</span>'
       +'</div></div>'
       +'<div class="meal-items">';
     // Render entries — skip children (they render nested under parent)
@@ -3816,6 +3826,7 @@ function renderFoodEntries(){
             +(c.source==='off'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 4px;border-radius:3px">&#10003;</span>':c.source==='usda'?'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 4px;border-radius:3px">USDA</span>':c.source==='edited'?'<span style="font-size:10px;color:var(--blue);background:rgba(42,90,138,0.1);padding:1px 4px;border-radius:3px">&#9998;</span>':'')
             +'</div></div>'
             +(!isPast?'<button data-ts="'+c.ts+'" onclick="openEditEntry('+c.ts+',true)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px" title="Edit">&#9998;</button>':'')
+            +(!isPast?'<button data-text="'+escHtml(c.text).replace(/"/g,"&quot;")+'" onclick="addFoodToGrocery(this.dataset.text)" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 2px" title="Add to grocery list">&#128722;</button>':'')
             +(!isPast?cDelBtn:'')
             +'</div>';
         });
@@ -4099,13 +4110,18 @@ function _openGroupedParentEdit(entry){
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
   modal.style.zIndex='501';
-  modal.innerHTML=`<div class="date-picker-card" style="max-width:380px">
-    <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:14px">Edit meal name</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:10px">Macros are calculated from the ingredients below. Edit individual ingredients to change nutrition values.</div>
+  const srv=entry.servings||1;
+  modal.innerHTML=`<div class="date-picker-card" style="max-width:400px">
+    <div style="font-family:var(--font-display);font-size:18px;color:var(--text);margin-bottom:14px">Edit meal</div>
     <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Meal name</div>
-    <input type="text" id="grouped-edit-name" value="${escHtml(entry.text)}" style="width:100%;margin-bottom:6px;font-size:15px"/>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Servings</div>
-    <input type="number" id="grouped-edit-srv" value="${entry.servings||1}" min="0.5" step="0.5" style="width:80px;margin-bottom:16px;font-size:15px"/>
+    <input type="text" id="grouped-edit-name" value="${escHtml(entry.text)}" style="width:100%;margin-bottom:16px;font-size:15px"/>
+    <div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Servings</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Adjusting servings scales macros for all ingredients proportionally.</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <button onclick="_adjustGroupedServings(${entry.ts},-0.25)" style="width:36px;height:36px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);font-size:18px;cursor:pointer;color:var(--text)">&#8722;</button>
+      <div style="text-align:center;min-width:80px"><div style="font-size:22px;font-weight:600;color:var(--text)" id="grouped-srv-display">${srv}</div><div style="font-size:11px;color:var(--muted)">serving${srv===1?'':'s'}</div></div>
+      <button onclick="_adjustGroupedServings(${entry.ts},0.25)" style="width:36px;height:36px;border:1px solid var(--border2);border-radius:8px;background:var(--surface2);font-size:18px;cursor:pointer;color:var(--text)">&#43;</button>
+    </div>
     <div style="display:flex;gap:10px">
       <button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest('.date-picker-modal').remove()">Cancel</button>
       <button class="btn btn-primary btn-sm" style="flex:2" onclick="_saveGroupedParentEdit(${entry.ts})">Save</button>
@@ -4113,25 +4129,52 @@ function _openGroupedParentEdit(entry){
   </div>`;
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
+  // Track current servings in memory for the adjuster
+  window._groupedEditServings=srv;
+}
+
+function _adjustGroupedServings(ts,delta){
+  const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
+  if(!entry)return;
+  const current=window._groupedEditServings||entry.servings||1;
+  const next=Math.max(0.25,Math.round((current+delta)*4)/4);
+  window._groupedEditServings=next;
+  const disp=document.getElementById('grouped-srv-display');
+  if(disp){
+    disp.textContent=next;
+    disp.nextElementSibling.textContent='serving'+(next===1?'':'s');
+  }
 }
 
 async function _saveGroupedParentEdit(ts){
   const entry=(cache.food[viewDate]||[]).find(e=>e.ts===ts);
   if(!entry)return;
   const newName=(document.getElementById('grouped-edit-name')?.value||'').trim();
-  const newSrv=parseFloat(document.getElementById('grouped-edit-srv')?.value)||1;
+  const newSrv=window._groupedEditServings||parseFloat(document.getElementById('grouped-srv-display')?.textContent)||entry.servings||1;
   if(newName)entry.text=newName;
   entry.servings=newSrv;
   // Recalculate parent macros with new serving count
-  entry.calories=Math.round(entry.baseCalories*newSrv);
-  entry.protein=Math.round(entry.baseProtein*newSrv*10)/10;
-  entry.carbs=Math.round(entry.baseCarbs*newSrv*10)/10;
-  entry.sugar=Math.round(entry.baseSugar*newSrv*10)/10;
-  entry.fiber=Math.round(entry.baseFiber*newSrv*10)/10;
-  entry.fat=Math.round(entry.baseFat*newSrv*10)/10;
-  entry.sodium=Math.round(entry.baseSodium*newSrv);
+  entry.calories=Math.round((entry.baseCalories||0)*newSrv);
+  entry.protein=Math.round((entry.baseProtein||0)*newSrv*10)/10;
+  entry.carbs=Math.round((entry.baseCarbs||0)*newSrv*10)/10;
+  entry.sugar=Math.round((entry.baseSugar||0)*newSrv*10)/10;
+  entry.fiber=Math.round((entry.baseFiber||0)*newSrv*10)/10;
+  entry.fat=Math.round((entry.baseFat||0)*newSrv*10)/10;
+  entry.sodium=Math.round((entry.baseSodium||0)*newSrv);
+  // Scale all child entries proportionally to match new serving count
+  const children=(cache.food[viewDate]||[]).filter(c=>c._childOf===ts);
+  children.forEach(c=>{
+    c.servings=newSrv;
+    c.calories=Math.round((c.baseCalories||0)*newSrv);
+    c.protein=Math.round((c.baseProtein||0)*newSrv*10)/10;
+    c.carbs=Math.round((c.baseCarbs||0)*newSrv*10)/10;
+    c.sugar=Math.round((c.baseSugar||0)*newSrv*10)/10;
+    c.fiber=Math.round((c.baseFiber||0)*newSrv*10)/10;
+    c.fat=Math.round((c.baseFat||0)*newSrv*10)/10;
+    c.sodium=Math.round((c.baseSodium||0)*newSrv);
+  });
   await fbSet('food',viewDate,{entries:cache.food[viewDate],date:viewDate});
-  document.querySelector('.date-picker-modal[style*="z-index: 501"],.date-picker-modal[style*="z-index:501"]')?.remove();
+  document.querySelectorAll('.date-picker-modal').forEach(m=>{if(m.style.zIndex==='501')m.remove();});
   renderFoodEntries();refreshDashboard();
 }
 
