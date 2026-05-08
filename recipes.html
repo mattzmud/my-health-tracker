@@ -178,7 +178,10 @@ textarea.form-input{min-height:100px;resize:vertical;}
 <!-- TOPBAR -->
 <div class="topbar">
   <div class="topbar-logo">MyWellpath <span>Recipes</span></div>
-  <button class="signout-btn" id="signout-btn" style="display:none" onclick="doSignOut()">Sign out</button>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="user-email-display" style="display:none;font-size:12px;color:var(--muted)"></span>
+    <button class="signout-btn" id="signout-btn" style="display:none" onclick="doSignOut()">Sign out</button>
+  </div>
 </div>
 
 <!-- LOGIN SCREEN -->
@@ -418,6 +421,8 @@ onAuthStateChanged(auth,async user=>{
     document.getElementById('login-screen').style.display='none';
     document.getElementById('app-screen').classList.add('active');
     document.getElementById('signout-btn').style.display='block';
+    const emailEl=document.getElementById('user-email-display');
+    if(emailEl){emailEl.textContent=user.email||'';emailEl.style.display=user.email?'block':'none';}
     await loadAllRecipes();
     // Check for public share view
     const urlParams=new URLSearchParams(window.location.search);
@@ -426,6 +431,8 @@ onAuthStateChanged(auth,async user=>{
   } else {
     _uid=null;
     document.getElementById('signout-btn').style.display='none';
+    const emailEl=document.getElementById('user-email-display');
+    if(emailEl){emailEl.style.display='none';emailEl.textContent='';}
     // Check for public share link first
     const urlParams=new URLSearchParams(window.location.search);
     const shareId=urlParams.get('r');
