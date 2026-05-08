@@ -1272,28 +1272,50 @@ body.text-large [style*="color:var(--muted)"],body.text-xlarge [style*="color:va
         <div id="recipe-list-panel">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
             <div>
-              <div class="card-title" style="font-size:22px">&#128218; My Recipes</div>
-              <div style="font-size:13px;color:var(--muted)">Saved recipes from your coach and your own collection</div>
+              <div class="card-title" style="font-size:22px">&#128218; Recipes</div>
+              <div style="font-size:13px;color:var(--muted)">Your collection and recipes shared by the community</div>
             </div>
-            <button class="btn btn-primary btn-sm" onclick="openAddMyRecipe()">&#43; Add recipe</button>
+            <button class="btn btn-primary btn-sm" id="recipe-add-btn" onclick="openAddMyRecipe()">&#43; Add recipe</button>
           </div>
-          <!-- Search + category dropdown -->
-          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:stretch">
-            <input type="search" id="recipe-search" placeholder="&#128269;  Search recipes..." style="flex:1;min-width:160px;padding:12px 14px;font-size:14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)" oninput="renderRecipes()"/>
-            <select id="recipe-category-dropdown" onchange="setRecipeCategory(this.value)" style="padding:12px 14px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer">
-              <option value="All">All categories</option>
-            </select>
+          <!-- Tab bar -->
+          <div style="display:flex;gap:4px;border-bottom:2px solid var(--border);margin-bottom:16px">
+            <button id="recipe-tab-mine" onclick="switchRecipeTab('mine')" style="padding:8px 18px;background:none;border:none;border-bottom:2px solid var(--accent);margin-bottom:-2px;font-size:14px;font-weight:600;color:var(--accent);cursor:pointer">My Recipes</button>
+            <button id="recipe-tab-shared" onclick="switchRecipeTab('shared')" style="padding:8px 18px;background:none;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;font-size:14px;font-weight:600;color:var(--muted);cursor:pointer">Shared Recipes</button>
           </div>
-          <div id="recipes-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--muted)">
-            <div style="font-size:36px;margin-bottom:12px">&#128218;</div>
-            <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">No recipes yet</div>
-            <div style="font-size:13px;margin-bottom:16px">Ask your health coach for a recipe and save it here, or add your own.</div>
-            <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
-              <button class="btn btn-primary btn-sm" onclick="showSection('chat')">Ask the coach</button>
-              <button class="btn btn-ghost btn-sm" onclick="openAddMyRecipe()">Add my own</button>
+          <!-- My Recipes panel -->
+          <div id="recipe-panel-mine">
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:stretch">
+              <input type="search" id="recipe-search" placeholder="&#128269;  Search recipes..." style="flex:1;min-width:160px;padding:12px 14px;font-size:14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)" oninput="renderRecipes()"/>
+              <select id="recipe-category-dropdown" onchange="setRecipeCategory(this.value)" style="padding:12px 14px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer">
+                <option value="All">All categories</option>
+              </select>
+            </div>
+            <div id="recipes-empty" style="display:none;text-align:center;padding:40px 20px;color:var(--muted)">
+              <div style="font-size:36px;margin-bottom:12px">&#128218;</div>
+              <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">No recipes yet</div>
+              <div style="font-size:13px;margin-bottom:16px">Ask your health coach for a recipe and save it here, or add your own.</div>
+              <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">
+                <button class="btn btn-primary btn-sm" onclick="showSection('chat')">Ask the coach</button>
+                <button class="btn btn-ghost btn-sm" onclick="openAddMyRecipe()">Add my own</button>
+              </div>
+            </div>
+            <div class="recipe-grid" id="recipes-list"></div>
+          </div>
+          <!-- Shared Recipes panel -->
+          <div id="recipe-panel-shared" style="display:none">
+            <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;align-items:stretch">
+              <input type="search" id="recipe-search-shared" placeholder="&#128269;  Search shared recipes..." style="flex:1;min-width:160px;padding:12px 14px;font-size:14px;border:1px solid var(--border2);border-radius:8px;background:var(--surface)" oninput="renderSharedRecipes()"/>
+              <select id="recipe-category-dropdown-shared" onchange="renderSharedRecipes()" style="padding:12px 14px;border:1px solid var(--border2);border-radius:8px;font-size:13px;background:var(--surface);color:var(--text);cursor:pointer">
+                <option value="">All categories</option>
+              </select>
+            </div>
+            <div id="shared-recipes-list" class="recipe-grid">
+              <div style="text-align:center;padding:40px 20px;color:var(--muted);grid-column:1/-1">
+                <div style="font-size:36px;margin-bottom:12px">&#127807;</div>
+                <div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">Loading shared recipes…</div>
+              </div>
             </div>
           </div>
-          <div class="recipe-grid" id="recipes-list"></div>
         </div>
         <!-- Recipe detail view -->
         <div id="recipe-view-panel">
@@ -1535,6 +1557,12 @@ window.fbRootSet = async (col,id,data) => {
 };
 window.fbRootGet = async (col,id) => {
   try{const s=await getDoc(doc(db,col,id));return s.exists()?s.data():null;}catch(e){return null;}
+};
+window.fbRootGetAllDocs = async (col) => {
+  try{const s=await getDocs(collection(db,col));return s.docs.map(d=>({id:d.id,...d.data()}));}catch(e){return[];}
+};
+window.fbRootDel = async (col,id) => {
+  try{await deleteDoc(doc(db,col,id));return true;}catch(e){return false;}
 };
 window.fbRootGetCol = async (col,query_uid) => {
   try{
@@ -2107,7 +2135,7 @@ function showSection(name){
   if(name==='fitness'){_run(()=>renderFitness(),'renderFitness');_run(()=>renderExtraActivities(),'renderExtraActivities');}
   if(name==='meds')_run(()=>renderMeds(),'renderMeds');
   if(name==='grocery')_run(()=>renderGroceryList(),'renderGroceryList');
-  if(name==='recipes'){_run(()=>renderRecipes(),'renderRecipes');document.getElementById('recipe-list-panel').style.display='block';document.getElementById('recipe-view-panel').style.display='none';}
+  if(name==='recipes'){_run(()=>renderRecipes(),'renderRecipes');document.getElementById('recipe-list-panel').style.display='block';document.getElementById('recipe-view-panel').style.display='none';switchRecipeTab(_recipeTab);}
   if(name==='chat'&&Object.keys(chatSessions).length===0)initChat();
   if(name==='profile')_run(()=>renderProfile(),'renderProfile');
   if(name==='vitals'){ensureVitalsLoaded(viewDate).then(()=>{_run(()=>renderVitals(),'renderVitals');initA1CDatePickers();});syncPageDateDisplay('vitals');}
@@ -3872,6 +3900,9 @@ function renderFoodEntries(){
             +'<div style="display:flex;gap:6px;margin-top:2px;flex-wrap:wrap">'
             +'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.calories)+' kcal</span>'
             +'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.protein)+'g pro</span>'
+            +(c.carbs>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.carbs)+'g carbs</span>':'')
+            +(c.sugar>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.sugar)+'g sugar</span>':'')
+            +(c.fiber>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.fiber)+'g fiber</span>':'')
             +(c.fat>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.fat)+'g fat</span>':'')
             +(c.sodium>0?'<span style="font-size:11px;color:var(--muted)">'+Math.round(c.sodium)+'mg sodium</span>':'')
             +(cServings!==1?'<span style="font-size:11px;color:var(--muted);font-style:italic">'+cServings+' srv</span>':'')
@@ -5272,6 +5303,146 @@ async function checkAllMeds(prefix){
 // ── RECIPES ──────────────────────────────────────────────────
 
 let _recipeActiveCategory='All';
+let _recipeTab='mine'; // 'mine' | 'shared'
+let _sharedRecipes=[];
+let _sharedRecipesLoaded=false;
+
+function switchRecipeTab(tab){
+  _recipeTab=tab;
+  const isMine=tab==='mine';
+  document.getElementById('recipe-panel-mine').style.display=isMine?'block':'none';
+  document.getElementById('recipe-panel-shared').style.display=isMine?'none':'block';
+  document.getElementById('recipe-add-btn').style.display=isMine?'':'none';
+  // Tab button styling
+  const mine=document.getElementById('recipe-tab-mine');
+  const shared=document.getElementById('recipe-tab-shared');
+  if(mine){mine.style.color=isMine?'var(--accent)':'var(--muted)';mine.style.borderBottomColor=isMine?'var(--accent)':'transparent';}
+  if(shared){shared.style.color=isMine?'var(--muted)':'var(--accent)';shared.style.borderBottomColor=isMine?'transparent':'var(--accent)';}
+  if(!isMine&&!_sharedRecipesLoaded)_loadSharedRecipes();
+}
+
+async function _loadSharedRecipes(){
+  const grid=document.getElementById('shared-recipes-list');
+  if(grid)grid.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted);grid-column:1/-1"><div style="font-size:24px;margin-bottom:8px">&#8987;</div>Loading…</div>';
+  _sharedRecipes=await fbRootGetAllDocs('public_recipes');
+  _sharedRecipes.sort((a,b)=>(b.sharedAt||'').localeCompare(a.sharedAt||''));
+  _sharedRecipesLoaded=true;
+  renderSharedRecipes();
+}
+
+function renderSharedRecipes(){
+  const grid=document.getElementById('shared-recipes-list');
+  if(!grid)return;
+  const q=(document.getElementById('recipe-search-shared')?.value||'').toLowerCase().trim();
+  const cat=document.getElementById('recipe-category-dropdown-shared')?.value||'';
+  // Rebuild category dropdown
+  const dropdown=document.getElementById('recipe-category-dropdown-shared');
+  if(dropdown){
+    const allCats=[...new Set(_sharedRecipes.flatMap(r=>r.categories||[]).filter(Boolean))].sort();
+    const curVal=dropdown.value;
+    dropdown.innerHTML='<option value="">All categories</option>'
+      +allCats.map(c=>'<option value="'+escHtml(c)+'"'+(c===curVal?' selected':'')+'>'+escHtml(c)+'</option>').join('');
+  }
+  let list=_sharedRecipes.filter(r=>{
+    const matchQ=!q||( r.title||'').toLowerCase().includes(q)||(r.authorName||'').toLowerCase().includes(q)||(r.categories||[]).some(c=>c.toLowerCase().includes(q));
+    const matchC=!cat||(r.categories||[]).includes(cat);
+    return matchQ&&matchC;
+  });
+  if(!list.length){
+    grid.innerHTML='<div style="text-align:center;padding:40px 20px;color:var(--muted);grid-column:1/-1"><div style="font-size:36px;margin-bottom:12px">&#127807;</div><div style="font-size:16px;font-weight:600;color:var(--text);margin-bottom:8px">'+(q||cat?'No matches found':'No shared recipes yet')+'</div><p style="font-size:13px">'+(q||cat?'Try a different search or category.':'Recipes that members make public will appear here.')+'</p></div>';
+    return;
+  }
+  grid.innerHTML=list.map(r=>sharedRecipeCard(r)).join('');
+}
+
+function sharedRecipeCard(r){
+  const macroStr=[
+    r.calories?Math.round(r.calories)+' cal':'',
+    r.protein?Math.round(r.protein)+'g pro':'',
+    r.carbs?Math.round(r.carbs)+'g carbs':'',
+    r.fat?Math.round(r.fat)+'g fat':'',
+    r.sodium?Math.round(r.sodium)+'mg sodium':''
+  ].filter(Boolean).join(' · ');
+  const cats=(r.categories||[]).map(c=>'<span class="recipe-cat-pill">'+escHtml(c)+'</span>').join('');
+  const alreadyMine=!!(cache.recipes||[]).find(m=>m.id===r.id||m.copiedFrom===r.id);
+  return '<div class="recipe-card-new" onclick="openSharedRecipeDetailView(\''+r.id+'\')">'
+    +'<div class="recipe-card-emoji">'+(r.emoji||'&#127869;&#65039;')+'</div>'
+    +'<div class="recipe-card-body">'
+    +'<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">'
+    +'<div class="recipe-card-title">'+escHtml(r.title||'Untitled recipe')+'</div>'
+    +'<span class="recipe-cat-pill" style="white-space:nowrap;flex-shrink:0;background:rgba(58,107,138,0.1);color:var(--blue);border-color:rgba(58,107,138,0.25)">Shared</span>'
+    +'</div>'
+    +(r.authorName?'<div style="font-size:11px;color:var(--muted);margin-bottom:4px">by '+escHtml(r.authorName)+'</div>':'')
+    +'<div class="recipe-card-meta">'+(macroStr||'No macros')+(r.servings?' · '+r.servings+' servings':'')+'</div>'
+    +'<div class="recipe-card-cats">'+cats+'</div>'
+    +'<div class="recipe-card-actions">'
+    +(alreadyMine
+      ?'<span style="font-size:11px;color:var(--accent);padding:5px 8px">&#10003; In my recipes</span>'
+      :'<button class="recipe-card-btn" onclick="event.stopPropagation();addToMyRecipes(\''+r.id+'\')" style="color:var(--accent);border-color:rgba(85,107,47,0.4)">&#10133; Add to mine</button>')
+    +'<button class="recipe-card-btn" onclick="event.stopPropagation();printSharedRecipe(\''+r.id+'\')" title="Print / PDF">&#128424;</button>'
+    +'</div>'
+    +'</div></div>';
+}
+
+function openSharedRecipeDetailView(id){
+  const r=_sharedRecipes.find(rec=>rec.id===id);if(!r)return;
+  document.getElementById('recipe-list-panel').style.display='none';
+  document.getElementById('recipe-view-panel').style.display='block';
+  document.getElementById('recipe-view-content').innerHTML=sharedRecipeDetailHTML(r);
+}
+
+function sharedRecipeDetailHTML(r){
+  const cats=(r.categories||[]).map(c=>'<span class="recipe-cat-pill">'+escHtml(c)+'</span>').join('');
+  const macroTiles=[
+    {v:r.calories,l:'Calories',u:'kcal'},{v:r.protein,l:'Protein',u:'g'},{v:r.carbs,l:'Carbs',u:'g'},
+    {v:r.fat,l:'Fat',u:'g'},{v:r.fiber,l:'Fiber',u:'g'},{v:r.sodium,l:'Sodium',u:'mg'},{v:r.sugar,l:'Sugar',u:'g'},
+  ].filter(m=>m.v!=null&&m.v!==''&&m.v!==0)
+   .map(m=>'<div class="recipe-macro-tile"><div class="recipe-macro-val">'+m.v+m.u+'</div><div class="recipe-macro-lbl">'+m.l+'</div></div>').join('');
+  const ingredients=(r.ingredients||[]).map(i=>'<li>'+escHtml(i)+'</li>').join('');
+  const steps=(r.instructions||'').split('\n').filter(s=>s.trim())
+    .map(s=>'<li>'+escHtml(s.replace(/^\d+[\.\)]\s*/,''))+'</li>').join('');
+  const alreadyMine=!!(cache.recipes||[]).find(m=>m.id===r.id||m.copiedFrom===r.id);
+  return '<div>'
+    +'<div style="font-size:44px;margin-bottom:12px">'+(r.emoji||'&#127869;&#65039;')+'</div>'
+    +'<div class="recipe-view-title">'+escHtml(r.title||'Untitled')+'</div>'
+    +(r.authorName?'<div style="font-size:13px;color:var(--muted);margin-bottom:4px">Shared by '+escHtml(r.authorName)+'</div>':'')
+    +'<div style="font-size:13px;color:var(--muted);margin-bottom:10px">'+(r.servings?r.servings+' servings · ':'')+( r.calories?r.calories+' cal/serving':'')+'</div>'
+    +(cats?'<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">'+cats+'</div>':'')
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;align-items:center">'
+    +(alreadyMine
+      ?'<span class="btn btn-ghost btn-sm" style="color:var(--accent)">&#10003; In my recipes</span>'
+      :'<button class="btn btn-primary btn-sm" onclick="addToMyRecipes(\''+r.id+'\')">&#10133; Add to my recipes</button>')
+    +'<button class="btn btn-ghost btn-sm" onclick="printSharedRecipe(\''+r.id+'\')">&#128424; Print</button>'
+    +'</div>'
+    +(macroTiles?'<div style="margin-bottom:22px"><div class="recipe-section-title">Nutrition per serving</div><div class="recipe-macros-grid">'+macroTiles+'</div></div>':'')
+    +(ingredients?'<div><div class="recipe-section-title">Ingredients</div><ul class="recipe-ingredient-list">'+ingredients+'</ul></div>':'')
+    +(steps?'<div><div class="recipe-section-title">Instructions</div><ol class="recipe-instruction-list">'+steps+'</ol></div>':'')
+    +(r.notes?'<div style="background:var(--surface2);border-left:3px solid var(--accent);padding:12px 16px;border-radius:0 8px 8px 0;font-size:13px;color:var(--text);line-height:1.6;margin-bottom:20px"><strong style="color:var(--accent)">Notes:</strong> '+escHtml(r.notes)+'</div>':'')
+    +'</div>';
+}
+
+async function addToMyRecipes(id){
+  const r=_sharedRecipes.find(s=>s.id===id);if(!r)return;
+  if((cache.recipes||[]).find(m=>m.id===id||m.copiedFrom===id)){showToast('Already in your recipes!');return;}
+  const copy={...r,id:'recipe-'+Date.now(),dateAdded:new Date().toLocaleDateString('en-CA'),isPublic:false,ownerId:window._uid,copiedFrom:id};
+  delete copy.sharedAt;
+  if(!cache.recipes)cache.recipes=[];
+  cache.recipes.unshift(copy);
+  await fbSet('recipes',copy.id,copy);
+  renderRecipes();
+  renderSharedRecipes();
+  showToast('&#10003; Added to your recipes!');
+  // Re-render detail if on shared view
+  const viewPanel=document.getElementById('recipe-view-panel');
+  if(viewPanel&&viewPanel.style.display!=='none'){
+    document.getElementById('recipe-view-content').innerHTML=sharedRecipeDetailHTML(r);
+  }
+}
+
+function printSharedRecipe(id){
+  const r=_sharedRecipes.find(s=>s.id===id);if(!r)return;
+  printRecipeObj(r);
+}
 
 function renderRecipes(){
   const list=document.getElementById('recipes-list');
@@ -5283,7 +5454,6 @@ function renderRecipes(){
   const dropdown=document.getElementById('recipe-category-dropdown');
   if(dropdown){
     const allCats=[...new Set(allRecipes.flatMap(r=>r.categories||[]).filter(Boolean))].sort();
-    const cur=_recipeActiveCategory==='All'?'':_recipeActiveCategory;
     dropdown.innerHTML='<option value="All">All categories</option>'
       +allCats.map(c=>'<option value="'+escHtml(c)+'"'+(c===_recipeActiveCategory?' selected':'')+'>'+escHtml(c)+'</option>').join('');
     if(_recipeActiveCategory!=='All')dropdown.value=_recipeActiveCategory;
@@ -5315,71 +5485,85 @@ function setRecipeCategory(cat){
 
 
 function _getAllCategories(){
-  // Get all unique categories across all saved recipes
   return [...new Set((cache.recipes||[]).flatMap(r=>r.categories||[]).filter(Boolean))].sort();
 }
 
 function openEditRecipe(id){
   const r=cache.recipes.find(rec=>rec.id===id);
   if(!r)return;
-  const allCats=_getAllCategories();
-  const selected=new Set(r.categories||[]);
-
-  const catPills=allCats.map(c=>`<button class="feedback-type-pill${selected.has(c)?' active':''}" data-cat="${escHtml(c)}" onclick="toggleRecipeCatPill(this)">${escHtml(c)}</button>`).join('');
-
   const modal=document.createElement('div');
   modal.className='date-picker-modal';
-  modal.innerHTML='<div class="date-picker-card" style="max-width:440px">'
-    +'<div style="font-family:var(--font-display);font-size:18px;margin-bottom:14px">Edit recipe</div>'
+  modal.style.zIndex='501';
+  modal.innerHTML='<div class="date-picker-card" style="max-width:500px;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden">'
+    +'<div style="padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">'
+    +'<div style="font-family:var(--font-display);font-size:18px;color:var(--text)">Edit recipe</div>'
+    +'<button onclick="this.closest(\'.date-picker-modal\').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">&#10005;</button>'
+    +'</div>'
+    +'<div style="padding:20px;overflow-y:auto;flex:1">'
     // Title
-    +'<div style="margin-bottom:14px">'
     +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Title</div>'
-    +'<input type="text" id="edit-recipe-title" value="'+escHtml(r.title||'')+'" style="width:100%"/>'
+    +'<input type="text" id="er-title" value="'+escHtml(r.title||'')+'" style="width:100%;margin-bottom:14px"/>'
+    // Servings + emoji
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">'
+    +'<div><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Servings</div>'
+    +'<input type="number" id="er-servings" value="'+(r.servings||1)+'" min="1" style="width:100%"/></div>'
+    +'<div><div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Emoji</div>'
+    +'<input type="text" id="er-emoji" value="'+escHtml(r.emoji||'🍽️')+'" maxlength="4" style="width:100%"/></div>'
     +'</div>'
     // Categories
-    +'<div style="margin-bottom:14px">'
-    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Categories</div>'
-    +(allCats.length?'<div id="edit-recipe-cat-pills" style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">'+catPills+'</div>':'')
-    +'<div style="display:flex;gap:8px;align-items:center">'
-    +'<input type="text" id="edit-recipe-new-cat" placeholder="Add a new category..." style="flex:1;font-size:13px"/>'
-    +'<button class="btn btn-ghost btn-sm" onclick="addNewRecipeCat()">Add</button>'
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Categories <span style="font-weight:400;text-transform:none;font-size:11px">(comma-separated)</span></div>'
+    +'<input type="text" id="er-cats" value="'+escHtml((r.categories||[]).join(', '))+'" style="width:100%;margin-bottom:14px"/>'
+    // Macros grid
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:8px">Nutrition per serving</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Calories</div><input type="number" id="er-cal" value="'+(r.calories||'')+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Protein (g)</div><input type="number" id="er-pro" value="'+(r.protein||'')+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Carbs (g)</div><input type="number" id="er-carbs" value="'+(r.carbs||'')+'" min="0" style="width:100%"/></div>'
     +'</div>'
+    +'<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Fat (g)</div><input type="number" id="er-fat" value="'+(r.fat||'')+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Fiber (g)</div><input type="number" id="er-fiber" value="'+(r.fiber||'')+'" min="0" style="width:100%"/></div>'
+    +'<div><div style="font-size:11px;color:var(--muted);margin-bottom:3px">Sodium (mg)</div><input type="number" id="er-sodium" value="'+(r.sodium||'')+'" min="0" style="width:100%"/></div>'
     +'</div>'
+    // Ingredients
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Ingredients <span style="font-weight:400;text-transform:none;font-size:11px">(one per line)</span></div>'
+    +'<textarea id="er-ingredients" style="width:100%;min-height:110px;resize:vertical;margin-bottom:14px">'+escHtml((r.ingredients||[]).join(String.fromCharCode(10)))+'</textarea>'
+    // Instructions
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Instructions</div>'
+    +'<textarea id="er-instructions" style="width:100%;min-height:140px;resize:vertical;margin-bottom:14px">'+escHtml(r.instructions||'')+'</textarea>'
+    // Notes
+    +'<div style="font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin-bottom:5px">Notes</div>'
+    +'<textarea id="er-notes" style="width:100%;min-height:70px;resize:vertical;margin-bottom:16px">'+escHtml(r.notes||'')+'</textarea>'
+    // Footer
     +'<div style="display:flex;gap:8px">'
-    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(&#39;.date-picker-modal&#39;).remove()">Cancel</button>'
+    +'<button class="btn btn-ghost btn-sm" style="flex:1" onclick="this.closest(\'.date-picker-modal\').remove()">Cancel</button>'
     +'<button class="btn btn-primary btn-sm" style="flex:2" data-rid="'+id+'" onclick="saveEditRecipe(this.dataset.rid)">Save changes</button>'
+    +'</div>'
     +'</div></div>';
   modal.addEventListener('click',e=>{if(e.target===modal)modal.remove();});
   document.body.appendChild(modal);
-  setTimeout(()=>document.getElementById('edit-recipe-title')?.focus(),100);
-  document.getElementById('edit-recipe-new-cat')?.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();addNewRecipeCat();}});
+  setTimeout(()=>document.getElementById('er-title')?.focus(),100);
 }
 
 function openEditCategories(id){openEditRecipe(id);} // alias for backwards compat
 
-function toggleRecipeCatPill(btn){
-  btn.classList.toggle('active');
-}
+function toggleRecipeCatPill(btn){btn.classList.toggle('active');}
 
 function addNewRecipeCat(){
   const input=document.getElementById('edit-recipe-new-cat');
   const val=(input?.value||'').trim();
   if(!val)return;
-  // Check if already exists
   const existing=[...document.querySelectorAll('#edit-recipe-cat-pills [data-cat]')].map(b=>b.dataset.cat.toLowerCase());
   if(existing.includes(val.toLowerCase())){
-    // Just activate it
     const btn=[...document.querySelectorAll('#edit-recipe-cat-pills [data-cat]')].find(b=>b.dataset.cat.toLowerCase()===val.toLowerCase());
     if(btn)btn.classList.add('active');
   } else {
-    // Add new pill
     const pillsDiv=document.getElementById('edit-recipe-cat-pills');
     if(!pillsDiv){
-      // Create pills div if none existed
       const newDiv=document.createElement('div');
       newDiv.id='edit-recipe-cat-pills';
       newDiv.style.cssText='display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px';
-      input.closest('div').parentElement.insertBefore(newDiv, input.closest('div'));
+      input.closest('div').parentElement.insertBefore(newDiv,input.closest('div'));
     }
     const btn=document.createElement('button');
     btn.className='feedback-type-pill active';
@@ -5394,27 +5578,48 @@ function addNewRecipeCat(){
 async function saveEditRecipe(id){
   const r=cache.recipes.find(rec=>rec.id===id);
   if(!r)return;
-  const title=(document.getElementById('edit-recipe-title')?.value||'').trim();
+  const title=(document.getElementById('er-title')?.value||'').trim();
   if(!title){showToast('Please enter a title.','error');return;}
-  const activePills=[...document.querySelectorAll('#edit-recipe-cat-pills .active')].map(b=>b.dataset.cat).filter(Boolean);
-  r.title=title;
-  r.categories=activePills;
+  const servings=parseInt(document.getElementById('er-servings')?.value)||r.servings||1;
+  const emoji=(document.getElementById('er-emoji')?.value||'').trim()||r.emoji||'🍽️';
+  const catsRaw=document.getElementById('er-cats')?.value||'';
+  const categories=catsRaw.split(',').map(c=>c.trim()).filter(Boolean);
+  const calories=parseFloat(document.getElementById('er-cal')?.value)||0;
+  const protein=parseFloat(document.getElementById('er-pro')?.value)||0;
+  const carbs=parseFloat(document.getElementById('er-carbs')?.value)||0;
+  const fat=parseFloat(document.getElementById('er-fat')?.value)||0;
+  const fiber=parseFloat(document.getElementById('er-fiber')?.value)||0;
+  const sodium=parseFloat(document.getElementById('er-sodium')?.value)||0;
+  const ingredientsRaw=document.getElementById('er-ingredients')?.value||'';
+  const ingredients=ingredientsRaw.split(String.fromCharCode(10)).map(i=>i.trim()).filter(Boolean);
+  const instructions=(document.getElementById('er-instructions')?.value||'').trim();
+  const notes=(document.getElementById('er-notes')?.value||'').trim();
+  Object.assign(r,{title,servings,emoji,categories,calories,protein,carbs,fat,fiber,sodium,ingredients,instructions,notes});
   await fbSet('recipes',id,r);
-  document.querySelector('.date-picker-modal')?.remove();
+  // Keep public_recipes in sync
+  if(r.isPublic){
+    await fbRootSet('public_recipes',id,{...r,shareId:id,sharedAt:r.sharedAt||new Date().toISOString()});
+    const si=_sharedRecipes.findIndex(s=>s.id===id);
+    if(si>=0)_sharedRecipes[si]={..._sharedRecipes[si],...r};
+    if(_sharedRecipesLoaded)renderSharedRecipes();
+  }
+  document.querySelector('.date-picker-modal[style*="501"]')?.remove();
   renderRecipes();
+  // Refresh detail view if open
+  const viewPanel=document.getElementById('recipe-view-panel');
+  if(viewPanel&&viewPanel.style.display!=='none'){
+    document.getElementById('recipe-view-content').innerHTML=recipeDetailHTML(r);
+  }
   showToast('Recipe updated!');
-}
-
-async function saveRecipeCategories(id){
-  // Legacy — now handled by saveEditRecipe
-  await saveEditRecipe(id);
 }
 
 function recipeCard(r){
   const macroStr=[
     r.calories?Math.round(r.calories)+' cal':'',
     r.protein?Math.round(r.protein)+'g pro':'',
-    r.carbs?Math.round(r.carbs)+'g carbs':''
+    r.carbs?Math.round(r.carbs)+'g carbs':'',
+    r.fat?Math.round(r.fat)+'g fat':'',
+    r.sodium?Math.round(r.sodium)+'mg sodium':''
   ].filter(Boolean).join(' · ');
 
   const cats=(r.categories||[]).map(c=>'<span class="recipe-cat-pill">'+escHtml(c)+'</span>').join('');
@@ -5456,6 +5661,7 @@ function openRecipeDetailView(id){
 function closeRecipeDetailView(){
   document.getElementById('recipe-view-panel').style.display='none';
   document.getElementById('recipe-list-panel').style.display='block';
+  switchRecipeTab(_recipeTab);
 }
 
 function recipeDetailHTML(r){
@@ -5508,14 +5714,28 @@ function recipeDetailHTML(r){
 async function toggleRecipePublic(id){
   const r=cache.recipes.find(rec=>rec.id===id);if(!r)return;
   r.isPublic=!r.isPublic;
+  r.authorName=r.authorName||(window._profile?.name||'');
   await fbSet('recipes',id,r);
+  if(r.isPublic){
+    // Copy to public_recipes collection
+    const publicData={...r,shareId:id,sharedAt:new Date().toISOString()};
+    await fbRootSet('public_recipes',id,publicData);
+    // Update local shared cache
+    _sharedRecipes=_sharedRecipes.filter(s=>s.id!==id);
+    _sharedRecipes.unshift({...publicData});
+    showToast('&#10003; Recipe is now public!');
+  } else {
+    await fbRootDel('public_recipes',id);
+    _sharedRecipes=_sharedRecipes.filter(s=>s.id!==id);
+    showToast('Recipe is now private.');
+  }
   renderRecipes();
+  if(_sharedRecipesLoaded)renderSharedRecipes();
   // Re-render detail view if open
   const viewPanel=document.getElementById('recipe-view-panel');
   if(viewPanel&&viewPanel.style.display!=='none'){
     document.getElementById('recipe-view-content').innerHTML=recipeDetailHTML(r);
   }
-  showToast(r.isPublic?'&#10003; Recipe is now public!':'Recipe is now private.');
 }
 
 async function saveRecipeNotes(id){
@@ -5530,10 +5750,15 @@ async function saveRecipeNotes(id){
 
 async function deleteRecipe(id){
   if(!confirm('Delete this recipe?'))return;
-  cache.recipes=cache.recipes.filter(r=>r.id!==id);
-  // Delete from Firestore
-  const token=await auth.currentUser.getIdToken();
-  await fetch(FS_BASE+'/recipes/'+id,{method:'DELETE',headers:{'Authorization':'Bearer '+token}}).catch(()=>{});
+  const r=cache.recipes.find(rec=>rec.id===id);
+  cache.recipes=cache.recipes.filter(rec=>rec.id!==id);
+  await fbDel('recipes',id);
+  // Remove from public_recipes if it was public
+  if(r?.isPublic){
+    await fbRootDel('public_recipes',id);
+    _sharedRecipes=_sharedRecipes.filter(s=>s.id!==id);
+    if(_sharedRecipesLoaded)renderSharedRecipes();
+  }
   closeRecipeDetailView();
   renderRecipes();
   showToast('Recipe deleted.');
@@ -5750,6 +5975,17 @@ function _generateRecipePDF(r){
 
 async function printRecipe(id){
   const r=cache.recipes.find(rec=>rec.id===id);
+  if(!r)return;
+  showToast('Preparing PDF...');
+  await _loadJsPDF();
+  const doc=_generateRecipePDF(r);
+  const blob=doc.output('blob');
+  const url=URL.createObjectURL(blob);
+  window.open(url,'_blank');
+  setTimeout(()=>URL.revokeObjectURL(url),60000);
+}
+
+async function printRecipeObj(r){
   if(!r)return;
   showToast('Preparing PDF...');
   await _loadJsPDF();
