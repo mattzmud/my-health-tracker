@@ -3804,6 +3804,7 @@ function renderFoodEntries(){
           +'<span style="font-size:10px;color:var(--accent);background:rgba(85,107,47,0.1);padding:1px 5px;border-radius:3px;border:1px solid rgba(85,107,47,0.2)">&#128101; '+children.length+' items</span>'
           +'</div></div>'
           +'<button data-gid="'+groupId+'" id="chev-'+groupId+'" onclick="toggleGroupedEntry(this)" style="background:none;border:none;color:var(--muted);font-size:14px;cursor:pointer;padding:0 4px;transition:transform 0.2s">&#9660;</button>'
+          +(!isPast?'<button data-ts="'+e.ts+'" onclick="openEditEntry('+e.ts+')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px;padding:0 3px" title="Edit meal / servings">&#9998;</button>':'')
           +favBtn
           +(!isPast?delBtn:'')
           +'</div>'
