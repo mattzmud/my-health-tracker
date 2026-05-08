@@ -2846,7 +2846,7 @@ function refreshDashboard(){
   const entries=[...rawEntries].sort((a,b)=>(MEAL_ORDER.indexOf(a.time)<0?99:MEAL_ORDER.indexOf(a.time))-(MEAL_ORDER.indexOf(b.time)<0?99:MEAL_ORDER.indexOf(b.time)));
   const _ce=entries.filter(e=>!e._childOf);
   const tp=_ce.reduce((a,e)=>a+(e.protein||0),0),tw=_ce.reduce((a,e)=>a+(e.water||0),0),tc=_ce.reduce((a,e)=>a+(e.carbs||0),0),tcal=_ce.reduce((a,e)=>a+(e.calories||0),0),ts_=_ce.reduce((a,e)=>a+(e.sugar||0),0);
-  let tf_=entries.reduce((a,e)=>a+(e.fiber||0),0);
+  let tf_=_ce.reduce((a,e)=>a+(e.fiber||0),0);
   const _tcNet=Math.max(0,tc-tf_); // net carbs = total carbs - fiber
   const startW=p.currentWeight||150,cur=cache.weights.length?cache.weights[cache.weights.length-1].val:startW;
   const lost=+(startW-cur).toFixed(1);
@@ -2862,8 +2862,8 @@ function refreshDashboard(){
   const _sl2=document.getElementById('stat-sugar-label');if(_sl2)_sl2.textContent=goalsDate===TODAY?'Sugar Today':'Sugar '+goalsDate.slice(5);
   document.getElementById('dash-fiber').textContent=Math.round(tf_)+'g';
   const _fl=document.getElementById('stat-fiber-label');if(_fl)_fl.textContent=goalsDate===TODAY?'Fiber Today':'Fiber '+goalsDate.slice(5);
-  const _tFat=entries.reduce((a,e)=>a+(e.fat||0),0);
-  const _tSodium=entries.reduce((a,e)=>a+(e.sodium||0),0);
+  const _tFat=_ce.reduce((a,e)=>a+(e.fat||0),0);
+  const _tSodium=_ce.reduce((a,e)=>a+(e.sodium||0),0);
   const _fatGoal=p.fatGoal||65,_sodiumGoal=p.sodiumGoal||2300;
   const _dashFat=document.getElementById('dash-fat');if(_dashFat)_dashFat.textContent=Math.round(_tFat)+'g';
   const _dashSodium=document.getElementById('dash-sodium');if(_dashSodium)_dashSodium.textContent=Math.round(_tSodium)+'mg';
@@ -3101,14 +3101,14 @@ function applyCustomRange(){applyDashCustomRange();}
 
 function renderProteinChart(){
   const days=getDashDays(),goal=(window._profile||{}).proteinGoal||120;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0)));
+  const data=days.map(d=>Math.round((cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.protein||0),0)));
   const ctx=document.getElementById('protein-chart').getContext('2d');if(proteinChart)proteinChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');const label=days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;});
   proteinChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Protein',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.9)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(140,164,232,0.5)'),borderRadius:4},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
 }
 function renderWaterChart(){
   const days=getDashDays(),goal=(window._profile||{}).waterGoal||80;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0)));
+  const data=days.map(d=>Math.round((cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.water||0),0)));
   const ctx=document.getElementById('water-chart').getContext('2d');if(waterChart)waterChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');const label=days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);return d===viewDate?label+'*':label;});
   waterChart=new Chart(ctx,{type:'bar',data:{labels,datasets:[{label:'Water',data,backgroundColor:days.map((d,i)=>d===viewDate?'rgba(201,169,110,0.7)':data[i]>=goal?'rgba(126,184,164,0.7)':'rgba(126,184,164,0.3)'),borderRadius:4},{label:'Goal',data:days.map(()=>goal),borderColor:'rgba(201,169,110,0.6)',borderDash:[4,3],type:'line',fill:false,pointRadius:0}]},options:co()});
@@ -3124,7 +3124,7 @@ async function callAI(prompt,systemPrompt){
 let calChart=null;
 function renderCalChart(){
   const days=getDashDays(),goal=(window._profile||{}).calorieGoal||2000;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.calories||0),0)));
+  const data=days.map(d=>Math.round((cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.calories||0),0)));
   const ctx=document.getElementById('cal-chart')?.getContext('2d');if(!ctx)return;
   if(calChart)calChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
@@ -3142,7 +3142,7 @@ function renderCalChart(){
 let sugarChart=null;
 function renderSugarChart(){
   const days=getDashDays(),goal=(window._profile||{}).sugarGoal||50;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.sugar||0),0)));
+  const data=days.map(d=>Math.round((cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.sugar||0),0)));
   const ctx=document.getElementById('sugar-chart')?.getContext('2d');if(!ctx)return;
   if(sugarChart)sugarChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
@@ -3160,7 +3160,7 @@ let fiberChart=null;
 function renderFiberChart(){
   const days=getDashDays(),goal=(window._profile||{}).fiberGoal||28;
   const data=days.map(d=>{
-    const foodFiber=(cache.food[d]||[]).reduce((a,e)=>a+(e.fiber||0),0);
+    const foodFiber=(cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.fiber||0),0);
     let medFiber=0;
     if(cache.trackMeds!==false){
       const ms=cache.meds[d]||{};
@@ -3198,7 +3198,7 @@ let fatChart=null,sodiumChart=null;
 
 function renderFatChart(){
   const days=getDashDays(),goal=(window._profile||{}).fatGoal||65;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.fat||0),0)*10)/10);
+  const data=days.map(d=>Math.round((cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.fat||0),0)*10)/10);
   const ctx=document.getElementById('fat-chart')?.getContext('2d');if(!ctx)return;
   if(fatChart)fatChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
@@ -3220,7 +3220,7 @@ function renderFatChart(){
 
 function renderSodiumChart(){
   const days=getDashDays(),goal=(window._profile||{}).sodiumGoal||2300;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.sodium||0),0)));
+  const data=days.map(d=>Math.round((cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.sodium||0),0)));
   const ctx=document.getElementById('sodium-chart')?.getContext('2d');if(!ctx)return;
   if(sodiumChart)sodiumChart.destroy();
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
@@ -3242,7 +3242,7 @@ function renderSodiumChart(){
 
 function renderCarbsChart(){
   const days=getDashDays(),goal=(window._profile||{}).carbGoal||100;
-  const data=days.map(d=>Math.round((cache.food[d]||[]).reduce((a,e)=>a+(e.carbs||0),0)));
+  const data=days.map(d=>Math.round((cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.carbs||0),0)));
   const ctx=document.getElementById('carbs-chart').getContext('2d');if(carbsChart)carbsChart.destroy();
   if(!ctx)return;
   const labels=days.map(d=>{const dt=new Date(d+'T12:00:00');return days.length>14?d.slice(5):DAY_NAMES[dt.getDay()].slice(0,3);});
@@ -7006,19 +7006,19 @@ async function checkAndAwardBadges(){
   if(loggedDays.length>=7)await awardBadge('log_7');
 
   // Protein streaks
-  const proteinDays=days.filter(d=>{const tp=(cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0);return tp>=pg;});
+  const proteinDays=days.filter(d=>{const tp=(cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.protein||0),0);return tp>=pg;});
   if(proteinDays.length>=1)await awardBadge('protein_1');
   // Check 3 in a row
   let pStreak=0,maxPStreak=0;
-  lastNDays(30).forEach(d=>{const tp=(cache.food[d]||[]).reduce((a,e)=>a+(e.protein||0),0);if(tp>=pg){pStreak++;maxPStreak=Math.max(maxPStreak,pStreak);}else pStreak=0;});
+  lastNDays(30).forEach(d=>{const tp=(cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.protein||0),0);if(tp>=pg){pStreak++;maxPStreak=Math.max(maxPStreak,pStreak);}else pStreak=0;});
   if(maxPStreak>=3)await awardBadge('protein_3');
   if(maxPStreak>=7)await awardBadge('protein_7');
 
   // Water streaks
-  const waterDays=days.filter(d=>{const tw=(cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0);return tw>=wg;});
+  const waterDays=days.filter(d=>{const tw=(cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.water||0),0);return tw>=wg;});
   if(waterDays.length>=1)await awardBadge('hydro_1');
   let wStreak=0,maxWStreak=0;
-  lastNDays(30).forEach(d=>{const tw=(cache.food[d]||[]).reduce((a,e)=>a+(e.water||0),0);if(tw>=wg){wStreak++;maxWStreak=Math.max(maxWStreak,wStreak);}else wStreak=0;});
+  lastNDays(30).forEach(d=>{const tw=(cache.food[d]||[]).filter(e=>!e._childOf).reduce((a,e)=>a+(e.water||0),0);if(tw>=wg){wStreak++;maxWStreak=Math.max(maxWStreak,wStreak);}else wStreak=0;});
   if(maxWStreak>=3)await awardBadge('hydro_3');
   if(maxWStreak>=7)await awardBadge('hydro_7');
 
